@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sensorial Boutique | Perfumes de diseñador y árabes</title>
+  <meta name="description" content="Perfumes de diseñador y árabes. Elige por familia olfativa, arma tu lista y pídela por WhatsApp en un solo mensaje.">
+  <meta name="theme-color" content="#dbe4f3">
+  <script>
+    (function () {
+      var raiz = document.documentElement;
+      raiz.classList.add("js");
+      /* La intro no corre con "reducir movimiento" ni al llegar a una sección por enlace directo */
+      var conIntro = !location.hash && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      raiz.classList.add(conIntro ? "con-intro" : "sin-intro");
+      if (conIntro) raiz.classList.add("intro-activa");
+    })();
+  </script>
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300..800;1,300..800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-familia="frescos">
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro__centro">
+      <i class="ph ph-moon intro__icono"></i>
+      <p class="intro__marca">
+        <span class="intro__palabra"><span style="--i: 0">S</span><span style="--i: 1">e</span><span style="--i: 2">n</span><span style="--i: 3">s</span><span style="--i: 4">o</span><span style="--i: 5">r</span><span style="--i: 6">i</span><span style="--i: 7">a</span><span style="--i: 8">l</span></span>
+        <span class="intro__palabra intro__palabra--ligera"><span style="--i: 9">B</span><span style="--i: 10">o</span><span style="--i: 11">u</span><span style="--i: 12">t</span><span style="--i: 13">i</span><span style="--i: 14">q</span><span style="--i: 15">u</span><span style="--i: 16">e</span></span>
+      </p>
+      <span class="intro__linea"></span>
+      <p class="intro__lema">Perfumes de diseñador y árabes</p>
+    </div>
+  </div>
+
+  <a class="saltar" href="#catalogo">Saltar al catálogo</a>
+
+  <div class="hoja">
+    <header class="nav">
+      <a class="marca" href="#inicio">
+        <i class="ph ph-moon" aria-hidden="true"></i>
+        <span>Sensorial <em>Boutique</em></span>
+      </a>
+
+      <nav class="nav__enlaces" aria-label="Principal">
+        <a href="#inicio">Inicio</a>
+        <a href="#familias">Familias</a>
+        <a href="#catalogo">Catálogo</a>
+        <a href="#pedido">Cómo pedir</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+
+      <div class="nav__acciones">
+        <form class="buscar" id="buscar" role="search">
+          <label class="oculto" for="buscar-campo">Buscar perfume</label>
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input id="buscar-campo" type="search" placeholder="Buscar perfume" autocomplete="off">
+        </form>
+        <a class="icono-btn" href="#pedido" id="ver-lista" aria-label="Ver tu lista">
+          <i class="ph ph-heart" aria-hidden="true"></i>
+          <span class="icono-btn__conteo" id="nav-conteo" hidden>0</span>
+        </a>
+        <a class="btn nav__cta js-wa" href="https://wa.me/" target="_blank" rel="noopener" aria-label="Pedir por WhatsApp">
+          <i class="ph ph-whatsapp-logo" aria-hidden="true"></i><span>Pedir por WhatsApp</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="inicio">
+      <section class="hero" data-marco aria-labelledby="titulo-hero">
+        <div class="hero__marco" data-marco>
+          <div class="hero__capas" id="capas">
+            <div class="hero__capa es-activa" data-familia="frescos">
+              <img class="hero__foto" data-parallax="0.09" data-profundidad="-10"
+                src="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600"
+                srcset="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=900 900w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600 1600w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=2400 2400w"
+                sizes="100vw" alt="Frasco de Dior Sauvage iluminado con luz azul" fetchpriority="high" style="object-position: 50% 46%">
+            </div>
+          </div>
+          <div class="hero__velo" aria-hidden="true"></div>
+
+          <div class="selector" id="selector" role="group" aria-label="Elegir familia olfativa"></div>
+
+          <div class="hero__texto">
+            <h1 id="titulo-hero">Dinos a qué quieres oler.</h1>
+            <p>Perfumes de diseñador y árabes. Elige una familia, arma tu lista y pídela por WhatsApp en un solo mensaje.</p>
+            <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+              <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+            </a>
+          </div>
+        </div>
+
+        <article class="destacado" id="destacado" data-parallax="-22" data-profundidad="16" data-solo-escritorio aria-live="polite"></article>
+      </section>
+
+      <section class="familias contenedor" id="familias" aria-labelledby="titulo-familias">
+        <div class="encabezado">
+          <h2 id="titulo-familias">Empieza por una familia.</h2>
+          <p>Cada perfume pertenece a una familia olfativa. Si sabes cuál te gusta, ya tienes medio camino hecho.</p>
+        </div>
+        <ul class="familias__rejilla" id="familias-rejilla"></ul>
+      </section>
+
+      <section class="catalogo contenedor" id="catalogo" aria-labelledby="titulo-catalogo">
+        <div class="encabezado">
+          <h2 id="titulo-catalogo">El catálogo</h2>
+          <p>Están ordenados por familia y cada tarjeta muestra las tres notas principales del perfume. Toca uno para ver su ficha, o agrégalo a tu lista y pídelos todos en un solo mensaje.</p>
+        </div>
+
+        <div class="filtros">
+          <div class="filtros__grupo" role="group" aria-labelledby="filtro-familia">
+            <span class="filtros__titulo" id="filtro-familia">Familia</span>
+            <button class="chip" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true">Todas</button>
+            <button class="chip" type="button" data-grupo="familia" data-valor="frescos" aria-pressed="false">Frescos</button>
+            <button class="chip" type="button" data-grupo="familia" data-valor="dulces" aria-pressed="false">Dulces</button>
+            <button class="chip" type="button" data-grupo="familia" data-valor="amaderados" aria-pressed="false">Amaderados</button>
+            <button class="chip" type="button" data-grupo="familia" data-valor="orientales" aria-pressed="false">Orientales</button>
+          </div>
+          <div class="filtros__grupo" role="group" aria-labelledby="filtro-origen">
+            <span class="filtros__titulo" id="filtro-origen">Origen</span>
+            <button class="chip" type="button" data-grupo="origen" data-valor="todos" aria-pressed="true">Todos</button>
+            <button class="chip" type="button" data-grupo="origen" data-valor="Diseñador" aria-pressed="false">Diseñador</button>
+            <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
+          </div>
+          <p class="filtros__conteo" id="conteo" aria-live="polite"></p>
+        </div>
+
+        <div id="capitulos"></div>
+
+        <div class="vacio" id="vacio" hidden>
+          <p>No encontramos perfumes con esa búsqueda o esos filtros.</p>
+          <button class="enlace" type="button" id="quitar-filtros">Ver todo el catálogo</button>
+        </div>
+
+        <noscript>
+          <p class="vacio">Activa JavaScript para ver el catálogo, o escríbenos por WhatsApp y te lo enviamos.</p>
+        </noscript>
+      </section>
+
+      <section class="origen contenedor" id="origen" aria-labelledby="titulo-origen">
+        <div class="encabezado">
+          <h2 id="titulo-origen">Diseñador y árabes, en un mismo lugar.</h2>
+        </div>
+        <div class="origen__rejilla">
+          <article class="origen__tarjeta revelar">
+            <div class="origen__marco" data-marco>
+              <!-- FOTO DE STOCK (Unsplash): Chanel N°5. Reemplazar por foto propia si quieres -->
+              <img data-parallax="0.08" loading="lazy" alt="Frasco de Chanel N°5 sobre tela satinada"
+                src="https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1400"
+                srcset="https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=800 800w, https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1400 1400w, https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1990 1990w"
+                sizes="(max-width: 56rem) 100vw, 45vw">
+            </div>
+            <h3>Diseñador</h3>
+            <p>Las casas que ya conoces: Dior, Chanel, Yves Saint Laurent, Versace. Los clásicos que la gente reconoce al pasar.</p>
+            <button class="enlace" type="button" data-ver-origen="Diseñador">Ver diseñador<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </article>
+          <article class="origen__tarjeta origen__tarjeta--baja revelar" style="--orden: 1">
+            <div class="origen__marco" data-marco>
+              <!-- FOTO DE STOCK (Unsplash): perfume de oud. Reemplazar por foto propia si quieres -->
+              <img data-parallax="0.08" loading="lazy" alt="Frasco de perfume de oud color ámbar sobre madera"
+                src="https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=1400"
+                srcset="https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=800 800w, https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=1400 1400w, https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=2200 2200w"
+                sizes="(max-width: 56rem) 100vw, 45vw">
+            </div>
+            <h3>Árabes</h3>
+            <p>Casas de Emiratos como Lattafa, Armaf, Afnan y Rasasi. Aromas intensos, con mucho oud, vainilla y especias, que suelen costar menos que un diseñador.</p>
+            <button class="enlace" type="button" data-ver-origen="Árabe">Ver árabes<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </article>
+        </div>
+      </section>
+
+      <section class="pedido contenedor" id="pedido" aria-labelledby="titulo-pedido">
+        <div class="pedido__texto">
+          <h2 id="titulo-pedido">Tu pedido cabe en un mensaje.</h2>
+          <ol class="pasos">
+            <li>
+              <h3>Elige</h3>
+              <p>Agrega a tu lista los perfumes que te llamen la atención, o solo dinos qué familia te gusta.</p>
+            </li>
+            <li>
+              <h3>Envía</h3>
+              <p>El botón abre WhatsApp con tu lista ya escrita. Solo tienes que enviarla.</p>
+            </li>
+            <li>
+              <h3>Coordina</h3>
+              <p>Por el chat te confirmamos precio, disponibilidad y entrega.</p>
+            </li>
+          </ol>
+        </div>
+        <div class="mensaje">
+          <p class="mensaje__titulo">Así llegará tu mensaje</p>
+          <p class="mensaje__texto" id="mensaje-texto" aria-live="polite"></p>
+          <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+            <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+          </a>
+        </div>
+      </section>
+
+      <section class="preguntas contenedor" id="preguntas" aria-labelledby="titulo-preguntas">
+        <h2 id="titulo-preguntas">Preguntas frecuentes</h2>
+        <div class="preguntas__lista">
+          <details>
+            <summary>¿Cómo elijo un perfume sin olerlo antes?<i class="ph ph-plus" aria-hidden="true"></i></summary>
+            <p>Cuéntanos qué perfumes ya te gustan o a qué quieres oler (dulce, fresco, intenso) y te sugerimos opciones parecidas. Las notas de cada ficha también te orientan.</p>
+          </details>
+          <details>
+            <summary>¿Qué son las notas de salida, corazón y fondo?<i class="ph ph-plus" aria-hidden="true"></i></summary>
+            <p>Salida es lo que hueles en los primeros minutos. Corazón es el aroma principal, que aparece después. Fondo es lo que queda en la piel al final del día.</p>
+          </details>
+          <details>
+            <summary>¿Qué diferencia hay entre EDT, EDP y extracto?<i class="ph ph-plus" aria-hidden="true"></i></summary>
+            <p>Es la concentración de aceites. Eau de Toilette es la más ligera, Eau de Parfum es más intensa y el extracto es la más concentrada. A mayor concentración, suele durar más en la piel.</p>
+          </details>
+          <details>
+            <summary>¿Qué es un perfume árabe?<i class="ph ph-plus" aria-hidden="true"></i></summary>
+            <p>Es un perfume de una casa de Medio Oriente, sobre todo de Emiratos Árabes. Suelen ser intensos y usar notas como oud, ámbar, vainilla y especias.</p>
+          </details>
+          <details>
+            <summary>¿Hacen envíos y qué formas de pago aceptan?<i class="ph ph-plus" aria-hidden="true"></i></summary>
+            <p>Escríbenos por WhatsApp con tu ciudad y te confirmamos las opciones de entrega y de pago disponibles.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="cierre" data-marco aria-labelledby="titulo-cierre">
+        <!-- FOTO DE STOCK (Unsplash): reemplazar por foto propia de tus frascos si quieres -->
+        <img class="cierre__foto" data-parallax="0.1" loading="lazy" alt=""
+          src="https://images.unsplash.com/photo-1718466044521-d38654f3ba0a?auto=format&fit=crop&q=80&w=1800"
+          srcset="https://images.unsplash.com/photo-1718466044521-d38654f3ba0a?auto=format&fit=crop&q=80&w=900 900w, https://images.unsplash.com/photo-1718466044521-d38654f3ba0a?auto=format&fit=crop&q=80&w=1800 1800w, https://images.unsplash.com/photo-1718466044521-d38654f3ba0a?auto=format&fit=crop&q=80&w=2600 2600w"
+          sizes="100vw">
+        <div class="cierre__velo" aria-hidden="true"></div>
+        <div class="cierre__texto">
+          <h2 id="titulo-cierre">¿Ya sabes a qué quieres oler?</h2>
+          <p>Si todavía no, también sirve. Escríbenos y lo vemos contigo en el chat.</p>
+          <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+            <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <a class="marca" href="#inicio">
+        <i class="ph ph-moon" aria-hidden="true"></i>
+        <span>Sensorial <em>Boutique</em></span>
+      </a>
+      <nav aria-label="Pie de página">
+        <a href="#familias">Familias</a>
+        <a href="#catalogo">Catálogo</a>
+        <a href="#pedido">Cómo pedir</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+      <p>© 2026 Sensorial Boutique. Las marcas mencionadas pertenecen a sus respectivos dueños.</p>
+    </footer>
+  </div>
+
+  <dialog class="detalle" id="detalle" aria-labelledby="detalle-nombre"></dialog>
+
+  <div class="barra" id="barra" role="region" aria-label="Tu lista" inert>
+    <p class="barra__resumen"><strong id="barra-conteo">0 en tu lista</strong><span id="barra-nombres"></span></p>
+    <button class="enlace barra__vaciar" type="button" id="vaciar">Vaciar</button>
+    <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+      <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+    </a>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
