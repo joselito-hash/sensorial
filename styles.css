@@ -1300,6 +1300,7 @@ html:has(.detalle[open]) { overflow: hidden; }
   border-radius: var(--r-marco);
   background: var(--papel-2);
   isolation: isolate;
+  cursor: pointer;
 }
 .vendidos__vitrina::after {
   content: "";
@@ -1521,7 +1522,9 @@ html:has(.detalle[open]) { overflow: hidden; }
 /* Lo que dicen nuestros clientes: una tarjeta amplia por testimonio. Retrato en un círculo
    rodeado de hojas a la izquierda; comillas, estrellas, la frase y quién la dijo a la
    derecha. Con varios testimonios se deslizan de lado. */
-.clientes { --salvia: #a3ad8f; padding-block: var(--seccion); }
+.clientes { --salvia: #a3ad8f; padding-top: var(--seccion); }
+/* Espacio justo entre la última sección del inicio (sea cual sea) y el pie */
+#vista-inicio { padding-bottom: clamp(2.5rem, 5vw, 4rem); }
 .clientes[hidden] { display: none; }
 .clientes__cabecera h2 { max-width: 16ch; }
 .clientes__pista {
@@ -1786,7 +1789,7 @@ html:has(.detalle[open]) { overflow: hidden; }
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: clamp(2rem, 6vw, 6rem);
   align-items: start;
-  padding-block: var(--seccion);
+  padding-block: var(--seccion) clamp(2.5rem, 5vw, 4rem);
 }
 .preguntas__intro { position: sticky; top: calc(var(--nav-alto) + 2rem); }
 .preguntas__intro h2 { font-size: clamp(1.9rem, 3vw, 2.6rem); }
@@ -1848,7 +1851,7 @@ html:has(.detalle[open]) { overflow: hidden; }
 
 /* Recorrido del catálogo (catalogo.html): origen, familia y perfumes */
 
-.recorrido { min-height: calc(100svh - var(--nav-alto) - var(--margen) * 2); padding-bottom: var(--seccion); }
+.recorrido { min-height: calc(100svh - var(--nav-alto) - var(--margen) * 2); padding-bottom: clamp(2rem, 4vw, 3.5rem); }
 .recorrido__progreso { padding-top: clamp(1.25rem, 2.6vw, 2rem); }
 
 .paso,
@@ -1946,7 +1949,21 @@ html:has(.detalle[open]) { overflow: hidden; }
 .opcion__conteo { color: var(--blanco); font-size: 0.9375rem; font-weight: 600; }
 
 /* "Ver todo": siempre debajo de los dos primeros pasos */
-.paso__pie { display: flex; justify-content: center; margin-top: clamp(1.75rem, 3vw, 2.5rem); }
+/* "Ver todo" acompaña al bajar: se queda pegado abajo de la pantalla mientras se ven las
+   opciones de la pregunta (y sube si la barra de la lista está abajo) */
+.paso__pie {
+  position: sticky;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(1.75rem, 3vw, 2.5rem);
+  pointer-events: none;
+  transition: bottom 400ms var(--suave);
+}
+body.con-lista .paso__pie { bottom: 5.75rem; }
+.paso__pie .ver-todo { pointer-events: auto; background: rgb(34 28 32 / 0.94); }
+.paso__pie .ver-todo:hover { background: var(--papel-2); }
 .ver-todo {
   display: inline-flex;
   align-items: center;
@@ -1988,8 +2005,9 @@ html:has(.detalle[open]) { overflow: hidden; }
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem 2rem;
-  padding: 2rem clamp(1.25rem, 2.4vw, 2rem) 2.25rem;
+  gap: 0.75rem 2rem;
+  padding: 1.25rem clamp(1.25rem, 2.4vw, 2rem) 1.5rem;
+  border-top: 1px solid var(--linea);
 }
 .pie nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
 .pie p { flex-basis: 100%; color: var(--tinta-2); font-size: 0.875rem; }

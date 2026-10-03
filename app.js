@@ -698,7 +698,6 @@
 
     const etiqueta = origen === "Árabe" ? "árabes" : "de diseñador";
     $("#familia-sub").textContent = `Tenemos ${textoPerfumes(contar(origen, "todas"))} ${etiqueta}. Elige la familia que más te llame.`;
-    $("#ver-todo-origen span").textContent = `Ver todos los perfumes ${etiqueta}`;
   }
 
   function pintarConteosOrigen() {
@@ -965,6 +964,11 @@
       </li>`;
     }).join("");
     activarVendido(0, true);
+
+    /* Clic en la vitrina: abre la ficha del perfume que muestra en ese momento */
+    vitrina.addEventListener("click", () => {
+      abrirDetalle(MAS_VENDIDOS[vendidoActivo], $(".vendidos__imagen.es-activa", vitrina));
+    });
 
     ["pointerover", "focusin"].forEach((tipo) => lista.addEventListener(tipo, (evento) => {
       if (telefonoVendidos.matches) return;
