@@ -238,7 +238,8 @@
     const numero = CONFIG.whatsapp.replace(/\D/g, "");
     const enlace = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
     $$(".js-wa").forEach((a) => { a.href = enlace; });
-    $("#mensaje-texto").textContent = texto;
+    const vista = $("#mensaje-texto");
+    if (vista) vista.textContent = texto;
   }
 
   /* ---------- Lista ---------- */
@@ -255,48 +256,142 @@
     });
   }
 
-  function pintarLista(conPulso) {
+  /* La lista vive en una barra inferior compacta: pila de fotos, conteo y botón de WhatsApp.
+     Agregar un perfume no abre el panel: la barra solo confirma el cambio por un momento.
+     El panel con el detalle se abre únicamente al tocar el resumen. */
+  let relojAviso = null;
+
+  const panelListaAbierto = () => $("#barra").classList.contains("panel-abierto");
+
+  function abrirPanelLista() {
     const barra = $("#barra");
-    const panel = $("#barra-panel");
-    const mostrar = $("#mostrar-lista");
-    const n = estado.lista.size;
-    const visible = n > 0;
+    if (!barra || estado.lista.size === 0) return;
+    barra.classList.add("panel-abierto");
+    $("#barra-panel").inert = false;
+    $("#mostrar-lista").setAttribute("aria-expanded", "true");
+  }
+
+  function cerrarPanelLista() {
+    const barra = $("#barra");
+    if (!barra) return;
+    barra.classList.remove("panel-abierto");
+    $("#barra-panel").inert = true;
+    $("#mostrar-lista").setAttribute("aria-expanded", "false");
+  }
+
+  /* La barra no se muestra en la pestaña Pedido: ahí la lista ya ocupa toda la página */
+  function mostrarBarra() {
+    const barra = $("#barra");
+    const visible = estado.lista.size > 0 && vistaActual !== "pedido";
     barra.classList.toggle("es-visible", visible);
     barra.inert = !visible || document.documentElement.classList.contains("intro-activa");
     document.body.classList.toggle("con-lista", visible);
-    if (!visible) {
-      panel.hidden = true;
-      mostrar.setAttribute("aria-expanded", "false");
-      $("#barra-items").innerHTML = "";
-      return;
-    }
+    if (!visible) cerrarPanelLista();
+  }
 
-    const conteo = $("#barra-conteo");
-    conteo.textContent = `${n} en tu lista`;
-    $("#barra-nombres").textContent = [...estado.lista].map((id) => porId.get(id).nombre).join(", ");
-    $("#barra-items").innerHTML = [...estado.lista].map((id) => {
+  /* Pestaña Pedido: la lista completa con foto, notas y botón para quitar */
+  function pintarPedido() {
+    const ids = [...estado.lista];
+    const n = ids.length;
+    $("#pedido-vacio").hidden = n > 0;
+    $("#pedido-acciones").hidden = n === 0;
+    $("#pedido-resumen").textContent = n
+      ? `${textoPerfumes(n)} en tu lista. Revísala y envíala por WhatsApp; te confirmamos precio y disponibilidad.`
+      : "Aquí aparecen los perfumes que agregues desde el catálogo.";
+    $("#pedido-items").innerHTML = ids.map((id, i) => {
       const p = porId.get(id);
-      return `<li>
-        <img src="${p.lamina || url(p.foto, 160)}" alt="" width="56" height="56" loading="lazy">
-        <span class="barra__item-texto"><strong>${p.nombre}</strong><small>${p.casa}${p.version ? ` · ${p.version}` : ""}</small></span>
-        <button class="barra__quitar" type="button" data-quitar-lista="${p.id}" aria-label="Quitar ${nombreCompleto(p)} de la lista"><i class="ph ph-x" aria-hidden="true"></i></button>
+      const f = familiaPorId.get(p.familia);
+      return `<li class="pedido__item" style="--campo: var(--c-${f.id}); --i: ${i}">
+        <button class="pedido__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${p.lamina || url(p.foto, 300)}" alt="" width="120" height="120" loading="lazy">
+        </button>
+        <div class="pedido__info">
+          <p class="pedido__meta"><span class="pedido__familia">${f.nombre}</span>${p.casa}${p.version ? ` · ${p.version}` : ""}</p>
+          <h2 class="pedido__nombre"><button type="button" data-ficha="${p.id}">${p.nombre}</button></h2>
+          <p class="pedido__notas">Huele a ${resumenNotas(p)}.</p>
+        </div>
+        <button class="pedido__quitar" type="button" data-quitar-lista="${p.id}" aria-label="Quitar ${nombreCompleto(p)} de la lista"><i class="ph ph-x" aria-hidden="true"></i><span>Quitar</span></button>
       </li>`;
     }).join("");
-    if (conPulso) {
-      panel.hidden = false;
-      mostrar.setAttribute("aria-expanded", "true");
+
+    const conteo = $("#nav-conteo");
+    const antes = conteo.textContent;
+    conteo.hidden = n === 0;
+    conteo.textContent = n ? String(n) : "";
+    if (n && antes !== conteo.textContent && !menosMovimiento.matches) {
       conteo.classList.remove("pulso");
       void conteo.offsetWidth;
       conteo.classList.add("pulso");
     }
   }
 
+  function pintarLista(cambio) {
+    const barra = $("#barra");
+    if (!barra) return;
+    const ids = [...estado.lista];
+    const n = ids.length;
+    pintarPedido();
+    mostrarBarra();
+    if (n === 0) {
+      $("#barra-items").innerHTML = "";
+      $("#barra-pila").innerHTML = "";
+      return;
+    }
+
+    const total = n === 1 ? "1 perfume" : `${n} perfumes`;
+    $("#barra-conteo").textContent = total;
+    $("#barra-total").textContent = total;
+
+    /* Pila con las tres últimas fotos; la recién agregada entra con un pequeño salto */
+    $("#barra-pila").innerHTML = ids.slice(-3).map((id) => {
+      const p = porId.get(id);
+      const nueva = cambio && cambio.tipo === "agregado" && cambio.id === id;
+      return `<img class="${nueva ? "es-nueva" : ""}" src="${p.lamina || url(p.foto, 120)}" alt="" width="40" height="40">`;
+    }).join("");
+
+    $("#barra-items").innerHTML = ids.map((id, i) => {
+      const p = porId.get(id);
+      const f = familiaPorId.get(p.familia);
+      return `<li class="barra__item" style="--campo: var(--c-${f.id}); --i: ${i}">
+        <button class="barra__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${p.lamina || url(p.foto, 160)}" alt="" width="56" height="56" loading="lazy">
+          <span class="barra__item-texto">
+            <strong>${p.nombre}</strong>
+            <small>${p.casa}${p.version ? ` · ${p.version}` : ""}</small>
+            <span class="barra__familia">${f.nombre}</span>
+          </span>
+        </button>
+        <button class="barra__quitar" type="button" data-quitar-lista="${p.id}" aria-label="Quitar ${nombreCompleto(p)} de la lista"><i class="ph ph-x" aria-hidden="true"></i></button>
+      </li>`;
+    }).join("");
+
+    /* Aviso breve en la barra: "Agregaste Sauvage" y luego vuelve a "Ver tu lista" */
+    const aviso = $("#barra-estado");
+    if (cambio) {
+      const p = porId.get(cambio.id);
+      aviso.innerHTML = cambio.tipo === "agregado"
+        ? `<i class="ph ph-check" aria-hidden="true"></i>Agregaste ${p.nombre}`
+        : `Quitaste ${p.nombre}`;
+      barra.classList.remove("avisando");
+      void barra.offsetWidth;
+      barra.classList.add("avisando");
+      window.clearTimeout(relojAviso);
+      relojAviso = window.setTimeout(() => {
+        aviso.textContent = "Ver tu lista";
+        barra.classList.remove("avisando");
+      }, 2200);
+    } else {
+      aviso.textContent = "Ver tu lista";
+    }
+  }
+
   function alternar(id) {
-    if (estado.lista.has(id)) estado.lista.delete(id);
+    const tipo = estado.lista.has(id) ? "quitado" : "agregado";
+    if (tipo === "quitado") estado.lista.delete(id);
     else estado.lista.add(id);
     guardarLista();
     pintarBotones();
-    pintarLista(true);
+    pintarLista({ tipo, id });
     actualizarPedido();
   }
 
@@ -304,6 +399,7 @@
 
   function pintarHero() {
     const capas = $("#capas");
+    if (!capas) return;
     FAMILIAS.slice(1).forEach((f) => {
       capas.insertAdjacentHTML("beforeend", `
         <div class="hero__capa" data-familia="${f.id}">
@@ -320,6 +416,7 @@
   function pintarDestacado() {
     const p = porId.get(familiaPorId.get(estado.familia).destacado);
     const caja = $("#destacado");
+    if (!caja) return;
     caja.innerHTML = `
       <img class="destacado__foto" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="${nombreCompleto(p)}" width="216" height="216">
       <div class="destacado__texto">
@@ -345,8 +442,8 @@
 
   /* El inicio avanza solo hasta que la persona toca algo; nunca con "reducir movimiento" */
   function iniciarCarrusel() {
-    if (menosMovimiento.matches) return;
     const hero = $(".hero");
+    if (menosMovimiento.matches || !hero) return;
     let enVista = true;
     let encima = false;
     let detenido = false;
@@ -365,21 +462,340 @@
     }, 6500);
   }
 
-  /* ---------- Familias ---------- */
+  /* ---------- Pestañas ----------
+     Inicio, Catálogo y Pedido viven en esta misma página. Cada pestaña tiene su dirección
+     (#catalogo, #pedido) para que el botón "atrás" del navegador y los enlaces directos
+     funcionen. Al cambiar de pestaña, la actual se desliza hacia un lado y la nueva entra
+     por el otro, en el orden del menú.
 
-  function pintarFamilias() {
-    const profundidad = [26, -34, 14, -46];
-    $("#familias-rejilla").innerHTML = FAMILIAS.map((f, i) => `
-      <li class="familia revelar" data-marco style="--orden: ${i}">
-        <button class="familia__tarjeta" type="button" data-ver-familia="${f.id}" data-parallax="${profundidad[i]}" data-solo-escritorio>
-          <img data-parallax="0.08" src="${url(f.ingrediente, 900)}" srcset="${srcset(f.ingrediente, [500, 900, 1300])}"
+     El catálogo es un recorrido de tres pasos: diseñador o árabes, la familia y el catálogo
+     con esos filtros (#catalogo?origen=arabe&familia=orientales). "Ver todo" salta al paso 3. */
+
+  const ORDEN_VISTAS = ["inicio", "catalogo", "pedido"];
+  const TITULOS = {
+    inicio: "Sensorial Boutique | Perfumes de diseñador y árabes",
+    catalogo: "Catálogo | Sensorial Boutique",
+    pedido: "Tu pedido | Sensorial Boutique",
+  };
+  const ORIGEN_URL = { "Diseñador": "disenador", "Árabe": "arabe" };
+  const ORIGEN_DE_URL = { disenador: "Diseñador", arabe: "Árabe" };
+  const contenedorVistas = $(".vistas");
+  const recorrido = $("#vista-catalogo");
+  let vistaActual = null;
+  let rutaActual = { vista: "inicio" };
+
+  const contar = (origen, familia) => PERFUMES.filter((p) =>
+    (origen === "todos" || p.origen === origen) && (familia === "todas" || p.familia === familia)).length;
+  const textoPerfumes = (n) => (n === 1 ? "1 perfume" : `${n} perfumes`);
+
+  /* "#catalogo?origen=arabe" -> { vista: "catalogo", paso: "familia", origen: "Árabe", ... }.
+     Devuelve null si el ancla no es una pestaña (por ejemplo, el enlace "Saltar al contenido"). */
+  function rutaDeHash(hash) {
+    const [nombre, consulta = ""] = (hash || "").replace(/^#/, "").split("?");
+    if (nombre === "" || nombre === "inicio") return { vista: "inicio" };
+    if (nombre === "pedido") return { vista: "pedido" };
+    if (nombre !== "catalogo") return null;
+    const q = new URLSearchParams(consulta);
+    const origen = ORIGEN_DE_URL[q.get("origen")] || "todos";
+    const familia = familiaPorId.has(q.get("familia")) ? q.get("familia") : (q.get("familia") === "todas" ? "todas" : null);
+    if (q.has("todo") || (origen !== "todos" && familia)) {
+      return { vista: "catalogo", paso: "catalogo", origen, familia: familia || "todas" };
+    }
+    if (origen !== "todos") return { vista: "catalogo", paso: "familia", origen, familia: "todas" };
+    return { vista: "catalogo", paso: "origen", origen: "todos", familia: "todas" };
+  }
+  const leerRuta = () => rutaDeHash(location.hash);
+
+  function hashDe(ruta) {
+    if (ruta.vista === "pedido") return "#pedido";
+    if (ruta.vista !== "catalogo") return "";
+    const q = new URLSearchParams();
+    if (ruta.paso === "catalogo" && ruta.origen === "todos") q.set("todo", "");
+    if (ruta.origen !== "todos") q.set("origen", ORIGEN_URL[ruta.origen]);
+    if (ruta.paso === "catalogo" && (ruta.familia !== "todas" || ruta.origen !== "todos")) q.set("familia", ruta.familia);
+    const texto = q.toString().replace("todo=", "todo");
+    return `#catalogo${texto ? `?${texto}` : ""}`;
+  }
+  const direccion = (ruta) => `${location.pathname}${location.search}${hashDe(ruta)}`;
+
+  function tituloCatalogo({ origen, familia }) {
+    const fam = familia !== "todas" ? familiaPorId.get(familia).nombre : null;
+    const ori = origen === "Árabe" ? "árabes" : origen === "Diseñador" ? "de diseñador" : null;
+    if (fam && ori) return `${fam} ${ori}`;
+    if (fam) return `Perfumes ${fam.toLowerCase()}`;
+    if (ori) return `Perfumes ${ori}`;
+    return "Todo el catálogo";
+  }
+
+  /* Paso 2: las cuatro familias con cuántos perfumes tiene cada una para el origen elegido */
+  function pintarEleccionFamilias(origen) {
+    const lista = $("#eleccion-familias");
+    if (!lista) return;
+    lista.innerHTML = FAMILIAS.map((f, i) => {
+      const n = contar(origen, f.id);
+      return `
+      <li class="familia" style="--i: ${i}">
+        <button class="familia__tarjeta" type="button" data-elegir-familia="${f.id}"${n ? "" : ' aria-disabled="true"'}>
+          <img src="${url(f.ingrediente, 900)}" srcset="${srcset(f.ingrediente, [500, 900, 1300])}"
             sizes="(max-width: 56rem) 50vw, 25vw" alt="${f.ingredienteAlt}" loading="lazy">
           <span class="familia__texto">
             <span class="familia__nombre">${f.nombre}<i class="ph ph-arrow-up-right" aria-hidden="true"></i></span>
             <span class="familia__desc">${f.desc}</span>
+            <span class="familia__conteo">${n ? textoPerfumes(n) : "Sin perfumes por ahora"}</span>
           </span>
         </button>
-      </li>`).join("");
+      </li>`;
+    }).join("");
+
+    const etiqueta = origen === "Árabe" ? "árabes" : "de diseñador";
+    $("#familia-sub").textContent = `Tenemos ${textoPerfumes(contar(origen, "todas"))} ${etiqueta}. Elige la familia que más te llame.`;
+    $("#ver-todo-origen span").textContent = `Ver todos los perfumes ${etiqueta}`;
+  }
+
+  function pintarConteosOrigen() {
+    $$("[data-conteo-origen]").forEach((el) => {
+      el.textContent = textoPerfumes(contar(el.dataset.conteoOrigen, "todas"));
+    });
+  }
+
+  /* Cambio de paso dentro del catálogo: el actual sale hacia un lado y el nuevo entra por
+     el otro (hacia adelante, de derecha a izquierda). Sin animación cuando el catálogo
+     está entrando como pestaña: ese deslizamiento ya basta. */
+  const ORDEN_PASOS = ["origen", "familia", "catalogo"];
+  let pasoEnCurso = 0;
+  function mostrarPaso(id, animar) {
+    const destino = $(`#paso-${id}`);
+    const actual = $(".paso:not([hidden])");
+    const destinoI = ORDEN_PASOS.indexOf(id);
+    $$(".pasos-nav [data-ir-paso]").forEach((btn) => {
+      const i = ORDEN_PASOS.indexOf(btn.dataset.irPaso);
+      if (i === destinoI) btn.setAttribute("aria-current", "step");
+      else btn.removeAttribute("aria-current");
+      btn.classList.toggle("hecho", i < destinoI);
+      btn.disabled = i > destinoI;
+    });
+    if (actual === destino) return;
+
+    const sentido = actual && ORDEN_PASOS.indexOf(actual.id.replace("paso-", "")) > destinoI ? -1 : 1;
+    recorrido.style.setProperty("--sentido", sentido);
+    const turno = ++pasoEnCurso;
+    let hecho = false;
+    const entrar = () => {
+      if (hecho || turno !== pasoEnCurso) return;
+      hecho = true;
+      $$(".paso").forEach((p) => { p.hidden = p !== destino; });
+      destino.classList.remove("entra");
+      if (!animar) return;
+      void destino.offsetWidth;
+      destino.classList.add("entra");
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    if (!animar || !actual || menosMovimiento.matches || !actual.animate) {
+      entrar();
+      return;
+    }
+    const salida = actual.animate(
+      [{ opacity: 1, transform: "none", filter: "blur(0)" }, { opacity: 0, transform: `translateX(${-sentido * 2.5}rem)`, filter: "blur(6px)" }],
+      { duration: 260, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" },
+    );
+    salida.finished.then(() => { entrar(); salida.cancel(); }, entrar);
+    window.setTimeout(() => { entrar(); salida.cancel(); }, 340);
+  }
+
+  /* Línea bajo la pestaña activa: se desliza hasta el enlace nuevo (solo transform) */
+  function moverIndicador() {
+    const indicador = $(".nav__indicador");
+    const activo = $(".nav__enlaces [aria-current='page']");
+    if (!indicador || !activo || !activo.offsetWidth) return;
+    indicador.style.transform = `translateX(${activo.offsetLeft}px) scaleX(${activo.offsetWidth})`;
+  }
+
+  function marcarPestanas(id) {
+    $$("[data-pestana]").forEach((enlace) => {
+      if (enlace.dataset.pestana === id) enlace.setAttribute("aria-current", "page");
+      else enlace.removeAttribute("aria-current");
+    });
+    moverIndicador();
+  }
+
+  /* Deslizamiento entre pestañas. Las dos comparten la misma celda de la rejilla mientras
+     dura: la actual se va hacia un lado y la nueva entra por el otro. La página sube al
+     principio sin que se note, porque la pestaña que sale se queda donde estaba. */
+  let terminarCambio = null;
+  function mostrarVista(id) {
+    const destino = $(`#vista-${id}`);
+    const anterior = vistaActual;
+    marcarPestanas(id);
+    if (anterior === id) return;
+    if (terminarCambio) terminarCambio();
+
+    vistaActual = id;
+    document.body.dataset.vista = id;
+    document.title = TITULOS[id];
+    cerrarPanelLista();
+    cerrarNotas();
+    mostrarBarra();
+
+    const actual = anterior ? $(`#vista-${anterior}`) : null;
+    if (!actual) {
+      $$(".pestana").forEach((vista) => { vista.hidden = vista !== destino; });
+      return;
+    }
+    /* Las entradas del inicio solo se ven la primera vez */
+    document.documentElement.classList.add("listo");
+
+    const limpiar = () => {
+      actual.hidden = true;
+      actual.style.translate = "";
+      $$(".entra", actual).forEach((el) => el.classList.remove("entra"));
+      contenedorVistas.classList.remove("cambiando");
+    };
+    const y = window.scrollY;
+    destino.hidden = false;
+    window.scrollTo({ top: 0, behavior: "instant" });
+    destino.focus({ preventScroll: true });
+
+    if (menosMovimiento.matches || !destino.animate) {
+      limpiar();
+      return;
+    }
+
+    const sentido = ORDEN_VISTAS.indexOf(id) > ORDEN_VISTAS.indexOf(anterior) ? 1 : -1;
+    actual.style.translate = `0 ${-y}px`;
+    contenedorVistas.classList.add("cambiando");
+    const tiempo = { duration: 820, easing: "cubic-bezier(0.7, 0, 0.2, 1)" };
+    const sale = actual.animate(
+      [{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-sentido * 100}%)`, opacity: 0.2 }],
+      { ...tiempo, fill: "forwards" },
+    );
+    const entra = destino.animate(
+      [{ transform: `translateX(${sentido * 100}%)`, opacity: 0.2 }, { transform: "translateX(0)", opacity: 1 }],
+      tiempo,
+    );
+    let hecho = false;
+    const fin = () => {
+      if (hecho) return;
+      hecho = true;
+      terminarCambio = null;
+      sale.cancel();
+      entra.cancel();
+      limpiar();
+    };
+    terminarCambio = fin;
+    entra.finished.then(fin, fin);
+    window.setTimeout(fin, 1100);
+  }
+
+  /* El enlace "Catálogo" del menú recuerda en qué paso quedó la persona */
+  function recordarCatalogo(ruta) {
+    const enlace = $("[data-pestana='catalogo']");
+    if (enlace) enlace.setAttribute("href", hashDe(ruta));
+  }
+
+  function aplicarRuta(ruta) {
+    const cambiaVista = ruta.vista !== vistaActual;
+    rutaActual = ruta;
+    if (ruta.vista === "catalogo") {
+      recorrido.dataset.paso = ruta.paso;
+      if (ruta.paso === "familia") pintarEleccionFamilias(ruta.origen);
+      if (ruta.paso === "catalogo") {
+        estado.filtros = { familia: ruta.familia, origen: ruta.origen };
+        aplicarFiltros();
+      }
+      mostrarPaso(ruta.paso, !cambiaVista);
+      recordarCatalogo(ruta);
+    }
+    mostrarVista(ruta.vista);
+  }
+
+  function irA(ruta) {
+    const destino = direccion(ruta);
+    const yaAqui = destino === `${location.pathname}${location.search}${location.hash}`
+      || (ruta.vista === "inicio" && vistaActual === "inicio");
+    if (yaAqui) {
+      window.scrollTo({ top: 0, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+      return;
+    }
+    history.pushState(null, "", destino);
+    aplicarRuta(ruta);
+  }
+
+  function iniciarPestanas() {
+    pintarConteosOrigen();
+    const ruta = leerRuta() || { vista: "inicio" };
+    history.replaceState(null, "", direccion(ruta));
+    aplicarRuta(ruta);
+
+    window.addEventListener("popstate", () => {
+      const nueva = leerRuta();
+      if (nueva) aplicarRuta(nueva);
+    });
+
+    /* Los enlaces internos (#catalogo, #pedido...) cambian de pestaña sin recargar */
+    document.addEventListener("click", (evento) => {
+      const enlace = evento.target.closest("a[href^='#']");
+      if (!enlace || evento.defaultPrevented || evento.button !== 0
+        || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      const destino = rutaDeHash(enlace.getAttribute("href"));
+      if (!destino) return;
+      evento.preventDefault();
+      cerrarSugerencias();
+      irA(destino);
+    });
+
+    const indicador = $(".nav__indicador");
+    const activar = () => {
+      moverIndicador();
+      window.requestAnimationFrame(() => indicador && indicador.classList.add("listo"));
+    };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(activar, activar);
+    else activar();
+    window.addEventListener("resize", moverIndicador);
+  }
+
+  /* ---------- Inicio: selección en una fila que se desliza ---------- */
+
+  function pintarRiel() {
+    const riel = $("#riel");
+    if (!riel) return;
+    const ids = [...new Set([...FAMILIAS.map((f) => f.destacado), ...PERFUMES.map((p) => p.id)])].slice(0, 8);
+    riel.innerHTML = ids.map((id, i) => {
+      const p = porId.get(id);
+      const f = familiaPorId.get(p.familia);
+      const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [400, 700, 1000])}" sizes="(max-width: 40rem) 72vw, 20rem"` : "";
+      return `
+      <li class="riel__item" style="--campo: var(--c-${f.id}); --i: ${i}">
+        <button class="riel__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${url(p.foto, 700)}"${juego} alt="" loading="lazy">
+        </button>
+        <div class="riel__texto">
+          <div>
+            <p class="riel__familia">${f.nombre}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+            <h3>${p.nombre}</h3>
+            <p class="riel__casa">${p.casa}</p>
+          </div>
+          <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+        </div>
+      </li>`;
+    }).join("");
+
+    const flechas = $$("[data-riel]");
+    const actualizar = () => {
+      const fin = riel.scrollWidth - riel.clientWidth - 4;
+      flechas.forEach((btn) => {
+        btn.disabled = btn.dataset.riel === "-1" ? riel.scrollLeft <= 4 : riel.scrollLeft >= fin;
+      });
+    };
+    riel.addEventListener("scroll", actualizar, { passive: true });
+    window.addEventListener("resize", actualizar);
+    actualizar();
+  }
+
+  function moverRiel(sentido) {
+    const riel = $("#riel");
+    const paso = riel.querySelector(".riel__item");
+    const ancho = paso ? paso.getBoundingClientRect().width + 16 : riel.clientWidth * 0.8;
+    riel.scrollBy({ left: sentido * ancho * 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
   }
 
   /* ---------- Catálogo ---------- */
@@ -420,6 +836,7 @@
 
   /* Un capítulo de color por familia, con sus perfumes dentro */
   function pintarCatalogo() {
+    if (!$("#capitulos")) return;
     $("#capitulos").innerHTML = FAMILIAS.map((f) => {
       const perfumes = PERFUMES.filter((p) => p.familia === f.id);
       return `
@@ -439,6 +856,7 @@
   }
 
   function aplicarFiltros() {
+    if (!$("#capitulos")) return;
     const { familia, origen } = estado.filtros;
     let visibles = 0;
     $$(".ficha").forEach((ficha) => {
@@ -455,12 +873,19 @@
     $$(".chip").forEach((chip) => {
       chip.setAttribute("aria-pressed", String(estado.filtros[chip.dataset.grupo] === chip.dataset.valor));
     });
-    $("#conteo").textContent = visibles === 1 ? "1 perfume" : `${visibles} perfumes`;
+    $("#conteo").textContent = textoPerfumes(visibles);
     $("#vacio").hidden = visibles > 0;
+    const titulo = $("#titulo-catalogo");
+    if (titulo) titulo.textContent = tituloCatalogo(estado.filtros);
   }
 
-  function irAlCatalogo() {
-    $("#catalogo").scrollIntoView();
+  /* Los filtros del catálogo actualizan la dirección sin crear pasos nuevos en el historial */
+  function sincronizarDireccion() {
+    if (vistaActual !== "catalogo" || recorrido.dataset.paso !== "catalogo") return;
+    const ruta = { vista: "catalogo", paso: "catalogo", origen: estado.filtros.origen, familia: estado.filtros.familia };
+    rutaActual = ruta;
+    history.replaceState(null, "", direccion(ruta));
+    recordarCatalogo(ruta);
   }
 
   /* ---------- Sugerencias de búsqueda ---------- */
@@ -469,11 +894,19 @@
   const panelSugerencias = $("#buscar-sugerencias");
   const veloBusqueda = $("#buscar-velo");
 
+  /* Al enfocar, la barra crece (transición CSS de ancho) y justo después el velo difumina la
+     página de forma gradual. Al cerrar ocurre al revés: primero se va el velo y luego la barra
+     vuelve a su tamaño. */
+  function abrirBusqueda() {
+    document.body.classList.add("buscando");
+    veloBusqueda.classList.add("es-activo");
+  }
+
   function cerrarSugerencias() {
     panelSugerencias.hidden = true;
     campoBusqueda.setAttribute("aria-expanded", "false");
     campoBusqueda.value = "";
-    veloBusqueda.hidden = true;
+    veloBusqueda.classList.remove("es-activo");
     document.body.classList.remove("buscando");
   }
 
@@ -595,8 +1028,8 @@
       }
     });
 
-    if (window.matchMedia("(pointer: fine)").matches) {
-      const hero = $(".hero");
+    const hero = $(".hero");
+    if (hero && window.matchMedia("(pointer: fine)").matches) {
       hero.addEventListener("pointermove", (evento) => {
         const caja = hero.getBoundingClientRect();
         puntero.x = ((evento.clientX - caja.left) / caja.width) * 2 - 1;
@@ -867,13 +1300,13 @@
       liberada = true;
       raiz.classList.remove("intro-activa");
       hoja.inert = false;
-      barra.inert = estado.lista.size === 0;
+      mostrarBarra();
     };
     intro.addEventListener("animationend", (evento) => {
       if (evento.animationName === "intro-desvanece") liberar();
     });
     /* Respaldo por si el navegador no avisa del final de la animación */
-    window.setTimeout(liberar, 3600);
+    window.setTimeout(liberar, 4800);
   }
 
   /* ---------- Eventos ---------- */
@@ -904,9 +1337,28 @@
     if (boton.dataset.quitarLista) {
       if (estado.lista.has(boton.dataset.quitarLista)) alternar(boton.dataset.quitarLista);
     } else if (boton.id === "mostrar-lista") {
-      const panel = $("#barra-panel");
-      panel.hidden = !panel.hidden;
-      boton.setAttribute("aria-expanded", String(!panel.hidden));
+      if (panelListaAbierto()) cerrarPanelLista();
+      else abrirPanelLista();
+    } else if (boton.id === "cerrar-lista") {
+      cerrarPanelLista();
+    } else if (boton.classList.contains("pregunta__boton")) {
+      alternarPregunta(boton);
+    } else if (boton.dataset.elegirOrigen) {
+      irA({ vista: "catalogo", paso: "familia", origen: boton.dataset.elegirOrigen, familia: "todas" });
+    } else if (boton.dataset.elegirFamilia) {
+      if (boton.getAttribute("aria-disabled") === "true") return;
+      irA({ vista: "catalogo", paso: "catalogo", origen: rutaActual.origen, familia: boton.dataset.elegirFamilia });
+    } else if (boton.id === "ver-todo-origen") {
+      irA({ vista: "catalogo", paso: "catalogo", origen: rutaActual.origen, familia: "todas" });
+    } else if ("verTodo" in boton.dataset) {
+      irA({ vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" });
+    } else if (boton.dataset.irPaso) {
+      if (boton.dataset.irPaso === "origen") irA({ vista: "catalogo", paso: "origen", origen: "todos", familia: "todas" });
+      else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
+        irA({ vista: "catalogo", paso: "familia", origen: rutaActual.origen, familia: "todas" });
+      }
+    } else if (boton.dataset.riel) {
+      moverRiel(Number(boton.dataset.riel));
     } else if (boton.dataset.sugerencia) {
       const p = porId.get(boton.dataset.sugerencia);
       if (!p) return;
@@ -921,8 +1373,9 @@
     } else if (boton.dataset.id) {
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
-      const tarjeta = boton.closest(".ficha");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina", tarjeta) : null);
+      if (boton.closest(".barra")) cerrarPanelLista();
+      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto", tarjeta) : null);
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
     } else if (boton.classList.contains("ficha__mas")) {
@@ -937,38 +1390,52 @@
       }
     } else if (boton.classList.contains("selector__btn")) {
       activarFamilia(boton.dataset.familia, true);
-    } else if (boton.dataset.verFamilia) {
-      estado.filtros = { familia: boton.dataset.verFamilia, origen: "todos" };
-      activarFamilia(boton.dataset.verFamilia, true);
-      aplicarFiltros();
-      irAlCatalogo();
     } else if (boton.classList.contains("chip")) {
       estado.filtros[boton.dataset.grupo] = boton.dataset.valor;
       aplicarFiltros();
-    } else if (boton.dataset.verOrigen) {
-      estado.filtros = { familia: "todas", origen: boton.dataset.verOrigen };
-      aplicarFiltros();
-      irAlCatalogo();
+      sincronizarDireccion();
     } else if (boton.id === "quitar-filtros") {
       estado.filtros = { familia: "todas", origen: "todos" };
       aplicarFiltros();
-    } else if (boton.id === "vaciar") {
+      sincronizarDireccion();
+    } else if (boton.id === "vaciar" || boton.id === "vaciar-pedido") {
       estado.lista.clear();
       guardarLista();
       pintarBotones();
-      pintarLista(false);
+      pintarLista(null);
       actualizarPedido();
     }
   });
 
-  campoBusqueda.addEventListener("input", (evento) => {
-    document.body.classList.add("buscando");
-    veloBusqueda.hidden = false;
+  /* El panel de la lista se cierra al tocar fuera de la barra o con Esc */
+  document.addEventListener("pointerdown", (evento) => {
+    const barra = $("#barra");
+    if (barra && panelListaAbierto() && !barra.contains(evento.target)) cerrarPanelLista();
+  });
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape" && $("#barra") && panelListaAbierto() && !(detalle && detalle.open)) cerrarPanelLista();
+  });
+
+  /* ---------- Preguntas frecuentes ----------
+     Acordeón con altura animada (la respuesta pasa de 0fr a 1fr). Solo una abierta a la vez. */
+  function alternarPregunta(boton) {
+    const abrir = boton.getAttribute("aria-expanded") !== "true";
+    $$(".pregunta__boton[aria-expanded='true']").forEach((otro) => {
+      otro.setAttribute("aria-expanded", "false");
+      otro.closest(".pregunta").classList.remove("es-abierta");
+    });
+    if (abrir) {
+      boton.setAttribute("aria-expanded", "true");
+      boton.closest(".pregunta").classList.add("es-abierta");
+    }
+  }
+
+  campoBusqueda.addEventListener("input", () => {
+    abrirBusqueda();
     pintarSugerencias();
   });
   campoBusqueda.addEventListener("focus", () => {
-    document.body.classList.add("buscando");
-    veloBusqueda.hidden = false;
+    abrirBusqueda();
     pintarSugerencias();
   });
   campoBusqueda.addEventListener("keydown", (evento) => {
@@ -1005,14 +1472,15 @@
 
   iniciarIntro();
   pintarHero();
-  pintarFamilias();
+  pintarRiel();
   pintarCatalogo();
   aplicarFiltros();
+  iniciarPestanas();
   pintarDestacado();
-  pintarLista(false);
+  pintarLista(null);
   actualizarPedido();
   observarRevelados();
   iniciarParallax();
   /* Con intro, el carrusel empieza a contar cuando la página ya se ve */
-  window.setTimeout(iniciarCarrusel, document.documentElement.classList.contains("con-intro") ? 2600 : 0);
+  window.setTimeout(iniciarCarrusel, document.documentElement.classList.contains("con-intro") ? 4000 : 0);
 })();
