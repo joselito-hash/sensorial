@@ -53,6 +53,8 @@
      lamina:  opcional. Imagen cuadrada sobre fondo blanco con el frasco rodeado de
               sus notas (como img/eros.webp). Si existe, el catálogo la usa en lugar
               de la foto. Ver IMAGENES.md para generarlas.
+     galeria: opcional. Dos imágenes adicionales [{ src, alt }, { src, alt }]
+              para activar el carrusel de tres fotos dentro de la ficha.
 
      Las notas, los acordes y "cuándo usarlo" vienen de la página de cada perfume
      en Fragrantica (campo fuente), consultada el 2 de octubre de 2026.
@@ -97,7 +99,11 @@
       acordes: [["cítrico", 100, "249,255,82"], ["aromático", 94, "55,160,137"], ["verde", 80, "14,140,29"], ["avainillado", 75, "255,254,192"], ["amaderado", 73, "119,68,20"], ["dulce", 71, "238,54,59"], ["fresco especiado", 66, "131,201,40"], ["gourmand", 63, "240,203,122"]],
       uso: [84, 100, 81, 92, 88, 97] },
 
-    { id: "bleu-de-chanel", casa: "Chanel", nombre: "Bleu de Chanel", origen: "Diseñador", familia: "amaderados", foto: "1785881570973-281d0db41119",
+    { id: "bleu-de-chanel", casa: "Chanel", nombre: "Bleu de Chanel", version: "Eau de Toilette", origen: "Diseñador", familia: "amaderados", foto: "1785881570973-281d0db41119",
+      galeria: [
+        { src: "img/bleu-de-chanel-2.png", alt: "Madera de cedro, sándalo y vetiver" },
+        { src: "img/bleu-de-chanel-3.png", alt: "Madera oscura con incienso al atardecer" },
+      ],
       fuente: "https://www.fragrantica.es/perfume/Chanel/Bleu-de-Chanel-9099.html",
       notas: { salida: "toronja, limón, menta, pimienta rosa", corazon: "jengibre, nuez moscada, jazmín, Iso E Super", fondo: "incienso, cedro, vetiver, sándalo, pachulí, ládano, almizcle blanco" },
       acordes: [["cítrico", 100, "249,255,82"], ["amaderado", 82, "119,68,20"], ["fresco especiado", 80, "131,201,40"], ["aromático", 70, "55,160,137"], ["ámbar", 67, "188,77,16"], ["ahumado", 53, "130,116,135"], ["balsámico", 50, "173,131,89"], ["cálido especiado", 50, "204,51,0"]],
@@ -193,7 +199,6 @@
     familia: "frescos",
     familiaElegida: false,
     filtros: { familia: "todas", origen: "todos" },
-    busqueda: "",
     lista: new Set(leerLista()),
   };
 
@@ -252,27 +257,37 @@
 
   function pintarLista(conPulso) {
     const barra = $("#barra");
+    const panel = $("#barra-panel");
+    const mostrar = $("#mostrar-lista");
     const n = estado.lista.size;
     const visible = n > 0;
     barra.classList.toggle("es-visible", visible);
     barra.inert = !visible || document.documentElement.classList.contains("intro-activa");
     document.body.classList.toggle("con-lista", visible);
-
-    const navConteo = $("#nav-conteo");
-    navConteo.hidden = !visible;
-    navConteo.textContent = String(n);
-    $("#ver-lista").setAttribute("aria-label", visible ? `Ver tu lista, ${n} ${n === 1 ? "perfume" : "perfumes"}` : "Ver tu lista");
-    if (!visible) return;
+    if (!visible) {
+      panel.hidden = true;
+      mostrar.setAttribute("aria-expanded", "false");
+      $("#barra-items").innerHTML = "";
+      return;
+    }
 
     const conteo = $("#barra-conteo");
     conteo.textContent = `${n} en tu lista`;
     $("#barra-nombres").textContent = [...estado.lista].map((id) => porId.get(id).nombre).join(", ");
+    $("#barra-items").innerHTML = [...estado.lista].map((id) => {
+      const p = porId.get(id);
+      return `<li>
+        <img src="${p.lamina || url(p.foto, 160)}" alt="" width="56" height="56" loading="lazy">
+        <span class="barra__item-texto"><strong>${p.nombre}</strong><small>${p.casa}${p.version ? ` · ${p.version}` : ""}</small></span>
+        <button class="barra__quitar" type="button" data-quitar-lista="${p.id}" aria-label="Quitar ${nombreCompleto(p)} de la lista"><i class="ph ph-x" aria-hidden="true"></i></button>
+      </li>`;
+    }).join("");
     if (conPulso) {
-      [conteo, navConteo].forEach((el) => {
-        el.classList.remove("pulso");
-        void el.offsetWidth;
-        el.classList.add("pulso");
-      });
+      panel.hidden = false;
+      mostrar.setAttribute("aria-expanded", "true");
+      conteo.classList.remove("pulso");
+      void conteo.offsetWidth;
+      conteo.classList.add("pulso");
     }
   }
 
@@ -374,8 +389,7 @@
       ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" loading="lazy" width="1080" height="1080">`
       : `<img src="${url(p.foto, 800)}" srcset="${srcset(p.foto, [500, 800, 1200])}" sizes="(max-width: 40rem) 80vw, (max-width: 72rem) 45vw, 24rem" alt="${nombreCompleto(p)}" loading="lazy">`;
     return `
-      <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}"
-        data-texto="${sinAcentos(`${p.casa} ${p.nombre} ${p.origen} ${p.familia} ${Object.values(p.notas).join(" ")}`)}">
+      <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
           <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}</span>
         </button>
@@ -426,12 +440,10 @@
 
   function aplicarFiltros() {
     const { familia, origen } = estado.filtros;
-    const busqueda = sinAcentos(estado.busqueda.trim());
     let visibles = 0;
     $$(".ficha").forEach((ficha) => {
       const pasa = (familia === "todas" || ficha.dataset.familia === familia)
-        && (origen === "todos" || ficha.dataset.origen === origen)
-        && (!busqueda || ficha.dataset.texto.includes(busqueda));
+        && (origen === "todos" || ficha.dataset.origen === origen);
       ficha.hidden = !pasa;
       if (pasa) visibles += 1;
     });
@@ -449,6 +461,41 @@
 
   function irAlCatalogo() {
     $("#catalogo").scrollIntoView();
+  }
+
+  /* ---------- Sugerencias de búsqueda ---------- */
+
+  const campoBusqueda = $("#buscar-campo");
+  const panelSugerencias = $("#buscar-sugerencias");
+  const veloBusqueda = $("#buscar-velo");
+
+  function cerrarSugerencias() {
+    panelSugerencias.hidden = true;
+    campoBusqueda.setAttribute("aria-expanded", "false");
+    campoBusqueda.value = "";
+    veloBusqueda.hidden = true;
+    document.body.classList.remove("buscando");
+  }
+
+  function pintarSugerencias() {
+    const consulta = sinAcentos(campoBusqueda.value.trim());
+    if (!consulta) {
+      panelSugerencias.hidden = true;
+      campoBusqueda.setAttribute("aria-expanded", "false");
+      return;
+    }
+    const resultados = PERFUMES.filter((p) =>
+      sinAcentos(`${p.casa} ${p.nombre} ${p.version || ""} ${p.origen}`).includes(consulta)
+    ).slice(0, 5);
+    panelSugerencias.innerHTML = resultados.length
+      ? resultados.map((p) => `
+        <button class="buscar__sugerencia" type="button" data-sugerencia="${p.id}">
+          <img src="${p.lamina || url(p.foto, 160)}" alt="" width="52" height="52" loading="lazy">
+          <span><strong>${p.nombre}</strong><small>${p.casa} · ${p.version || p.origen}</small></span>
+        </button>`).join("")
+      : `<p class="buscar__sin-resultados">No encontramos perfumes con ese nombre.</p>`;
+    panelSugerencias.hidden = false;
+    campoBusqueda.setAttribute("aria-expanded", "true");
   }
 
   /* ---------- Aparición al hacer scroll ---------- */
@@ -474,7 +521,7 @@
        valor <= 1  -> fracción del alto del marco (fotos dentro de un marco con recorte)
        valor > 1   -> píxeles (tarjetas que flotan a otra profundidad; negativo invierte el sentido)
      data-profundidad suma el movimiento del puntero dentro del inicio.
-     Solo corre mientras hay algo en pantalla y se apaga con "reducir movimiento". */
+     Solo corre en escritorio mientras hay algo en pantalla y se apaga con "reducir movimiento". */
 
   function iniciarParallax() {
     if (menosMovimiento.matches || !("IntersectionObserver" in window)) return;
@@ -490,6 +537,7 @@
       visible: false,
     }));
     const escritorio = window.matchMedia("(min-width: 40.01rem)");
+    const movil = window.matchMedia("(max-width: 56rem)");
     const puntero = { x: 0, y: 0 };
     let cuadroPendiente = 0;
 
@@ -497,6 +545,7 @@
 
     function cuadro() {
       cuadroPendiente = 0;
+      if (movil.matches) return;
       const alto = window.innerHeight;
       let algoVisible = false;
 
@@ -526,9 +575,25 @@
           if (pieza.marco === entrada.target) pieza.visible = entrada.isIntersecting;
         });
       });
-      if (!cuadroPendiente && piezas.some((p) => p.visible)) cuadroPendiente = window.requestAnimationFrame(cuadro);
+      if (!movil.matches && !cuadroPendiente && piezas.some((p) => p.visible)) {
+        cuadroPendiente = window.requestAnimationFrame(cuadro);
+      }
     }, { rootMargin: "15% 0px" });
     new Set(piezas.map((p) => p.marco)).forEach((marco) => observador.observe(marco));
+
+    movil.addEventListener("change", () => {
+      if (movil.matches) {
+        if (cuadroPendiente) window.cancelAnimationFrame(cuadroPendiente);
+        cuadroPendiente = 0;
+        piezas.forEach((pieza) => {
+          pieza.x = 0;
+          pieza.y = 0;
+          pieza.el.style.transform = "";
+        });
+      } else if (piezas.some((pieza) => pieza.visible)) {
+        cuadroPendiente = window.requestAnimationFrame(cuadro);
+      }
+    });
 
     if (window.matchMedia("(pointer: fine)").matches) {
       const hero = $(".hero");
@@ -570,14 +635,50 @@
   const chipsDeNotas = (texto) => texto.split(",").map((n) => n.trim()).filter(Boolean)
     .map((nota) => `<li class="notachip"><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("");
 
+  let relojDetalle = null;
+  let diapositivaDetalle = 0;
+
+  function mostrarDiapositiva(indice) {
+    const fotos = $$(".detalle__foto", detalle);
+    if (!fotos.length) return;
+    diapositivaDetalle = (indice + fotos.length) % fotos.length;
+    fotos.forEach((foto, i) => {
+      const activa = i === diapositivaDetalle;
+      foto.classList.toggle("es-activa", activa);
+      foto.setAttribute("aria-hidden", String(!activa));
+    });
+    $$(".detalle__puntos button", detalle).forEach((punto, i) => {
+      punto.setAttribute("aria-current", String(i === diapositivaDetalle));
+    });
+  }
+
+  function iniciarCarruselDetalle() {
+    if (relojDetalle) window.clearInterval(relojDetalle);
+    relojDetalle = null;
+    if (!detalle.open || menosMovimiento.matches || $$(".detalle__foto", detalle).length < 2) return;
+    relojDetalle = window.setInterval(() => {
+      if (document.hidden || !detalle.open) return;
+      mostrarDiapositiva(diapositivaDetalle + 1);
+    }, 5000);
+  }
+
   function pintarDetalle(p) {
     const f = familiaPorId.get(p.familia);
     const otros = PERFUMES.filter((o) => o.familia === p.familia && o.id !== p.id).slice(0, 3);
     const texto = `Hola ${CONFIG.marca}, me interesa ${nombreCompleto(p)}. ¿Me pasan precio y disponibilidad?`;
     const enlace = `https://wa.me/${CONFIG.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`;
-    const imagen = p.lamina
-      ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" width="1080" height="1080">`
-      : `<img src="${url(p.foto, 1000)}" srcset="${srcset(p.foto, [600, 1000, 1400])}" sizes="(max-width: 40rem) 60vw, 24rem" alt="${nombreCompleto(p)}">`;
+    const fotos = [
+      {
+        src: p.lamina || url(p.foto, 1000),
+        srcset: p.lamina ? "" : srcset(p.foto, [600, 1000, 1400]),
+        alt: nombreCompleto(p),
+        compuesta: Boolean(p.lamina),
+      },
+      ...(p.galeria || []),
+    ];
+    const imagenes = fotos.map((foto, i) => `<img class="detalle__foto${i === 0 ? " es-activa" : ""}${foto.compuesta ? " detalle__foto--compuesta" : ""}"
+      src="${foto.src}"${foto.srcset ? ` srcset="${foto.srcset}" sizes="(max-width: 40rem) 100vw, 45vw"` : ""}
+      alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}>`).join("");
 
     detalle.style.setProperty("--campo", `var(--c-${f.id})`);
     detalle.style.setProperty("--tono", `var(--t-${f.id})`);
@@ -585,7 +686,12 @@
       <button class="detalle__cerrar" type="button" aria-label="Cerrar la ficha"><i class="ph ph-x" aria-hidden="true"></i></button>
       <div class="detalle__panel">
         <div class="detalle__visual">
-          <div class="detalle__lamina${p.lamina ? " detalle__lamina--compuesta" : ""}">${imagen}</div>
+          <div class="detalle__lamina">${imagenes}</div>
+          ${fotos.length > 1 ? `<div class="detalle__carrusel" aria-label="Galería de ${nombreCompleto(p)}">
+            <button type="button" data-diapo="anterior" aria-label="Foto anterior"><i class="ph ph-arrow-left" aria-hidden="true"></i></button>
+            <div class="detalle__puntos">${fotos.map((_, i) => `<button type="button" data-diapo="${i}" aria-label="Ver foto ${i + 1} de ${fotos.length}" aria-current="${i === 0}"></button>`).join("")}</div>
+            <button type="button" data-diapo="siguiente" aria-label="Foto siguiente"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </div>` : ""}
         </div>
         <div class="detalle__info">
           <p class="detalle__meta" style="--i: 0"><span class="detalle__etiqueta">${f.nombre}</span><span>${p.casa} · ${p.origen}</span>${p.version ? `<span class="detalle__version">${p.version}</span>` : ""}</p>
@@ -691,10 +797,12 @@
     if (!p || !detalle) return;
     const yaAbierta = detalle.open;
     pintarDetalle(p);
+    diapositivaDetalle = 0;
     if (yaAbierta) {
       $(".detalle__info", detalle).scrollTop = 0;
       detalle.scrollTop = 0;
       observarBloques();
+      iniciarCarruselDetalle();
       return;
     }
     tarjetaOrigen = document.activeElement;
@@ -703,15 +811,19 @@
     else detalle.setAttribute("open", "");
     observarBloques();
     volarImagen(desde);
+    iniciarCarruselDetalle();
   }
 
   function cerrarDetalle() {
     if (!detalle.open || detalle.classList.contains("es-cerrando")) return;
+    if (relojDetalle) window.clearInterval(relojDetalle);
+    relojDetalle = null;
     const cerrar = () => {
       detalle.classList.remove("es-cerrando");
       if (typeof detalle.close === "function") detalle.close();
       else detalle.removeAttribute("open");
       if (tarjetaOrigen && tarjetaOrigen.focus) tarjetaOrigen.focus();
+      cerrarSugerencias();
     };
     if (menosMovimiento.matches) {
       cerrar();
@@ -730,6 +842,7 @@
     detalle.addEventListener("click", (evento) => {
       if (evento.target === detalle) cerrarDetalle();
     });
+    menosMovimiento.addEventListener("change", iniciarCarruselDetalle);
   }
 
   /* ---------- Intro ----------
@@ -788,7 +901,24 @@
     const boton = evento.target.closest("button");
     if (!boton) return;
 
-    if (boton.dataset.id) {
+    if (boton.dataset.quitarLista) {
+      if (estado.lista.has(boton.dataset.quitarLista)) alternar(boton.dataset.quitarLista);
+    } else if (boton.id === "mostrar-lista") {
+      const panel = $("#barra-panel");
+      panel.hidden = !panel.hidden;
+      boton.setAttribute("aria-expanded", String(!panel.hidden));
+    } else if (boton.dataset.sugerencia) {
+      const p = porId.get(boton.dataset.sugerencia);
+      if (!p) return;
+      cerrarSugerencias();
+      abrirDetalle(p.id, null);
+      tarjetaOrigen = campoBusqueda;
+    } else if (boton.dataset.diapo !== undefined) {
+      const destino = boton.dataset.diapo === "anterior" ? diapositivaDetalle - 1
+        : boton.dataset.diapo === "siguiente" ? diapositivaDetalle + 1 : Number(boton.dataset.diapo);
+      mostrarDiapositiva(destino);
+      iniciarCarruselDetalle();
+    } else if (boton.dataset.id) {
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       const tarjeta = boton.closest(".ficha");
@@ -821,8 +951,6 @@
       irAlCatalogo();
     } else if (boton.id === "quitar-filtros") {
       estado.filtros = { familia: "todas", origen: "todos" };
-      estado.busqueda = "";
-      $("#buscar-campo").value = "";
       aplicarFiltros();
     } else if (boton.id === "vaciar") {
       estado.lista.clear();
@@ -833,13 +961,44 @@
     }
   });
 
-  $("#buscar-campo").addEventListener("input", (evento) => {
-    estado.busqueda = evento.target.value;
-    aplicarFiltros();
+  campoBusqueda.addEventListener("input", (evento) => {
+    document.body.classList.add("buscando");
+    veloBusqueda.hidden = false;
+    pintarSugerencias();
+  });
+  campoBusqueda.addEventListener("focus", () => {
+    document.body.classList.add("buscando");
+    veloBusqueda.hidden = false;
+    pintarSugerencias();
+  });
+  campoBusqueda.addEventListener("keydown", (evento) => {
+    if (evento.key === "ArrowDown" && !panelSugerencias.hidden) {
+      const primera = $(".buscar__sugerencia", panelSugerencias);
+      if (primera) { evento.preventDefault(); primera.focus(); }
+    } else if (evento.key === "Escape") {
+      cerrarSugerencias();
+      campoBusqueda.blur();
+    }
+  });
+  panelSugerencias.addEventListener("keydown", (evento) => {
+    const botones = $$(".buscar__sugerencia", panelSugerencias);
+    const i = botones.indexOf(document.activeElement);
+    if (evento.key === "Escape") {
+      cerrarSugerencias();
+      campoBusqueda.blur();
+    } else if (evento.key === "ArrowDown" || evento.key === "ArrowUp") {
+      evento.preventDefault();
+      const siguiente = evento.key === "ArrowDown" ? i + 1 : i - 1;
+      (botones[siguiente] || (siguiente < 0 ? campoBusqueda : botones[0])).focus();
+    }
+  });
+  document.addEventListener("pointerdown", (evento) => {
+    if (!$("#buscar").contains(evento.target)) cerrarSugerencias();
   });
   $("#buscar").addEventListener("submit", (evento) => {
     evento.preventDefault();
-    irAlCatalogo();
+    const primera = $(".buscar__sugerencia", panelSugerencias);
+    if (primera) primera.click();
   });
 
   /* ---------- Inicio ---------- */

@@ -40,3 +40,15 @@ Los ingredientes de la tabla salen de las notas reales de cada perfume (las mism
 - El fondo debe ser blanco puro. Si sale gris o crema, se notará un recuadro alrededor de la composición.
 - Deja aire alrededor: la composición no debe tocar los bordes de la imagen.
 - Revisa que el frasco generado se parezca al real, sobre todo el nombre y el logotipo.
+
+## Imágenes creadas para esta versión
+
+Se generaron con la herramienta integrada de imágenes. La página usa `img/bleu-de-chanel-2.png` y `img/bleu-de-chanel-3.png` como imágenes complementarias de la ficha de Bleu de Chanel. La primera imagen del carrusel sigue siendo la foto existente del frasco.
+
+**Bleu de Chanel, imagen 2:**
+
+> Premium photorealistic macro still life of dark cedar wood grain, smooth sandalwood curls and fresh green vetiver blades. No bottle. Vertical composition suitable for a square crop, warm directional light, refined texture. No text, logos or watermark.
+
+**Bleu de Chanel, imagen 3:**
+
+> Premium photorealistic macro still life of polished dark wood panels with subtle incense smoke and a warm sunset beam. No bottle. Vertical composition suitable for a square crop, understated luxury atmosphere. No text, logos or watermark.

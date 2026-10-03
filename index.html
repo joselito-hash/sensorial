@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sensorial Boutique | Perfumes de diseñador y árabes</title>
   <meta name="description" content="Perfumes de diseñador y árabes. Elige por familia olfativa, arma tu lista y pídela por WhatsApp en un solo mensaje.">
-  <meta name="theme-color" content="#dbe4f3">
+  <meta name="theme-color" content="#221c20">
   <script>
     (function () {
       var raiz = document.documentElement;
@@ -26,11 +26,7 @@
 <body data-familia="frescos">
   <div class="intro" id="intro" aria-hidden="true">
     <div class="intro__centro">
-      <i class="ph ph-moon intro__icono"></i>
-      <p class="intro__marca">
-        <span class="intro__palabra"><span style="--i: 0">S</span><span style="--i: 1">e</span><span style="--i: 2">n</span><span style="--i: 3">s</span><span style="--i: 4">o</span><span style="--i: 5">r</span><span style="--i: 6">i</span><span style="--i: 7">a</span><span style="--i: 8">l</span></span>
-        <span class="intro__palabra intro__palabra--ligera"><span style="--i: 9">B</span><span style="--i: 10">o</span><span style="--i: 11">u</span><span style="--i: 12">t</span><span style="--i: 13">i</span><span style="--i: 14">q</span><span style="--i: 15">u</span><span style="--i: 16">e</span></span>
-      </p>
+      <img class="intro__logo" src="img/sensorial-logo.svg" alt="" width="827" height="439">
       <span class="intro__linea"></span>
       <p class="intro__lema">Perfumes de diseñador y árabes</p>
     </div>
@@ -41,8 +37,7 @@
   <div class="hoja">
     <header class="nav">
       <a class="marca" href="#inicio">
-        <i class="ph ph-moon" aria-hidden="true"></i>
-        <span>Sensorial <em>Boutique</em></span>
+        <img class="marca__logo" src="img/sensorial-logo.svg" alt="Sensorial Boutique" width="827" height="439">
       </a>
 
       <nav class="nav__enlaces" aria-label="Principal">
@@ -57,17 +52,12 @@
         <form class="buscar" id="buscar" role="search">
           <label class="oculto" for="buscar-campo">Buscar perfume</label>
           <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-          <input id="buscar-campo" type="search" placeholder="Buscar perfume" autocomplete="off">
+          <input id="buscar-campo" type="search" placeholder="Buscar perfume" autocomplete="off" aria-controls="buscar-sugerencias" aria-expanded="false">
+          <div class="buscar__sugerencias" id="buscar-sugerencias" aria-label="Sugerencias de perfumes" hidden></div>
         </form>
-        <a class="icono-btn" href="#pedido" id="ver-lista" aria-label="Ver tu lista">
-          <i class="ph ph-heart" aria-hidden="true"></i>
-          <span class="icono-btn__conteo" id="nav-conteo" hidden>0</span>
-        </a>
-        <a class="btn nav__cta js-wa" href="https://wa.me/" target="_blank" rel="noopener" aria-label="Pedir por WhatsApp">
-          <i class="ph ph-whatsapp-logo" aria-hidden="true"></i><span>Pedir por WhatsApp</span>
-        </a>
       </div>
     </header>
+    <button class="buscar__velo" id="buscar-velo" type="button" aria-label="Cerrar búsqueda" hidden></button>
 
     <main id="inicio">
       <section class="hero" data-marco aria-labelledby="titulo-hero">
@@ -86,9 +76,9 @@
 
           <div class="hero__texto">
             <h1 id="titulo-hero">Dinos a qué quieres oler.</h1>
-            <p>Perfumes de diseñador y árabes. Elige una familia, arma tu lista y pídela por WhatsApp en un solo mensaje.</p>
-            <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
-              <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+            <p>Explora aromas frescos, dulces, amaderados y orientales. Guarda los perfumes que te gusten y consúltanos cuando estés listo.</p>
+            <a class="btn btn--claro" href="#catalogo">
+              Explorar el catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i>
             </a>
           </div>
         </div>
@@ -131,7 +121,7 @@
         <div id="capitulos"></div>
 
         <div class="vacio" id="vacio" hidden>
-          <p>No encontramos perfumes con esa búsqueda o esos filtros.</p>
+          <p>No encontramos perfumes con esos filtros.</p>
           <button class="enlace" type="button" id="quitar-filtros">Ver todo el catálogo</button>
         </div>
 
@@ -200,7 +190,16 @@
       </section>
 
       <section class="preguntas contenedor" id="preguntas" aria-labelledby="titulo-preguntas">
-        <h2 id="titulo-preguntas">Preguntas frecuentes</h2>
+        <div class="preguntas__intro">
+          <p class="preguntas__etiqueta">Antes de elegir</p>
+          <h2 id="titulo-preguntas">Preguntas frecuentes</h2>
+          <p>Un perfume cambia con el tiempo y con la piel. Estas respuestas te ayudan a encontrar uno que vaya contigo.</p>
+          <div class="preguntas__ayuda">
+            <i class="ph ph-sparkle" aria-hidden="true"></i>
+            <p>¿No sabes por dónde empezar? Explora las familias olfativas y abre las fichas para conocer sus notas.</p>
+            <a href="#familias">Explorar familias <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          </div>
+        </div>
         <div class="preguntas__lista">
           <details>
             <summary>¿Cómo elijo un perfume sin olerlo antes?<i class="ph ph-plus" aria-hidden="true"></i></summary>
@@ -235,8 +234,8 @@
         <div class="cierre__texto">
           <h2 id="titulo-cierre">¿Ya sabes a qué quieres oler?</h2>
           <p>Si todavía no, también sirve. Escríbenos y lo vemos contigo en el chat.</p>
-          <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
-            <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
+          <a class="btn btn--claro" href="#pedido">
+            Ver cómo pedir<i class="ph ph-arrow-right" aria-hidden="true"></i>
           </a>
         </div>
       </section>
@@ -244,8 +243,7 @@
 
     <footer class="pie">
       <a class="marca" href="#inicio">
-        <i class="ph ph-moon" aria-hidden="true"></i>
-        <span>Sensorial <em>Boutique</em></span>
+        <img class="marca__logo" src="img/sensorial-logo.svg" alt="Sensorial Boutique" width="827" height="439">
       </a>
       <nav aria-label="Pie de página">
         <a href="#familias">Familias</a>
@@ -260,7 +258,12 @@
   <dialog class="detalle" id="detalle" aria-labelledby="detalle-nombre"></dialog>
 
   <div class="barra" id="barra" role="region" aria-label="Tu lista" inert>
+    <div class="barra__panel" id="barra-panel" hidden>
+      <h2>Tu lista</h2>
+      <ul id="barra-items"></ul>
+    </div>
     <p class="barra__resumen"><strong id="barra-conteo">0 en tu lista</strong><span id="barra-nombres"></span></p>
+    <button class="enlace barra__mostrar" type="button" id="mostrar-lista" aria-controls="barra-panel" aria-expanded="false">Ver lista <i class="ph ph-caret-up" aria-hidden="true"></i></button>
     <button class="enlace barra__vaciar" type="button" id="vaciar">Vaciar</button>
     <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
       <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp
