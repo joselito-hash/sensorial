@@ -1071,9 +1071,15 @@ html:has(.detalle[open]) { overflow: hidden; }
   cursor: pointer;
 }
 .detalle__carrusel button:hover { background: rgb(34 28 32 / 0.28); }
-.detalle__puntos { display: flex; align-items: center; gap: 0.55rem; }
-.detalle__puntos button { width: 0.55rem; height: 0.55rem; background: rgb(34 28 32 / 0.32); }
-.detalle__puntos button[aria-current="true"] { width: 1.15rem; border-radius: 999px; background: #221c20; }
+/* Sin flechas: las fotos avanzan solas y los puntos permiten saltar a cualquiera */
+.detalle__puntos { display: flex; align-items: center; gap: 0.6rem; }
+.detalle__puntos button {
+  width: 0.65rem;
+  height: 0.65rem;
+  background: rgb(34 28 32 / 0.32);
+  transition: width 450ms var(--suave), background-color 300ms;
+}
+.detalle__puntos button[aria-current="true"] { width: 1.5rem; border-radius: 999px; background: #221c20; }
 
 /* Copia de la imagen que vuela desde la tarjeta hasta su lugar en la ficha */
 .detalle__vuelo {
@@ -1267,34 +1273,142 @@ html:has(.detalle[open]) { overflow: hidden; }
 }
 .seccion__cabecera p { max-width: 46ch; margin-top: 0.9rem; color: var(--tinta-2); font-size: 1.1rem; }
 
-/* Selección: fila de perfumes que se desliza de lado, alineada con el contenedor */
-.seleccion { padding-top: var(--seccion); }
-.riel {
-  --orilla: max(var(--borde), calc((100% - 88rem) / 2 + var(--borde)));
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: clamp(15rem, 21vw, 19.5rem);
-  gap: clamp(0.85rem, 1.4vw, 1.25rem);
-  margin-top: clamp(1.75rem, 3vw, 2.5rem);
-  padding-inline: var(--orilla);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--orilla);
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-}
-.riel::-webkit-scrollbar { display: none; }
-.riel__item { scroll-snap-align: start; }
-
 /* Toda la tarjeta de un perfume abre su ficha, no solo la foto */
 .ficha,
-.riel__item,
+.vendido,
 .destacado,
 .pedido__item { cursor: pointer; }
-.riel__foto {
+
+/* Más vendidos: un ranking. Vitrina fija a la izquierda (foto grande, puesto y nombre en
+   mayúsculas, como en "Recién llegados") y la lista del 01 al 08 a la derecha, separada
+   por líneas finas. El puesto señalado se ilumina y manda en la vitrina. */
+.vendidos { padding-top: var(--seccion); }
+.vendidos__cabecera h2 { max-width: 14ch; }
+.vendidos__cabecera p { max-width: 46ch; margin-top: 0.9rem; color: var(--tinta-2); font-size: 1.1rem; }
+.vendidos__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(1.5rem, 4vw, 4.5rem);
+  align-items: start;
+  margin-top: clamp(2rem, 4vw, 3rem);
+}
+.vendidos__vitrina {
+  position: sticky;
+  top: calc(var(--nav-alto) + 1rem);
+  height: min(76svh, 42rem);
+  overflow: hidden;
+  border-radius: var(--r-marco);
+  background: var(--papel-2);
+  isolation: isolate;
+}
+.vendidos__vitrina::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgb(20 15 18 / 0.92), rgb(20 15 18 / 0.35) 45%, transparent 70%);
+  pointer-events: none;
+}
+.vendidos__imagen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 700ms ease, transform 1400ms var(--suave);
+}
+.vendidos__imagen.es-activa { opacity: 1; transform: none; }
+/* La fila deslizable de tarjetas solo existe en pantallas chicas */
+.vendidos__pista { display: none; }
+.vendidos__rotulo {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  padding: clamp(1.25rem, 2.6vw, 2rem);
+  color: var(--blanco);
+}
+.vendidos__rotulo.cambia > * { animation: entra-suave 550ms var(--suave) both; }
+.vendidos__rotulo.cambia > :nth-child(2) { animation-delay: 50ms; }
+.vendidos__rotulo.cambia > :nth-child(3) { animation-delay: 100ms; }
+.vendidos__meta { display: flex; align-items: center; gap: 0.6rem; color: var(--blanco-2); font-size: 0.875rem; font-weight: 600; }
+.vendidos__meta span { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--campo); }
+.vendidos__meta span::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--campo); }
+.vendidos__nombre {
+  margin-top: 0.5rem;
+  font-size: clamp(2.2rem, 3.6vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.vendidos__huele { max-width: 36ch; margin-top: 0.75rem; color: var(--blanco-2); font-size: 0.95rem; }
+
+.vendidos__lista { border-top: 1px solid var(--linea); }
+.vendido {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(0.75rem, 1.6vw, 1.5rem);
+  padding: 1.15rem 0.5rem 1.15rem 0.25rem;
+  border-bottom: 1px solid var(--linea);
+  transition: background-color 300ms;
+}
+/* Línea de color de la familia que entra por la izquierda en el puesto señalado */
+.vendido::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 100%;
+  height: 1px;
+  background: var(--campo);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 700ms var(--suave);
+}
+.vendido.es-activo::before { transform: scaleX(1); }
+.vendido__nombre { font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; }
+.vendido__nombre button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tinta-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 300ms, transform 500ms var(--suave);
+}
+.vendido__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; margin-top: 0.3rem; color: var(--tinta-2); font-size: 0.875rem; }
+.vendido__meta span { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; }
+.vendido__meta span::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--campo); }
+.vendido.es-activo .vendido__nombre button { color: var(--tinta); }
+.vendido.es-activo .vendido__nombre button { transform: translateX(0.35rem); }
+
+/* Recién llegados: carrusel vertical. Columna izquierda con fotos altas que avanzan con el
+   scroll; columna derecha fija a media pantalla con el texto del perfume que está a la
+   vista. La foto activa se ve nítida y las demás quedan atenuadas. */
+.novedades { padding-top: var(--seccion); }
+.novedades[hidden] { display: none; }
+.novedades__cabecera h2 { max-width: 14ch; }
+.novedades__cabecera p { max-width: 44ch; margin-top: 0.9rem; color: var(--tinta-2); font-size: 1.1rem; }
+.novedades__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(2rem, 6vw, 7rem);
+  align-items: start;
+  margin-top: clamp(2rem, 4vw, 3rem);
+}
+.novedades__lista { display: grid; gap: clamp(2.5rem, 6vw, 5rem); }
+.novedad__foto {
+  position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  height: min(84svh, 50rem);
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -1302,43 +1416,106 @@ html:has(.detalle[open]) { overflow: hidden; }
   background: var(--papel-2);
   cursor: pointer;
 }
-.riel__foto img { width: 100%; height: 100%; object-fit: cover; transition: transform 1200ms var(--suave); }
-.riel__foto:hover img { transform: scale(1.05); }
-.riel__foto:focus-visible { outline-offset: 4px; }
-.riel__texto {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.9rem;
+.novedad__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.55) saturate(0.7);
+  transform: scale(1.06);
+  transition: filter 900ms var(--suave), transform 1600ms var(--suave);
 }
-.riel__texto h3 { margin-top: 0.2rem; font-size: 1.2rem; }
-.riel__familia {
-  display: inline-flex;
+.novedad.es-activa .novedad__foto img { filter: none; transform: none; }
+.novedad__foto:hover img { transform: scale(1.03); }
+
+/* El texto sobre cada foto solo se usa en pantallas chicas (tarjetas apiladas) */
+.novedad__pie { display: none; }
+
+/* El panel mide lo que queda de pantalla bajo el menú y centra el texto adentro: así
+   sigue centrado también con el último perfume */
+.novedades__panel {
+  position: sticky;
+  top: var(--nav-alto);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: calc(100svh - var(--nav-alto) - var(--margen));
+}
+.novedades__lista { padding-bottom: 2rem; }
+.novedades__contador { display: flex; align-items: center; }
+.novedades__barra { position: relative; width: 6rem; height: 2px; overflow: hidden; border-radius: 999px; background: var(--linea); }
+.novedades__barra span {
+  position: absolute;
+  inset: 0;
+  background: var(--tinta);
+  transform: scaleX(var(--avance, 0.25));
+  transform-origin: 0 50%;
+  transition: transform 700ms var(--suave);
+}
+.novedades__textos { display: grid; margin-top: 1.75rem; }
+.novedad__texto {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(8px);
+  transform: translateY(1rem);
+  transition: opacity 350ms ease, filter 450ms ease, transform 700ms var(--suave), visibility 0s 700ms;
+}
+.novedad__texto.es-activo {
+  opacity: 1;
+  visibility: visible;
+  filter: none;
+  transform: none;
+  transition: opacity 600ms ease 150ms, filter 700ms var(--suave) 150ms, transform 900ms var(--suave) 150ms, visibility 0s;
+}
+.novedad__meta {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem 0.75rem;
   color: var(--tinta-2);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
-.riel__familia::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--campo); }
-.riel__casa { color: var(--tinta-2); font-size: 0.9rem; }
-.riel__foto { position: relative; }
-.riel__puesto {
-  position: absolute;
-  left: 0.75rem;
-  top: 0.75rem;
-  padding: 0.3rem 0.6rem;
+.novedad__meta span { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--campo); }
+.novedad__meta span::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--campo); }
+.novedad__nombre {
+  margin-top: 0.75rem;
+  font-size: clamp(2.6rem, 4.4vw, 4.75rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.novedad__desc { max-width: 38ch; margin-top: 1.25rem; color: var(--tinta-2); font-size: 1.05rem; line-height: 1.6; }
+.novedad__notas { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.25rem; }
+.novedad__notas li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  background: rgb(34 28 32 / 0.55);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
-  color: var(--blanco);
-  font-size: 0.8125rem;
+  background: var(--papel-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.novedad__notas i { color: var(--campo); font-size: 1.05rem; }
+.novedad__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 1.75rem; }
+
+/* Etiqueta "Nuevo" en las tarjetas del catálogo */
+.ficha__lamina { position: relative; }
+.ficha__nuevo {
+  position: absolute;
+  left: 0.65rem;
+  top: 0.65rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--tinta);
+  color: var(--papel);
+  font-size: 0.75rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 /* Lo que dicen nuestros clientes: una tarjeta amplia por testimonio. Retrato en un círculo
@@ -2277,6 +2454,93 @@ html:has(.detalle[open]) { overflow: hidden; }
   .preguntas { grid-template-columns: minmax(0, 1fr); }
   .mensaje,
   .preguntas__intro { position: static; }
+
+  /* Recién llegados en pantallas chicas: tarjetas que se apilan. Cada tarjeta lleva su foto
+     y su texto encima, se queda fija bajo el menú y la siguiente sube y se monta sobre ella;
+     la de abajo se encoge y oscurece según --tapada (lo calcula app.js al hacer scroll). */
+  .novedades__cuerpo { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .novedades__panel { display: none; }
+  .novedades__lista { gap: 1rem; padding-bottom: 0; }
+  .novedad {
+    position: sticky;
+    top: calc(var(--nav-alto) + 0.75rem);
+    height: min(72svh, 40rem);
+    overflow: hidden;
+    border-radius: var(--r-marco);
+    background: var(--papel-2);
+    box-shadow: 0 -18px 40px -22px #000000;
+    transform: scale(calc(1 - var(--tapada, 0) * 0.08));
+    transform-origin: 50% 0;
+  }
+  .novedad::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: #120e11;
+    opacity: calc(var(--tapada, 0) * 0.7);
+    pointer-events: none;
+  }
+  .novedad__foto { position: absolute; inset: 0; height: 100%; border-radius: 0; }
+  .novedad__foto img { filter: none; transform: none; }
+  .novedad__pie {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    display: block;
+    padding: 5rem 1.25rem 1.25rem;
+    background: linear-gradient(to top, rgb(20 15 18 / 0.95), rgb(20 15 18 / 0.7) 50%, transparent);
+    color: var(--blanco);
+  }
+  .novedad__pie .novedad__desc,
+  .novedad__pie .novedad__notas { display: none; }
+  .novedad__pie .novedad__nombre { margin-top: 0.4rem; font-size: clamp(2rem, 9vw, 2.8rem); }
+  .novedad__pie .novedad__acciones { margin-top: 1rem; }
+  .novedad__pie .btn { min-height: 2.6rem; padding: 0.5rem 1.1rem; }
+
+  /* Más vendidos en pantallas chicas: solo una fila de tarjetas grandes que se desliza de
+     lado; la que se ve queda completa y las de los lados más chicas y atenuadas. */
+  .vendidos__cuerpo { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .vendidos__vitrina { display: none; }
+  .vendidos__pista {
+    display: flex;
+    gap: 0.75rem;
+    margin-inline: calc(var(--borde) * -1);
+    padding-inline: var(--borde);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--borde);
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .vendidos__pista::-webkit-scrollbar { display: none; }
+  .vendidos__tarjeta {
+    position: relative;
+    flex: 0 0 84%;
+    height: min(62svh, 34rem);
+    overflow: hidden;
+    border-radius: var(--r-marco);
+    background: var(--papel-2);
+    scroll-snap-align: start;
+    opacity: 0.55;
+    transform: scale(0.94);
+    transition: transform 600ms var(--suave), opacity 400ms ease;
+  }
+  .vendidos__tarjeta.es-activa { opacity: 1; transform: none; }
+  .vendidos__tarjeta-foto { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+  .vendidos__tarjeta-foto img { width: 100%; height: 100%; object-fit: cover; }
+  .vendidos__tarjeta-texto {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 4.5rem 1.15rem 1.15rem;
+    background: linear-gradient(to top, rgb(20 15 18 / 0.95), rgb(20 15 18 / 0.6) 55%, transparent);
+    color: var(--blanco);
+    pointer-events: none;
+  }
+  .vendidos__tarjeta .vendidos__nombre { font-size: clamp(1.8rem, 8vw, 2.4rem); }
+  .vendidos__tarjeta .vendidos__huele { font-size: 0.9rem; }
+  /* Solo las tarjetas: la lista de nombres no se muestra en pantallas chicas */
+  .vendidos__lista { display: none; }
 }
 
 @media (max-width: 40rem) {
@@ -2373,11 +2637,26 @@ html:has(.detalle[open]) { overflow: hidden; }
   .uso li { font-size: 0.75rem; }
   .uso i { font-size: 1.4rem; }
   .momento { grid-template-columns: minmax(0, 1fr); }
-  .detalle__acciones > * { flex: 1 1 100%; }
+  /* En el teléfono los botones suben justo debajo de "Huele a…" (se ven sin bajar) y el
+     contenido de cada uno va centrado */
+  .detalle__info { display: flex; flex-direction: column; }
+  .detalle__info > * { order: 5; }
+  .detalle__meta { order: 1; }
+  #detalle-nombre { order: 2; }
+  .detalle__huele { order: 3; }
+  .detalle__acciones { order: 4; margin-top: 1.25rem; }
+  .detalle__familia { margin-top: 1.25rem; }
+  .detalle__acciones > * { flex: 1 1 100%; justify-content: center; }
   .detalle__cerrar { position: sticky; top: 0.75rem; margin: 0.75rem 0.75rem -3.5rem auto; }
 
-  .riel { grid-auto-columns: 72vw; }
   .buscar__familia { display: none; }
+  /* Más vendidos en el teléfono: el índice bajo las tarjetas, compacto */
+  .vendido { gap: 0.75rem; padding-right: 0; }
+  .vendido__nombre { font-size: 1.2rem; }
+  .vendido__nombre button { color: var(--tinta); }
+  .vendido.es-activo .vendido__nombre button { transform: none; }
+  .vendido .agregar { width: 2.4rem; padding: 0; justify-content: center; }
+  .vendido .agregar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   /* Testimonio en el teléfono: el círculo arriba y la frase debajo */
   .cliente { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 2rem 1.35rem 4rem; }
   .cliente__circulo { width: 11rem; }
@@ -2392,12 +2671,10 @@ html:has(.detalle[open]) { overflow: hidden; }
      (cuesta mucho redibujarlo) y sin capas reservadas para el parallax, que aquí no corre */
   .selector,
   .barra__fila,
-  .barra__panel,
-  .riel__puesto { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .barra__panel { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .selector { background: rgb(28 23 27 / 0.82); }
   .barra__fila { background: rgb(43 35 40 / 0.97); }
   .barra__panel { background: rgb(43 35 40); }
-  .riel__puesto { background: rgb(34 28 32 / 0.8); }
   .hero__foto,
   .familia__tarjeta,
   .familia__tarjeta img,

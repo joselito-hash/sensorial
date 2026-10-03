@@ -12,6 +12,9 @@
     /* Perfumes de "Más vendidos" (inicio y búsqueda), en orden. Usa el id de cada perfume
        de la lista PERFUMES. Los de ahora son de ejemplo: pon los que más vendes. */
     masVendidos: ["sauvage", "bleu-de-chanel", "oud-for-glory", "eros", "acqua-di-gio", "libre", "1-million", "la-vie-est-belle"],
+    /* Perfumes de "Recién llegados" (inicio), en orden. También llevan la etiqueta "Nuevo"
+       en el catálogo. Los de ahora son de ejemplo: pon los que te acaban de llegar. */
+    novedades: ["oud-mood", "coco-mademoiselle", "terre-d-hermes", "light-blue"],
   };
 
   /* ------------------------------------------------------------------
@@ -170,6 +173,7 @@
   const porId = new Map(PERFUMES.map((p) => [p.id, p]));
   const familiaPorId = new Map(FAMILIAS.map((f) => [f.id, f]));
   const MAS_VENDIDOS = CONFIG.masVendidos.filter((id) => porId.has(id));
+  const NOVEDADES = CONFIG.novedades.filter((id) => porId.has(id));
   const nombreCompleto = (p) => `${p.casa} ${p.nombre}`;
   const sinAcentos = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const mayuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -906,31 +910,241 @@
     window.addEventListener("resize", moverIndicador);
   }
 
-  /* ---------- Inicio: más vendidos en una fila que se desliza ---------- */
+  /* ---------- Inicio: más vendidos ----------
+     Un ranking con el mismo lenguaje de "Recién llegados".
+     Escritorio: a la izquierda una vitrina fija con la foto grande y el nombre en
+       mayúsculas; a la derecha la lista en orden. El perfume que cruza la mitad de la
+       pantalla al hacer scroll (o bajo el puntero) manda en la vitrina.
+     Teléfono: la vitrina se vuelve una fila de tarjetas grandes que se desliza de lado, y
+       la lista queda debajo como índice: el perfume que se ve se ilumina en la lista y
+       tocar un nombre lleva a su tarjeta. */
 
-  function pintarRiel() {
-    const riel = $("#riel");
-    if (!riel) return;
-    riel.innerHTML = MAS_VENDIDOS.map((id, i) => {
+  const telefonoVendidos = window.matchMedia("(max-width: 56rem)");
+
+  function pintarVendidos() {
+    const lista = $("#vendidos-lista");
+    const vitrina = $("#vendidos-vitrina");
+    const pista = $("#vendidos-pista");
+    if (!lista || !vitrina || !pista) return;
+
+    vitrina.innerHTML = `
+      ${MAS_VENDIDOS.map((id, i) => {
+        const p = porId.get(id);
+        const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [700, 1100, 1500])}" sizes="42vw"` : "";
+        return `<img class="vendidos__imagen${i === 0 ? " es-activa" : ""}" data-indice="${i}" src="${url(p.foto, 1100)}"${juego} alt=""${i ? ' loading="lazy"' : ""}>`;
+      }).join("")}
+      <div class="vendidos__rotulo" id="vendidos-rotulo"></div>`;
+
+    pista.innerHTML = MAS_VENDIDOS.map((id, i) => {
       const p = porId.get(id);
       const f = familiaPorId.get(p.familia);
-      const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [400, 700, 1000])}" sizes="(max-width: 40rem) 72vw, 20rem"` : "";
+      const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [500, 800, 1100])}" sizes="84vw"` : "";
       return `
-      <li class="riel__item" style="--campo: var(--c-${f.id}); --i: ${i}">
-        <button class="riel__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <img src="${url(p.foto, 700)}"${juego} alt="" loading="lazy">
-          <span class="riel__puesto" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
+      <li class="vendidos__tarjeta" data-indice="${i}" style="--campo: var(--c-${f.id})">
+        <button class="vendidos__tarjeta-foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${url(p.foto, 800)}"${juego} alt="" loading="lazy">
         </button>
-        <div class="riel__texto">
-          <div>
-            <p class="riel__familia">${f.nombre}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
-            <h3>${p.nombre}</h3>
-            <p class="riel__casa">${p.casa}</p>
-          </div>
-          <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+        <div class="vendidos__tarjeta-texto">
+          <p class="vendidos__meta"><span>${f.nombre}</span>${p.casa}</p>
+          <p class="vendidos__nombre">${p.nombre}</p>
+          <p class="vendidos__huele">Huele a ${resumenNotas(p)}.</p>
         </div>
       </li>`;
     }).join("");
+
+    lista.innerHTML = MAS_VENDIDOS.map((id, i) => {
+      const p = porId.get(id);
+      const f = familiaPorId.get(p.familia);
+      return `
+      <li class="vendido${i === 0 ? " es-activo" : ""}" data-indice="${i}" style="--campo: var(--c-${f.id})">
+        <div class="vendido__info">
+          <h3 class="vendido__nombre"><button type="button" data-ficha="${p.id}">${p.nombre}</button></h3>
+          <p class="vendido__meta"><span>${f.nombre}</span>${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+        </div>
+        <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+      </li>`;
+    }).join("");
+    activarVendido(0, true);
+
+    ["pointerover", "focusin"].forEach((tipo) => lista.addEventListener(tipo, (evento) => {
+      if (telefonoVendidos.matches) return;
+      const fila = evento.target.closest(".vendido");
+      if (fila) activarVendido(Number(fila.dataset.indice));
+    }));
+
+    /* En el teléfono, tocar un nombre del índice desliza la vitrina hasta su tarjeta (el
+       botón "Agregar" sigue funcionando normal) */
+    lista.addEventListener("click", (evento) => {
+      if (!telefonoVendidos.matches || evento.target.closest(".agregar")) return;
+      const fila = evento.target.closest(".vendido");
+      if (!fila) return;
+      evento.preventDefault();
+      evento.stopPropagation();
+      verVendido(Number(fila.dataset.indice));
+    });
+
+    if (!("IntersectionObserver" in window)) return;
+    let observador = null;
+    const observar = () => {
+      if (observador) observador.disconnect();
+      if (telefonoVendidos.matches) {
+        /* La tarjeta que ocupa la vitrina deslizable manda en el índice */
+        observador = new IntersectionObserver((entradas) => {
+          entradas.forEach((entrada) => {
+            if (entrada.isIntersecting) activarVendido(Number(entrada.target.dataset.indice));
+          });
+        }, { root: pista, threshold: 0.6 });
+        $$(".vendidos__tarjeta", pista).forEach((tarjeta) => observador.observe(tarjeta));
+      } else {
+        /* El puesto que cruza la mitad de la pantalla manda en la vitrina */
+        observador = new IntersectionObserver((entradas) => {
+          entradas.forEach((entrada) => {
+            if (entrada.isIntersecting) activarVendido(Number(entrada.target.dataset.indice));
+          });
+        }, { rootMargin: "-50% 0px -50% 0px" });
+        $$(".vendido", lista).forEach((fila) => observador.observe(fila));
+      }
+    };
+    observar();
+    telefonoVendidos.addEventListener("change", observar);
+  }
+
+  function verVendido(indice) {
+    const pista = $("#vendidos-pista");
+    const tarjeta = $(`.vendidos__tarjeta[data-indice="${indice}"]`, pista);
+    if (!tarjeta) return;
+    pista.scrollTo({ left: tarjeta.offsetLeft - pista.offsetLeft - parseFloat(getComputedStyle(pista).scrollPaddingLeft || 0), behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    activarVendido(indice);
+  }
+
+  let vendidoActivo = -1;
+  function activarVendido(indice, inicial) {
+    if (indice === vendidoActivo) return;
+    vendidoActivo = indice;
+    const p = porId.get(MAS_VENDIDOS[indice]);
+    const f = familiaPorId.get(p.familia);
+    $$(".vendido").forEach((fila) => fila.classList.toggle("es-activo", Number(fila.dataset.indice) === indice));
+    $$(".vendidos__tarjeta").forEach((t) => t.classList.toggle("es-activa", Number(t.dataset.indice) === indice));
+    $$(".vendidos__imagen").forEach((img) => img.classList.toggle("es-activa", Number(img.dataset.indice) === indice));
+    const rotulo = $("#vendidos-rotulo");
+    rotulo.style.setProperty("--campo", `var(--c-${f.id})`);
+    rotulo.innerHTML = `
+      <p class="vendidos__meta"><span>${f.nombre}</span>${p.casa}</p>
+      <p class="vendidos__nombre">${p.nombre}</p>
+      <p class="vendidos__huele">Huele a ${resumenNotas(p)}.</p>`;
+    if (!inicial) {
+      rotulo.classList.remove("cambia");
+      void rotulo.offsetWidth;
+      rotulo.classList.add("cambia");
+    }
+  }
+
+  /* ---------- Inicio: recién llegados ----------
+     Un carrusel vertical que avanza con el scroll.
+     Escritorio: las fotos grandes avanzan a la izquierda y el texto se queda fijo a la
+       derecha; cambia al perfume que cruza el centro de la pantalla.
+     Teléfono: cada perfume es una tarjeta con su foto y su texto encima. Las tarjetas se
+       quedan fijas bajo el menú y se apilan: la siguiente sube y se monta sobre la anterior,
+       que se encoge y oscurece un poco. Así el texto siempre va con su foto. */
+
+  function pintarNovedades() {
+    const seccion = $("#novedades");
+    if (!seccion) return;
+    seccion.hidden = NOVEDADES.length === 0;
+    if (!NOVEDADES.length) return;
+
+    const texto = (p, f, clase, i) => `
+      <div class="${clase}" data-indice="${i}" style="--campo: var(--c-${f.id})">
+        <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+        <h3 class="novedad__nombre">${p.nombre}</h3>
+        <p class="novedad__desc">Huele a ${resumenNotas(p)}. ${f.larga}</p>
+        <ul class="novedad__notas" aria-label="Notas principales">
+          ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
+        </ul>
+        <div class="novedad__acciones">
+          <button class="btn btn--claro" type="button" data-ficha="${p.id}">Ver ficha<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+        </div>
+      </div>`;
+
+    $("#novedades-lista").innerHTML = NOVEDADES.map((id, i) => {
+      const p = porId.get(id);
+      const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [700, 1100, 1600])}" sizes="(max-width: 56rem) 92vw, 52vw"` : "";
+      return `
+      <li class="novedad" data-indice="${i}">
+        <button class="novedad__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${url(p.foto, 1100)}"${juego} alt="" loading="lazy">
+        </button>
+        ${texto(p, familiaPorId.get(p.familia), "novedad__pie", i)}
+      </li>`;
+    }).join("");
+    iniciarPilaNovedades();
+    $("#novedades-textos").innerHTML = NOVEDADES.map((id, i) => {
+      const p = porId.get(id);
+      return texto(p, familiaPorId.get(p.familia), `novedad__texto${i === 0 ? " es-activo" : ""}`, i);
+    }).join("");
+    activarNovedad(0);
+
+    /* En escritorio, la foto que cruza la mitad de la pantalla manda en el texto fijo */
+    if (!("IntersectionObserver" in window)) return;
+    const observador = new IntersectionObserver((entradas) => {
+      entradas.forEach((entrada) => {
+        if (entrada.isIntersecting) activarNovedad(Number(entrada.target.dataset.indice));
+      });
+    }, { rootMargin: "-50% 0px -50% 0px" });
+    $$(".novedad", seccion).forEach((li) => observador.observe(li));
+  }
+
+  /* Pila de tarjetas en el teléfono: mientras la siguiente tarjeta sube, la de abajo se
+     encoge y oscurece en proporción (--tapada, de 0 a 1). Solo corre con la sección a la
+     vista, en el teléfono y sin "reducir movimiento"; el cálculo va en un cuadro por scroll. */
+  function iniciarPilaNovedades() {
+    const seccion = $("#novedades");
+    const telefono = window.matchMedia("(max-width: 56rem)");
+    if (!seccion || menosMovimiento.matches || !("IntersectionObserver" in window)) return;
+    const tarjetas = $$(".novedad", seccion);
+    let visible = false;
+    let pendiente = 0;
+    const calcular = () => {
+      pendiente = 0;
+      if (!telefono.matches) {
+        tarjetas.forEach((t) => t.style.removeProperty("--tapada"));
+        return;
+      }
+      tarjetas.forEach((tarjeta, i) => {
+        const siguiente = tarjetas[i + 1];
+        if (!siguiente) return;
+        const alto = tarjeta.offsetHeight;
+        const distancia = siguiente.getBoundingClientRect().top - tarjeta.getBoundingClientRect().top;
+        const tapada = Math.min(1, Math.max(0, 1 - distancia / alto));
+        tarjeta.style.setProperty("--tapada", tapada.toFixed(3));
+      });
+    };
+    const pedir = () => {
+      if (visible && !pendiente) pendiente = window.requestAnimationFrame(calcular);
+    };
+    new IntersectionObserver(([entrada]) => {
+      visible = entrada.isIntersecting;
+      pedir();
+    }).observe(seccion);
+    window.addEventListener("scroll", pedir, { passive: true });
+    window.addEventListener("resize", pedir);
+    telefono.addEventListener("change", calcular);
+  }
+
+  let novedadActiva = -1;
+  function activarNovedad(indice) {
+    if (indice === novedadActiva) return;
+    const panel = $("#novedades-panel");
+    panel.dataset.sentido = indice > novedadActiva ? "baja" : "sube";
+    novedadActiva = indice;
+    $$(".novedad__texto", panel).forEach((t) => {
+      const activo = Number(t.dataset.indice) === indice;
+      t.classList.toggle("es-activo", activo);
+      t.inert = !activo;
+    });
+    $$(".novedad").forEach((li) => li.classList.toggle("es-activa", Number(li.dataset.indice) === indice));
+    panel.style.setProperty("--avance", (indice + 1) / NOVEDADES.length);
   }
 
   /* ---------- Inicio: lo que dicen nuestros clientes ----------
@@ -1076,7 +1290,7 @@
     return `
       <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}</span>
+          <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}${NOVEDADES.includes(p.id) ? '<span class="ficha__nuevo">Nuevo</span>' : ""}</span>
         </button>
         <div class="ficha__cuerpo">
           <div class="ficha__cabeza">
@@ -1549,9 +1763,7 @@
         <div class="detalle__visual">
           <div class="detalle__lamina">${imagenes}</div>
           ${fotos.length > 1 ? `<div class="detalle__carrusel" aria-label="Galería de ${nombreCompleto(p)}">
-            <button type="button" data-diapo="anterior" aria-label="Foto anterior"><i class="ph ph-arrow-left" aria-hidden="true"></i></button>
             <div class="detalle__puntos">${fotos.map((_, i) => `<button type="button" data-diapo="${i}" aria-label="Ver foto ${i + 1} de ${fotos.length}" aria-current="${i === 0}"></button>`).join("")}</div>
-            <button type="button" data-diapo="siguiente" aria-label="Foto siguiente"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
           </div>` : ""}
         </div>
         <div class="detalle__info">
@@ -1769,9 +1981,9 @@
     if (!boton) {
       /* Tocar cualquier parte de una tarjeta de perfume (no solo la foto) abre su ficha;
          los botones de dentro, como "Agregar", siguen haciendo lo suyo */
-      const tarjeta = evento.target.closest(".ficha, .riel__item, .destacado, .pedido__item");
+      const tarjeta = evento.target.closest(".ficha, .vendidos__tarjeta, .vendido, .destacado, .pedido__item, .novedad");
       const abrir = tarjeta && !evento.target.closest("a") ? $("[data-ficha]", tarjeta) : null;
-      if (abrir) abrirDetalle(abrir.dataset.ficha, $(".ficha__lamina, .riel__foto, .pedido__foto, .destacado__foto", tarjeta));
+      if (abrir) abrirDetalle(abrir.dataset.ficha, $(".ficha__lamina, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta));
       return;
     }
 
@@ -1823,8 +2035,8 @@
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       if (boton.closest(".barra")) cerrarPanelLista();
-      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item, .destacado");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto, .destacado__foto", tarjeta) : null);
+      const tarjeta = boton.closest(".ficha, .vendidos__tarjeta, .vendido, .pedido__item, .destacado, .novedad");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta) : null);
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
     } else if (boton.classList.contains("selector__btn")) {
@@ -1926,7 +2138,8 @@
 
   iniciarIntro();
   pintarHero();
-  pintarRiel();
+  pintarVendidos();
+  pintarNovedades();
   pintarClientes();
   pintarCatalogo();
   aplicarFiltros();

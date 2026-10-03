@@ -147,15 +147,37 @@
           <article class="destacado" id="destacado" data-parallax="-22" data-profundidad="16" data-solo-escritorio aria-live="polite"></article>
         </section>
 
-        <!-- Más vendidos: una fila que se desliza de lado -->
-        <section class="seleccion" aria-labelledby="titulo-seleccion">
-          <div class="contenedor seccion__cabecera revelar">
-            <div>
-              <h2 id="titulo-seleccion">Más vendidos</h2>
-              <p>Los perfumes que más nos piden. Toca uno para ver sus notas o agrégalo a tu lista.</p>
+        <!-- Recién llegados: carrusel vertical. Las fotos avanzan con el scroll y el texto de la
+             derecha se queda fijo y cambia al perfume que está a la vista (app.js, novedades) -->
+        <section class="novedades contenedor" id="novedades" aria-labelledby="titulo-novedades" hidden>
+          <div class="novedades__cabecera revelar">
+            <h2 id="titulo-novedades">Recién llegados</h2>
+            <p>Lo último que entró a la boutique. Sigue bajando para conocerlos uno por uno.</p>
+          </div>
+          <div class="novedades__cuerpo">
+            <ol class="novedades__lista" id="novedades-lista"></ol>
+            <div class="novedades__panel" id="novedades-panel">
+              <p class="novedades__contador" aria-hidden="true">
+                <span class="novedades__barra"><span></span></span>
+              </p>
+              <div class="novedades__textos" id="novedades-textos"></div>
             </div>
           </div>
-          <ul class="riel" id="riel" aria-label="Perfumes más vendidos"></ul>
+        </section>
+
+        <!-- Más vendidos: un ranking. A la izquierda la vitrina con el perfume señalado; a la
+             derecha la lista del 01 al 08. Pasar por un puesto lo muestra en la vitrina. -->
+        <section class="vendidos contenedor" aria-labelledby="titulo-vendidos">
+          <div class="vendidos__cabecera revelar">
+            <h2 id="titulo-vendidos">Más vendidos</h2>
+            <p>Los perfumes que más nos piden, en orden. Toca cualquiera para abrir su ficha.</p>
+          </div>
+          <div class="vendidos__cuerpo">
+            <div class="vendidos__vitrina" id="vendidos-vitrina" aria-hidden="true"></div>
+            <!-- En el teléfono: tarjetas grandes que se deslizan de lado (la lista queda como índice) -->
+            <ul class="vendidos__pista" id="vendidos-pista" aria-label="Más vendidos, desliza para ver"></ul>
+            <ol class="vendidos__lista" id="vendidos-lista" aria-label="Perfumes más vendidos"></ol>
+          </div>
         </section>
 
         <!-- Lo que dicen nuestros clientes: testimonios reales (se llenan en app.js, TESTIMONIOS) -->
