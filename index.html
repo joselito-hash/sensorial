@@ -18,12 +18,14 @@
       var conIntro = enInicio && !vista && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       raiz.classList.add(conIntro ? "con-intro" : "sin-intro");
       if (conIntro) {
-        raiz.classList.add("intro-activa");
+        /* "intro-esperando" congela la intro hasta que la página termine de cargar */
+        raiz.classList.add("intro-activa", "intro-esperando");
         try { sessionStorage.setItem("sb-intro", "1"); } catch (e) {}
       }
     })();
   </script>
   <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://www.youtube-nocookie.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300..800;1,300..800&display=swap">
@@ -152,23 +154,17 @@
               <h2 id="titulo-seleccion">Más vendidos</h2>
               <p>Los perfumes que más nos piden. Toca uno para ver sus notas o agrégalo a tu lista.</p>
             </div>
-            <div class="riel__controles">
-              <a class="btn btn--claro" href="#catalogo">Ver catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
-            </div>
           </div>
           <ul class="riel" id="riel" aria-label="Perfumes más vendidos"></ul>
         </section>
 
-        <!-- Lo que dicen nuestros clientes: capturas o frases reales (se llenan en app.js, TESTIMONIOS) -->
+        <!-- Lo que dicen nuestros clientes: testimonios reales (se llenan en app.js, TESTIMONIOS) -->
         <section class="clientes contenedor" id="clientes" aria-labelledby="titulo-clientes" hidden>
           <div class="clientes__cabecera revelar">
-            <div>
-              <h2 id="titulo-clientes">Lo que dicen nuestros clientes</h2>
-              <p>Mensajes que nos han mandado por WhatsApp después de recibir su perfume.</p>
-            </div>
-            <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Escríbenos</a>
+            <h2 id="titulo-clientes">Lo que dicen nuestros clientes</h2>
           </div>
-          <ul class="clientes__muro" id="clientes-muro"></ul>
+          <ul class="clientes__pista" id="clientes-pista" aria-label="Testimonios"></ul>
+          <div class="clientes__puntos" id="clientes-puntos"></div>
         </section>
       </div>
 
@@ -363,16 +359,6 @@
               </h3>
               <div class="pregunta__respuesta" id="respuesta-4" role="region" aria-labelledby="pregunta-4">
                 <div><p>Es un perfume de una casa de Medio Oriente, sobre todo de Emiratos Árabes. Suelen ser intensos y usar notas como oud, ámbar, vainilla y especias.</p></div>
-              </div>
-            </div>
-            <div class="pregunta">
-              <h3>
-                <button class="pregunta__boton" type="button" id="pregunta-5" aria-expanded="false" aria-controls="respuesta-5">
-                  <span>¿Hacen envíos y qué formas de pago aceptan?</span><i class="ph ph-plus" aria-hidden="true"></i>
-                </button>
-              </h3>
-              <div class="pregunta__respuesta" id="respuesta-5" role="region" aria-labelledby="pregunta-5">
-                <div><p>Escríbenos por WhatsApp con tu ciudad y te confirmamos las opciones de entrega y de pago disponibles.</p></div>
               </div>
             </div>
           </div>

@@ -15,11 +15,16 @@
   };
 
   /* ------------------------------------------------------------------
-     LO QUE DICEN NUESTROS CLIENTES: solo mensajes reales.
-     Cada uno puede ser una captura de WhatsApp o una frase copiada tal cual:
-       { captura: "img/clientes/cliente-1.jpg", alt: "Mensaje de una clienta feliz con su Libre" }
-       { texto: "Me encantó, huele increíble", nombre: "Ana", ciudad: "Acapulco", perfume: "libre" }
-     nombre, ciudad y perfume (el id del perfume) son opcionales.
+     LO QUE DICEN NUESTROS CLIENTES: solo testimonios reales.
+       {
+         texto: "Lo que te escribió, copiado tal cual",
+         nombre: "Mariana R.",
+         ciudad: "Acapulco",          (opcional)
+         perfume: "libre",            (opcional: el id del perfume que compró)
+         foto: "img/clientes/mariana.jpg",  (opcional: solo con su permiso)
+         estrellas: 5,                (opcional: solo si te dio una calificación)
+       }
+     Si no hay foto, el círculo muestra el perfume que compró.
      Mientras la lista esté vacía, la sección no aparece en la página publicada.
      ------------------------------------------------------------------ */
   const TESTIMONIOS = [];
@@ -38,19 +43,26 @@
 
   /* ------------------------------------------------------------------
      FAMILIAS: la foto grande del inicio, el ingrediente y el perfume destacado.
+     video: el anuncio oficial del perfume en YouTube (id del video y segundo en que empieza).
+            Se reproduce sin sonido sobre la foto; la foto queda de respaldo mientras carga,
+            con "reducir movimiento", con ahorro de datos o si la marca quita el video.
+            Lattafa no tiene anuncio de Oud for Glory, así que Orientales usa su foto.
      ------------------------------------------------------------------ */
   const FAMILIAS = [
     { id: "frescos", nombre: "Frescos", desc: "Cítricos, marinos y limpios.",
       larga: "Cítricos, marinos y limpios. Para el calor, la oficina y oler a recién bañado.",
       hero: "1747916148863-7164d8920b57", heroAlt: "Frasco de Dior Sauvage iluminado con luz azul", heroPos: "50% 46%",
+      video: { id: "mC-NysO3aHM", inicio: 1, titulo: "Anuncio oficial de Dior Sauvage" },
       ingrediente: "1716339140080-be256d3270ce", ingredienteAlt: "Rodajas de naranja en agua con burbujas", destacado: "sauvage" },
     { id: "dulces", nombre: "Dulces", desc: "Vainilla, praliné y flores.",
       larga: "Vainilla, praliné y flores. Envuelven, se notan y dejan estela.",
       hero: "1724157073080-fcffb8d6c956", heroAlt: "Frasco de YSL Libre sobre fondo dorado", heroPos: "50% 50%",
+      video: { id: "uHGSW2RiM14", inicio: 2, titulo: "Anuncio oficial de YSL Libre" },
       ingrediente: "1592788174877-3f99727fd23d", ingredienteAlt: "Vainas de vainilla sobre fondo claro", destacado: "libre" },
     { id: "amaderados", nombre: "Amaderados", desc: "Cedro, vetiver y sándalo.",
       larga: "Cedro, vetiver y sándalo. Sobrios, elegantes y fáciles de llevar a diario.",
       hero: "1785881570973-281d0db41119", heroAlt: "Frasco de Bleu de Chanel junto a una ventana al atardecer", heroPos: "50% 55%",
+      video: { id: "JAGVLUKdlP0", inicio: 1, titulo: "Anuncio oficial de Bleu de Chanel" },
       ingrediente: "1697507695420-04623ccff2af", ingredienteAlt: "Veta de madera oscura en primer plano", destacado: "bleu-de-chanel" },
     { id: "orientales", nombre: "Orientales", desc: "Oud, ámbar y especias.",
       larga: "Oud, ámbar y especias. Intensos y cálidos, hechos para la noche.",
@@ -433,9 +445,11 @@
     const caja = $("#destacado");
     if (!caja) return;
     caja.innerHTML = `
-      <img class="destacado__foto" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="${nombreCompleto(p)}" width="216" height="216">
+      <button class="destacado__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+        <img class="destacado__foto" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="" width="216" height="216">
+      </button>
       <div class="destacado__texto">
-        <h2 class="destacado__nombre">${nombreCompleto(p)}</h2>
+        <h2 class="destacado__nombre"><button type="button" data-ficha="${p.id}">${nombreCompleto(p)}</button></h2>
         <p class="destacado__notas">Huele a ${resumenNotas(p)}.</p>
         <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
       </div>`;
@@ -453,9 +467,112 @@
     $$(".selector__btn").forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.familia === familia)));
     pintarDestacado();
     actualizarPedido();
+    ponerVideoHero();
   }
 
-  /* El inicio avanza solo hasta que la persona toca algo; nunca con "reducir movimiento" */
+  /* ---------- Inicio: anuncios en video ----------
+     Solo hay un video a la vez: el de la familia activa. Se pone sobre la foto (que queda
+     de respaldo) y aparece con un fundido cuando de verdad empieza a reproducirse. Los de
+     las familias que ya no se ven se quitan tras el cambio, para no gastar datos ni memoria.
+     Nunca con "reducir movimiento" ni con ahorro de datos. */
+
+  const conVideos = () => !menosMovimiento.matches && !(navigator.connection && navigator.connection.saveData);
+
+  function crearVideo(capa, f) {
+    const { id, inicio, titulo } = f.video;
+    const marco = document.createElement("div");
+    marco.className = "hero__video";
+    marco.setAttribute("aria-hidden", "true");
+    const parametros = new URLSearchParams({
+      autoplay: "1", mute: "1", controls: "0", loop: "1", playlist: id, playsinline: "1", rel: "0",
+      iv_load_policy: "3", disablekb: "1", fs: "0", modestbranding: "1", start: String(inicio || 0),
+      enablejsapi: "1", origin: location.origin,
+    });
+    const iframe = document.createElement("iframe");
+    iframe.src = `https://www.youtube-nocookie.com/embed/${id}?${parametros}`;
+    iframe.title = titulo;
+    iframe.tabIndex = -1;
+    iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    marco.append(iframe);
+    capa.append(marco);
+
+    /* El reproductor avisa por mensajes cuándo el video de verdad empieza a reproducirse;
+       hasta entonces se sigue viendo la foto (así no aparece el negro del arranque). Si el
+       video falla (por ejemplo, la marca lo quitó), se retira y queda la foto. */
+    const mostrar = () => marco.classList.add("es-visible");
+    iframe.addEventListener("load", () => {
+      try { iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: f.id }), "*"); } catch { /* sin acceso */ }
+    });
+    marco.escuchar = (evento) => {
+      if (evento.source !== iframe.contentWindow) return;
+      try {
+        const datos = typeof evento.data === "string" ? JSON.parse(evento.data) : evento.data;
+        const info = datos && datos.info;
+        if (datos.event === "onError") { quitarVideo(capa); return; }
+        const estadoVideo = datos.event === "onStateChange" ? info : info && info.playerState;
+        if (estadoVideo === 1) mostrar();
+        /* Si el navegador lo pausa (al cambiar de app, por ejemplo), se pide que siga y,
+           mientras tanto, vuelve a verse la foto en lugar del botón de reproducir */
+        if (estadoVideo === 2) {
+          marco.classList.remove("es-visible");
+          iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+        }
+      } catch { /* mensaje ajeno */ }
+    };
+    window.addEventListener("message", marco.escuchar);
+  }
+
+  function quitarVideo(capa) {
+    const marco = $(".hero__video", capa);
+    if (!marco) return;
+    window.removeEventListener("message", marco.escuchar);
+    marco.remove();
+  }
+
+  function ponerVideoHero() {
+    $$(".hero__capa").forEach((capa) => {
+      const f = familiaPorId.get(capa.dataset.familia);
+      const activa = capa.classList.contains("es-activa") && vistaActual === "inicio";
+      if (activa && f.video && conVideos()) {
+        if (!$(".hero__video", capa)) crearVideo(capa, f);
+      } else if ($(".hero__video", capa)) {
+        /* Se quita cuando termina el fundido de la foto (o al momento si se dejó el inicio) */
+        window.setTimeout(() => {
+          if (!capa.classList.contains("es-activa") || vistaActual !== "inicio") quitarVideo(capa);
+        }, vistaActual === "inicio" ? 1700 : 0);
+      }
+    });
+  }
+
+  /* La portada también se desliza: hacia la izquierda pasa a la siguiente familia y hacia
+     la derecha regresa a la anterior. Funciona con el dedo y arrastrando con el mouse; el
+     desplazamiento vertical de la página no se ve afectado (touch-action: pan-y). */
+  function iniciarDeslizarHero() {
+    const marco = $(".hero__marco");
+    if (!marco) return;
+    let inicio = null;
+    marco.addEventListener("pointerdown", (evento) => {
+      if (evento.button !== 0 || evento.target.closest("button, a")) return;
+      inicio = { x: evento.clientX, y: evento.clientY };
+    });
+    const soltar = (evento) => {
+      if (!inicio) return;
+      const dx = evento.clientX - inicio.x;
+      const dy = evento.clientY - inicio.y;
+      inicio = null;
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      const i = FAMILIAS.findIndex((f) => f.id === estado.familia);
+      const siguiente = (i + (dx < 0 ? 1 : -1) + FAMILIAS.length) % FAMILIAS.length;
+      activarFamilia(FAMILIAS[siguiente].id, true);
+    };
+    marco.addEventListener("pointerup", soltar);
+    marco.addEventListener("pointercancel", () => { inicio = null; });
+    marco.addEventListener("dragstart", (evento) => evento.preventDefault());
+  }
+
+  /* El inicio avanza solo hasta que la persona toca algo; nunca con "reducir movimiento".
+     Con videos, cada familia se queda más tiempo para que el anuncio alcance a verse. */
   function iniciarCarrusel() {
     const hero = $(".hero");
     if (menosMovimiento.matches || !hero) return;
@@ -474,7 +591,7 @@
       if (!enVista || encima || document.hidden) return;
       const i = FAMILIAS.findIndex((f) => f.id === estado.familia);
       activarFamilia(FAMILIAS[(i + 1) % FAMILIAS.length].id, false);
-    }, 6500);
+    }, conVideos() ? 14000 : 6500);
   }
 
   /* ---------- Pestañas ----------
@@ -511,9 +628,11 @@
     if (nombre === "pedido") return { vista: "pedido" };
     if (nombre !== "catalogo") return null;
     const q = new URLSearchParams(consulta);
-    /* Las preguntas (origen y familia) solo se hacen una vez por visita: después, "Catálogo"
-       lleva directo a los perfumes */
-    if (!consulta && recorridoHecho()) return { vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" };
+    /* Las preguntas (origen y familia) solo se hacen una vez por visita, y nunca a quien ya
+       tiene perfumes en su lista: en esos casos "Catálogo" lleva directo a los perfumes */
+    if (!consulta && (recorridoHecho() || estado.lista.size > 0)) {
+      return { vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" };
+    }
     const origen = ORIGEN_DE_URL[q.get("origen")] || "todos";
     const familia = familiaPorId.has(q.get("familia")) ? q.get("familia") : (q.get("familia") === "todas" ? "todas" : null);
     if (q.has("todo") || (origen !== "todos" && familia)) {
@@ -661,8 +780,9 @@
     vistaActual = id;
     document.body.dataset.vista = id;
     document.title = TITULOS[id];
+    /* El anuncio de la portada solo corre mientras se ve el inicio */
+    if (document.readyState === "complete") ponerVideoHero();
     cerrarPanelLista();
-    cerrarNotas();
     cerrarFiltros();
     mostrarBarra();
 
@@ -814,55 +934,80 @@
   }
 
   /* ---------- Inicio: lo que dicen nuestros clientes ----------
-     Un muro de capturas de WhatsApp y frases reales (TESTIMONIOS). Si la lista está vacía,
-     la sección no se muestra. Solo en la vista previa local aparecen marcos de ejemplo para
-     ver el diseño; nunca en la página publicada. */
+     Una tarjeta por testimonio (TESTIMONIOS): retrato en un círculo con hojas, comillas,
+     estrellas si las hay, la frase y quién la dijo. Con varios, se deslizan de lado y
+     unos puntos indican cuál se ve. Si la lista está vacía, la sección no se muestra; solo
+     en la vista previa local aparece una tarjeta de ejemplo para ver el diseño. */
 
   const enVistaPrevia = ["localhost", "127.0.0.1"].includes(location.hostname);
+  const EJEMPLO_CLIENTE = {
+    ejemplo: true,
+    texto: "Me ayudaron a elegir un aroma fresco para todos los días. Llegó justo como esperaba.",
+    nombre: "Nombre del cliente",
+    ciudad: "Ciudad",
+    perfume: "acqua-di-gio",
+    estrellas: 5,
+  };
 
   function tarjetaCliente(t, i) {
-    if (t.ejemplo) {
-      return t.captura
-        ? `<li class="cliente cliente--captura cliente--ejemplo" style="--i: ${i}">
-            <div class="cliente__marco"><i class="ph ph-image" aria-hidden="true"></i><span>Aquí va la captura de WhatsApp de un cliente</span></div>
-            <span class="cliente__aviso">Ejemplo, solo visible en tu computadora</span>
-          </li>`
-        : `<li class="cliente cliente--frase cliente--ejemplo" style="--i: ${i}">
-            <p class="cliente__burbuja">Aquí va lo que te escribió un cliente, copiado tal cual.</p>
-            <p class="cliente__quien"><strong>Nombre del cliente</strong><span>Ciudad</span></p>
-            <span class="cliente__aviso">Ejemplo, solo visible en tu computadora</span>
-          </li>`;
-    }
-    if (t.captura) {
-      return `<li class="cliente cliente--captura" style="--i: ${i}">
-        <img class="cliente__captura" src="${t.captura}" alt="${t.alt || "Mensaje de un cliente por WhatsApp"}" loading="lazy">
-      </li>`;
-    }
     const p = t.perfume ? porId.get(t.perfume) : null;
     const f = p ? familiaPorId.get(p.familia) : null;
-    return `<li class="cliente cliente--frase" style="--i: ${i}${f ? `; --campo: var(--c-${f.id})` : ""}">
-      <p class="cliente__burbuja"></p>
-      <p class="cliente__quien"><strong></strong><span></span></p>
-      ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}"><img src="${p.lamina || url(p.foto, 120)}" alt="" width="28" height="28">${p.nombre}</button>` : ""}
-    </li>`;
+    const imagen = t.foto || (p ? (p.lamina || url(p.foto, 500)) : "");
+    const estrellas = t.estrellas ? Math.max(1, Math.min(5, Math.round(t.estrellas))) : 0;
+    return `
+      <li class="cliente${t.ejemplo ? " cliente--ejemplo" : ""}" data-indice="${i}"${f ? ` style="--campo: var(--c-${f.id})"` : ""}>
+        <div class="cliente__retrato" aria-hidden="true">
+          <i class="ph ph-leaf cliente__hoja cliente__hoja--1"></i>
+          <i class="ph ph-leaf cliente__hoja cliente__hoja--2"></i>
+          <i class="ph ph-leaf cliente__hoja cliente__hoja--3"></i>
+          <span class="cliente__circulo">${imagen ? `<img src="${imagen}" alt="" loading="lazy">` : `<span class="cliente__inicial"></span>`}</span>
+        </div>
+        <figure class="cliente__cuerpo">
+          <span class="cliente__comillas" aria-hidden="true">“</span>
+          ${estrellas ? `<p class="cliente__estrellas" role="img" aria-label="${estrellas} de 5 estrellas">${"★".repeat(estrellas)}<span>${"★".repeat(5 - estrellas)}</span></p>` : ""}
+          <blockquote class="cliente__texto"></blockquote>
+          <figcaption class="cliente__quien"><strong></strong><span></span></figcaption>
+          ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}">Compró ${p.nombre}<i class="ph ph-arrow-up-right" aria-hidden="true"></i></button>` : ""}
+          ${t.ejemplo ? `<span class="cliente__aviso">Ejemplo de diseño, solo visible en tu computadora</span>` : ""}
+        </figure>
+      </li>`;
   }
 
   function pintarClientes() {
     const seccion = $("#clientes");
     if (!seccion) return;
-    const lista = TESTIMONIOS.length ? TESTIMONIOS
-      : enVistaPrevia ? [{ ejemplo: true, captura: true }, { ejemplo: true }, { ejemplo: true }, { ejemplo: true, captura: true }]
-      : [];
+    const lista = TESTIMONIOS.length ? TESTIMONIOS : enVistaPrevia ? [EJEMPLO_CLIENTE] : [];
     seccion.hidden = lista.length === 0;
-    const muro = $("#clientes-muro");
-    muro.innerHTML = lista.map(tarjetaCliente).join("");
-    /* El texto de los clientes se escribe como texto, nunca como HTML */
-    $$(".cliente--frase:not(.cliente--ejemplo)", muro).forEach((li, n) => {
-      const t = lista.filter((x) => !x.captura && !x.ejemplo)[n];
-      $(".cliente__burbuja", li).textContent = t.texto;
+    const pista = $("#clientes-pista");
+    pista.innerHTML = lista.map(tarjetaCliente).join("");
+    /* Lo que escribieron los clientes se pone como texto, nunca como HTML */
+    $$(".cliente", pista).forEach((li, n) => {
+      const t = lista[n];
+      $(".cliente__texto", li).textContent = `“${t.texto}”`;
       $(".cliente__quien strong", li).textContent = t.nombre || "Cliente";
       $(".cliente__quien span", li).textContent = t.ciudad || "";
+      const inicial = $(".cliente__inicial", li);
+      if (inicial) inicial.textContent = (t.nombre || "C").trim().charAt(0).toUpperCase();
     });
+
+    const puntos = $("#clientes-puntos");
+    puntos.hidden = lista.length < 2;
+    puntos.innerHTML = lista.length < 2 ? "" : lista.map((_, i) =>
+      `<button type="button" data-cliente-punto="${i}" aria-label="Ver testimonio ${i + 1} de ${lista.length}" aria-current="${i === 0}"></button>`).join("");
+    let pendiente = 0;
+    pista.addEventListener("scroll", () => {
+      if (pendiente) return;
+      pendiente = window.requestAnimationFrame(() => {
+        pendiente = 0;
+        const actual = Math.round(pista.scrollLeft / Math.max(pista.clientWidth, 1));
+        $$("[data-cliente-punto]", puntos).forEach((b, i) => b.setAttribute("aria-current", String(i === actual)));
+      });
+    }, { passive: true });
+  }
+
+  function verCliente(indice) {
+    const pista = $("#clientes-pista");
+    pista.scrollTo({ left: indice * pista.clientWidth, behavior: menosMovimiento.matches ? "auto" : "smooth" });
   }
 
   /* ---------- Catálogo: hoja de filtros en el teléfono ----------
@@ -944,16 +1089,6 @@
           <ul class="ficha__principales" aria-label="Notas principales">
             ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
           </ul>
-          <button class="ficha__mas" type="button" aria-expanded="false" aria-controls="notas-${p.id}">Ver todas las notas<i class="ph ph-caret-down" aria-hidden="true"></i></button>
-          <div class="ficha__todas" id="notas-${p.id}">
-            <div>
-              <dl>
-                <div><dt>Al inicio</dt><dd>${p.notas.salida}</dd></div>
-                <div><dt>Después</dt><dd>${p.notas.corazon}</dd></div>
-                <div><dt>Al final</dt><dd>${p.notas.fondo}</dd></div>
-              </dl>
-            </div>
-          </div>
         </div>
       </li>`;
   }
@@ -1039,6 +1174,104 @@
     document.documentElement.classList.remove("pagina-quieta");
   }
 
+  /* ---------- Búsqueda que perdona errores ----------
+     La gente escribe "sobaje", "acua di yio" o "lavi es bel". Cada perfume recibe un puntaje:
+     coincidencia exacta, palabras que empiezan igual, palabras con pocas letras de diferencia
+     (distancia de edición) y palabras que suenan igual en español ("v" y "b", "z" y "s",
+     "au" y "o", "h" muda…). Se muestran los de mejor puntaje. */
+
+  const limpiarBusqueda = (t) => sinAcentos(t).replace(/[^a-z0-9ñ ]+/g, " ").replace(/\s+/g, " ").trim();
+
+  /* Cómo suena una palabra, aproximado para quien escribe de oído */
+  const sonido = (t) => t
+    .replace(/eau/g, "o").replace(/au/g, "o").replace(/ou/g, "u")
+    .replace(/ph/g, "f").replace(/cqu/g, "ku").replace(/qu/g, "k").replace(/ck/g, "k")
+    .replace(/c(?=[ei])/g, "s").replace(/c/g, "k").replace(/z/g, "s").replace(/x/g, "ks")
+    .replace(/g(?=[ei])/g, "j").replace(/v/g, "b").replace(/w/g, "u").replace(/ll/g, "y")
+    .replace(/y(?=[^aeiou]|$)/g, "i").replace(/ch/g, "x").replace(/sh/g, "x").replace(/h/g, "")
+    .replace(/(.)\1+/g, "$1");
+
+  /* Distancia de edición (letras cambiadas, de más, de menos o volteadas) */
+  function distancia(a, b) {
+    if (a === b) return 0;
+    if (!a.length || !b.length) return Math.max(a.length, b.length);
+    let antes2 = [];
+    let antes = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i += 1) {
+      const fila = [i];
+      for (let j = 1; j <= b.length; j += 1) {
+        const costo = a[i - 1] === b[j - 1] ? 0 : 1;
+        fila[j] = Math.min(antes[j] + 1, fila[j - 1] + 1, antes[j - 1] + costo);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) fila[j] = Math.min(fila[j], antes2[j - 2] + 1);
+      }
+      antes2 = antes;
+      antes = fila;
+    }
+    return antes[b.length];
+  }
+
+  const tolerancia = (largo) => (largo <= 3 ? 0 : largo <= 5 ? 1 : largo <= 8 ? 2 : 3);
+
+  /* Qué tan parecida es una palabra escrita a una palabra del perfume (0 a 1) */
+  function parecido(escrita, palabra) {
+    if (palabra === escrita) return 1;
+    if (escrita.length >= 2 && palabra.startsWith(escrita)) return 0.95;
+    const se = sonido(escrita);
+    const sp = sonido(palabra);
+    if (se && se === sp) return 0.9;
+    if (se.length >= 2 && sp.startsWith(se)) return 0.85;
+    const permitido = tolerancia(escrita.length);
+    if (!permitido) return 0;
+    /* El inicio aproximado ("bottl" por "boteld") solo cuenta en palabras largas; en las
+       cortas confundía "dior" con el inicio de "giorgio" */
+    const largas = escrita.length >= 5;
+    const d = Math.min(
+      distancia(escrita, palabra),
+      distancia(se, sp),
+      largas ? distancia(escrita, palabra.slice(0, escrita.length)) : Infinity,
+      largas ? distancia(se, sp.slice(0, se.length)) : Infinity,
+    );
+    return d <= permitido ? 0.8 - (d / (escrita.length + 1)) * 0.5 : 0;
+  }
+
+  function puntajeBusqueda(consulta, p) {
+    const nombre = limpiarBusqueda(p.nombre);
+    const todo = limpiarBusqueda(`${p.casa} ${p.nombre} ${p.version || ""} ${p.origen}`);
+    if (nombre.startsWith(consulta)) return 120;
+    if (todo.includes(consulta)) return 100;
+    /* El nombre completo escrito junto o con espacios distintos: "laviestbelle" */
+    const junta = consulta.replace(/ /g, "");
+    const nombreJunto = nombre.replace(/ /g, "");
+    if (junta.length >= 4) {
+      const d = Math.min(distancia(junta, nombreJunto), distancia(sonido(junta), sonido(nombreJunto)));
+      if (d <= tolerancia(junta.length)) return 90 - d * 5;
+    }
+    /* Palabra por palabra: cada palabra escrita busca su mejor pareja en el perfume */
+    const palabras = todo.split(" ");
+    const escritas = consulta.split(" ").filter(Boolean);
+    let suma = 0;
+    let fallas = 0;
+    escritas.forEach((escrita) => {
+      const mejor = Math.max(...palabras.map((palabra) => parecido(escrita, palabra)));
+      if (mejor === 0) fallas += 1;
+      suma += mejor;
+    });
+    if (fallas > (escritas.length >= 3 ? 1 : 0)) return 0;
+    return (suma / escritas.length) * 80;
+  }
+
+  function buscarPerfumes(texto) {
+    const consulta = limpiarBusqueda(texto);
+    if (!consulta) return [];
+    const encontrados = PERFUMES
+      .map((p) => ({ p, puntaje: puntajeBusqueda(consulta, p) }))
+      .filter((r) => r.puntaje >= 40)
+      .sort((a, b) => b.puntaje - a.puntaje);
+    /* Si algo coincide tal cual, no se mezclan resultados aproximados */
+    const hayExactos = encontrados.length && encontrados[0].puntaje >= 100;
+    return encontrados.filter((r) => !hayExactos || r.puntaje >= 100).slice(0, 6).map((r) => r.p);
+  }
+
   /* Resalta la parte del nombre que coincide con lo escrito (sin distinguir acentos) */
   function resaltar(texto, consulta) {
     const limpio = sinAcentos(texto);
@@ -1096,11 +1329,13 @@
      van los resultados en filas y a la derecha la vista previa del que está activo. */
   function pintarSugerencias() {
     const consulta = sinAcentos(campoBusqueda.value.trim());
-    const resultados = consulta
-      ? PERFUMES.filter((p) => sinAcentos(`${p.casa} ${p.nombre} ${p.version || ""} ${p.origen}`).includes(consulta)).slice(0, 6)
-      : MAS_VENDIDOS.slice(0, 5).map((id) => porId.get(id));
+    const resultados = consulta ? buscarPerfumes(campoBusqueda.value) : MAS_VENDIDOS.slice(0, 5).map((id) => porId.get(id));
+    /* Si nada contiene lo escrito tal cual, los resultados son aproximados: "Quizá buscabas" */
+    const exactos = resultados.some((p) => sinAcentos(`${p.casa} ${p.nombre}`).includes(consulta));
     const titulo = !consulta ? "Más vendidos"
-      : resultados.length ? `${textoPerfumes(resultados.length)} para "${campoBusqueda.value.trim()}"` : "";
+      : !resultados.length ? ""
+      : exactos ? `${textoPerfumes(resultados.length)} para "${campoBusqueda.value.trim()}"`
+      : "Quizá buscabas";
 
     if (resultados.length) {
       panelSugerencias.innerHTML = `
@@ -1505,38 +1740,40 @@
       } else {
         intro.hidden = true;
       }
+      iniciarCarrusel();
     };
     intro.addEventListener("animationend", (evento) => {
       if (evento.animationName === "intro-desvanece") liberar(false);
     });
-    /* Respaldo por si la animación se atrasa o el navegador no avisa de su final */
-    window.setTimeout(() => liberar(true), 5600);
+
+    /* La intro no arranca de golpe: espera a que la página cargue (fotos de la portada,
+       letra e iconos) y un momento más. Si la conexión es lenta, arranca a los 3.5 s. */
+    let arrancada = false;
+    const arrancar = () => {
+      if (arrancada) return;
+      arrancada = true;
+      raiz.classList.remove("intro-esperando");
+      /* Respaldo por si la animación se atrasa o el navegador no avisa de su final */
+      window.setTimeout(() => liberar(true), 5600);
+    };
+    const trasCargar = () => window.setTimeout(arrancar, 350);
+    if (document.readyState === "complete") trasCargar();
+    else window.addEventListener("load", trasCargar, { once: true });
+    window.setTimeout(arrancar, 3500);
   }
 
   /* ---------- Eventos ---------- */
 
-  /* Cierra las notas desplegadas de cualquier tarjeta */
-  function cerrarNotas() {
-    $$(".ficha.es-abierta").forEach((tarjeta) => {
-      tarjeta.classList.remove("es-abierta");
-      const btn = $(".ficha__mas", tarjeta);
-      btn.setAttribute("aria-expanded", "false");
-      btn.firstChild.textContent = "Ver todas las notas";
-    });
-  }
-
-  /* Un clic fuera de la tarjeta abierta (en cualquier otra cosa) o la tecla Esc las cierra */
-  document.addEventListener("click", (evento) => {
-    const abierta = $(".ficha.es-abierta");
-    if (abierta && !abierta.contains(evento.target)) cerrarNotas();
-  }, true);
-  document.addEventListener("keydown", (evento) => {
-    if (evento.key === "Escape" && !(detalle && detalle.open)) cerrarNotas();
-  });
-
   document.addEventListener("click", (evento) => {
     const boton = evento.target.closest("button");
-    if (!boton) return;
+    if (!boton) {
+      /* Tocar cualquier parte de una tarjeta de perfume (no solo la foto) abre su ficha;
+         los botones de dentro, como "Agregar", siguen haciendo lo suyo */
+      const tarjeta = evento.target.closest(".ficha, .riel__item, .destacado, .pedido__item");
+      const abrir = tarjeta && !evento.target.closest("a") ? $("[data-ficha]", tarjeta) : null;
+      if (abrir) abrirDetalle(abrir.dataset.ficha, $(".ficha__lamina, .riel__foto, .pedido__foto, .destacado__foto", tarjeta));
+      return;
+    }
 
     if (boton.dataset.quitarLista) {
       if (estado.lista.has(boton.dataset.quitarLista)) alternar(boton.dataset.quitarLista);
@@ -1561,6 +1798,8 @@
       else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
         irA({ vista: "catalogo", paso: "familia", origen: rutaActual.origen, familia: "todas" });
       }
+    } else if (boton.dataset.clientePunto) {
+      verCliente(Number(boton.dataset.clientePunto));
     } else if (boton.id === "abrir-filtros") {
       abrirFiltros();
     } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
@@ -1584,20 +1823,10 @@
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       if (boton.closest(".barra")) cerrarPanelLista();
-      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto", tarjeta) : null);
+      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item, .destacado");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto, .destacado__foto", tarjeta) : null);
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
-    } else if (boton.classList.contains("ficha__mas")) {
-      /* Solo una tarjeta abierta a la vez: al abrir otra, la anterior se cierra */
-      const tarjeta = boton.closest(".ficha");
-      const abrir = !tarjeta.classList.contains("es-abierta");
-      cerrarNotas();
-      if (abrir) {
-        tarjeta.classList.add("es-abierta");
-        boton.setAttribute("aria-expanded", "true");
-        boton.firstChild.textContent = "Ocultar notas";
-      }
     } else if (boton.classList.contains("selector__btn")) {
       activarFamilia(boton.dataset.familia, true);
     } else if (boton.classList.contains("chip")) {
@@ -1707,6 +1936,10 @@
   actualizarPedido();
   observarRevelados();
   iniciarParallax();
-  /* Con intro, el carrusel empieza a contar cuando la página ya se ve */
-  window.setTimeout(iniciarCarrusel, document.documentElement.classList.contains("con-intro") ? 4000 : 0);
+  iniciarDeslizarHero();
+  /* El video entra cuando la página ya cargó, para no retrasar la carga ni la intro */
+  if (document.readyState === "complete") ponerVideoHero();
+  else window.addEventListener("load", ponerVideoHero, { once: true });
+  /* Con intro, el carrusel empieza a contar cuando la intro libera la página */
+  if (!document.documentElement.classList.contains("con-intro")) iniciarCarrusel();
 })();

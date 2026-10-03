@@ -498,6 +498,10 @@ body.buscando .buscar i { transform: scale(1.12); }
   background: oklch(0.24 0.02 270);
   color: var(--blanco);
   isolation: isolate;
+  /* Se desliza de lado para cambiar de familia; el scroll vertical sigue igual */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hero__capa {
@@ -525,6 +529,30 @@ body.buscando .buscar i { transform: scale(1.12); }
   height: 124%;
   object-fit: cover;
   will-change: transform;
+  -webkit-user-drag: none;
+}
+
+/* Anuncio en video sobre la foto: cubre todo el marco (como object-fit: cover) y se
+   agranda un poco para dejar fuera los bordes del reproductor. Aparece con un fundido
+   solo cuando ya está corriendo; mientras tanto se ve la foto. */
+.hero__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  container-type: size;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1400ms var(--suave);
+}
+.hero__video.es-visible { opacity: 1; }
+.hero__video iframe {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100cqw, 177.78cqh);
+  height: max(100cqh, 56.25cqw);
+  border: 0;
+  transform: translate(-50%, -50%) scale(1.18);
 }
 
 .hero__velo {
@@ -626,8 +654,22 @@ body.buscando .buscar i { transform: scale(1.12); }
   object-fit: cover;
   background: var(--papel-2);
 }
+/* La foto y el nombre abren la ficha del perfume */
+.destacado__abrir {
+  flex: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.9rem;
+  background: none;
+  cursor: pointer;
+}
+.destacado__abrir img { transition: transform 700ms var(--suave); }
+.destacado__abrir:hover img { transform: scale(1.06); }
 .destacado__texto { min-width: 0; padding-right: 0.4rem; }
 .destacado__nombre { font-size: 1.1rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.destacado__nombre button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.destacado__nombre button:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .destacado__notas {
   margin-block: 0.2rem 0.6rem;
   color: var(--tinta-2);
@@ -839,26 +881,22 @@ body.buscando .buscar i { transform: scale(1.12); }
   box-shadow: 0 24px 38px -22px rgb(0 0 0 / 0.72);
 }
 
-/* En rejilla, cada tarjeta comparte las filas de sus vecinas (subgrid): imagen, nombre, notas
-   y botón quedan alineados entre tarjetas, y la quinta fila es el despliegue de notas.
-   El fondo cubre cuatro filas, o cinco cuando la tarjeta está abierta. */
+/* En rejilla, cada tarjeta comparte las filas de sus vecinas (subgrid): imagen, nombre y
+   notas quedan alineados entre tarjetas. El fondo cubre las tres filas. */
 @supports (grid-template-rows: subgrid) {
   @media (min-width: 40.01rem) {
     .ficha {
       display: grid;
       grid-template-rows: subgrid;
-      grid-row: span 5;
+      grid-row: span 3;
       row-gap: 0;
       padding: 0;
     }
-    .ficha::before { position: static; grid-column: 1; grid-row: 1 / 5; }
-    .ficha.es-abierta::before { grid-row: 1 / 6; }
+    .ficha::before { position: static; grid-column: 1; grid-row: 1 / 4; }
     .ficha .ficha__cuerpo { display: contents; }
     .ficha .ficha__abrir { grid-column: 1; grid-row: 1; width: auto; margin: 0.5rem 0.5rem 0; }
     .ficha .ficha__cabeza { grid-column: 1; grid-row: 2; margin: 0.9rem 1.05rem 0; }
-    .ficha .ficha__principales { grid-column: 1; grid-row: 3; margin: 1rem 1.05rem 0; }
-    .ficha .ficha__mas { grid-column: 1; grid-row: 4; width: auto; margin: 0.5rem 1.05rem 0.7rem; }
-    .ficha .ficha__todas { grid-column: 1; grid-row: 5; margin: 0 1rem; }
+    .ficha .ficha__principales { grid-column: 1; grid-row: 3; margin: 1rem 1.05rem 1.1rem; }
   }
 }
 
@@ -954,55 +992,6 @@ body.buscando .buscar i { transform: scale(1.12); }
   color: var(--campo);
   font-size: 1.3rem;
 }
-
-.ficha__mas {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  width: 100%;
-  min-height: 2.5rem;
-  margin-top: 0.5rem;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--tinta-2);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.ficha__mas:hover { color: var(--tinta); }
-.ficha__mas i { transition: transform 450ms var(--suave); }
-.ficha__mas[aria-expanded="true"] i { transform: rotate(180deg); }
-
-/* Despliegue suave: la fila crece de 0fr a 1fr en lugar de aparecer de golpe */
-.ficha__todas {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  visibility: hidden;
-  transition: grid-template-rows 550ms var(--suave), opacity 300ms, visibility 0s 550ms;
-}
-.ficha.es-abierta .ficha__todas {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  visibility: visible;
-  transition: grid-template-rows 550ms var(--suave), opacity 450ms 120ms, visibility 0s;
-}
-.ficha__todas > div { min-height: 0; overflow: hidden; }
-.ficha__todas dl {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0.2rem 0 0.25rem;
-  padding: 0.85rem 0.9rem;
-  border-radius: 1rem;
-  background: var(--tono);
-}
-.ficha__todas dl div { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; }
-.ficha__todas dt { color: var(--tinta-2); font-size: 0.8125rem; line-height: 1.55; }
-.ficha__todas dd { font-size: 0.875rem; line-height: 1.4; }
 
 /* Ficha del perfume: ventana con un bloque del color intenso de su familia */
 
@@ -1296,6 +1285,12 @@ html:has(.detalle[open]) { overflow: hidden; }
 }
 .riel::-webkit-scrollbar { display: none; }
 .riel__item { scroll-snap-align: start; }
+
+/* Toda la tarjeta de un perfume abre su ficha, no solo la foto */
+.ficha,
+.riel__item,
+.destacado,
+.pedido__item { cursor: pointer; }
 .riel__foto {
   display: block;
   width: 100%;
@@ -1328,8 +1323,6 @@ html:has(.detalle[open]) { overflow: hidden; }
 }
 .riel__familia::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--campo); }
 .riel__casa { color: var(--tinta-2); font-size: 0.9rem; }
-.riel__controles { display: flex; align-items: center; gap: 0.5rem; }
-.riel__controles .btn { margin-left: 0.5rem; }
 .riel__foto { position: relative; }
 .riel__puesto {
   position: absolute;
@@ -1348,95 +1341,128 @@ html:has(.detalle[open]) { overflow: hidden; }
   letter-spacing: 0.04em;
 }
 
-/* Lo que dicen nuestros clientes: muro de capturas y frases reales, en columnas de alturas
-   distintas (las capturas de WhatsApp son altas y las frases cortas) */
-.clientes { padding-block: var(--seccion); }
+/* Lo que dicen nuestros clientes: una tarjeta amplia por testimonio. Retrato en un círculo
+   rodeado de hojas a la izquierda; comillas, estrellas, la frase y quién la dijo a la
+   derecha. Con varios testimonios se deslizan de lado. */
+.clientes { --salvia: #a3ad8f; padding-block: var(--seccion); }
 .clientes[hidden] { display: none; }
-.clientes__cabecera {
+.clientes__cabecera h2 { max-width: 16ch; }
+.clientes__pista {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem 3rem;
+  margin-top: clamp(1.75rem, 3.5vw, 2.75rem);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
 }
-.clientes__cabecera h2 { max-width: 14ch; }
-.clientes__cabecera p { max-width: 42ch; margin-top: 0.9rem; color: var(--tinta-2); font-size: 1.1rem; }
-.clientes__muro {
-  columns: 3 17rem;
-  column-gap: clamp(0.85rem, 1.6vw, 1.25rem);
-  margin-top: clamp(2rem, 4vw, 3rem);
-}
+.clientes__pista::-webkit-scrollbar { display: none; }
 .cliente {
   position: relative;
-  display: block;
-  margin-bottom: clamp(0.85rem, 1.6vw, 1.25rem);
-  break-inside: avoid;
+  display: grid;
+  flex: 0 0 100%;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  padding: clamp(1.75rem, 4.5vw, 4rem);
+  border-radius: var(--r-marco);
+  background: #2a2227;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 30px 60px -36px #000000;
+  scroll-snap-align: start;
 }
-.cliente__captura {
-  width: 100%;
-  height: auto;
-  border-radius: var(--r-tarjeta);
-  background: var(--papel-2);
-  box-shadow: 0 18px 40px -22px #000000;
-}
-.cliente--frase {
-  padding: 1.25rem;
-  border-radius: var(--r-tarjeta);
-  background: var(--papel-2);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
-}
-/* La frase se ve como la burbuja que llegó al chat */
-.cliente__burbuja {
+.cliente__retrato { position: relative; display: grid; place-items: center; }
+.cliente__circulo {
   position: relative;
-  padding: 0.85rem 1rem;
-  border-radius: 0.3rem 1.1rem 1.1rem 1.1rem;
-  background: #3d3238;
-  font-size: 1.02rem;
-  line-height: 1.5;
-  white-space: pre-line;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: min(100%, 17rem);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--papel-2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--salvia) 70%, transparent), 0 0 0 0.5rem #2a2227, 0 0 0 calc(0.5rem + 1px) color-mix(in srgb, var(--salvia) 25%, transparent);
 }
-.cliente__quien { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; margin-top: 0.9rem; }
-.cliente__quien strong { font-size: 0.95rem; }
-.cliente__quien span { color: var(--tinta-2); font-size: 0.875rem; }
+.cliente__circulo img { width: 100%; height: 100%; object-fit: cover; }
+.cliente__inicial { color: var(--salvia); font-size: 4rem; font-weight: 500; }
+/* Hojas alrededor del círculo, como una rama */
+.cliente__hoja { position: absolute; color: var(--salvia); opacity: 0.55; pointer-events: none; }
+.cliente__hoja--1 { left: 4%; top: 2%; font-size: 3.6rem; transform: rotate(-35deg); }
+.cliente__hoja--2 { left: -2%; top: 44%; font-size: 2.8rem; transform: rotate(-95deg); opacity: 0.4; }
+.cliente__hoja--3 { left: 12%; bottom: -2%; font-size: 3.2rem; transform: rotate(-150deg); }
+
+.cliente__cuerpo { margin: 0; }
+.cliente__comillas {
+  display: block;
+  height: 2.6rem;
+  color: var(--salvia);
+  font-size: 5.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.cliente__estrellas { margin-top: 0.5rem; color: var(--salvia); font-size: 1.35rem; letter-spacing: 0.12em; }
+.cliente__estrellas span { opacity: 0.25; }
+.cliente__texto {
+  max-width: 30ch;
+  margin: 1rem 0 0;
+  font-size: clamp(1.35rem, 2.4vw, 2.15rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.cliente__quien {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  background: linear-gradient(var(--salvia), var(--salvia)) top left / 4rem 1px no-repeat;
+}
+.cliente__quien strong { font-size: 1.05rem; font-weight: 600; }
+.cliente__quien span { color: var(--tinta-2); font-size: 0.95rem; }
+.cliente__quien span:not(:empty)::before { content: "· "; }
 .cliente__perfume {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding: 0.25rem 0.75rem 0.25rem 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--campo, var(--tinta)) 40%, transparent);
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--salvia) 45%, transparent);
   border-radius: 999px;
   background: none;
   color: var(--tinta);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 200ms;
 }
-.cliente__perfume img { width: 1.75rem; height: 1.75rem; border-radius: 50%; object-fit: cover; }
-/* Marcos de ejemplo: solo en la vista previa local, mientras no haya testimonios */
-.cliente--ejemplo { opacity: 0.75; }
-.cliente__marco {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.6rem;
-  aspect-ratio: 9 / 15;
-  padding: 1.5rem;
-  border: 1px dashed rgb(255 255 255 / 0.25);
-  border-radius: var(--r-tarjeta);
-  color: var(--tinta-2);
-  font-size: 0.9rem;
-  text-align: center;
-}
-.cliente__marco i { font-size: 1.8rem; }
+.cliente__perfume:hover { background: rgb(255 255 255 / 0.05); }
 .cliente__aviso {
-  display: inline-block;
-  margin-top: 0.6rem;
-  color: var(--tinta-2);
+  position: absolute;
+  right: clamp(1rem, 2.5vw, 1.75rem);
+  bottom: clamp(1rem, 2.5vw, 1.75rem);
+  padding: 0.4rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--salvia) 45%, transparent);
+  border-radius: 999px;
+  color: var(--salvia);
   font-size: 0.75rem;
   font-weight: 600;
 }
+.clientes__puntos { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.25rem; }
+.clientes__puntos[hidden] { display: none; }
+.clientes__puntos button {
+  width: 0.55rem;
+  height: 0.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.25);
+  cursor: pointer;
+  transition: width 400ms var(--suave), background-color 300ms;
+}
+.clientes__puntos button[aria-current="true"] { width: 1.6rem; background: var(--salvia); }
 
 /* Filtros del catálogo: el botón, el fondo y los extremos de la hoja solo existen en el
    teléfono; en escritorio los filtros siguen en línea */
@@ -2036,6 +2062,12 @@ html:has(.detalle[open]) { overflow: hidden; }
 .sin-intro .intro,
 .intro[hidden] { display: none; }
 
+/* Mientras la página carga, la intro espera quieta (solo el fondo oscuro) y la portada
+   tampoco empieza su entrada; app.js quita la clase cuando todo está listo */
+.intro-esperando *,
+.intro-esperando *::before,
+.intro-esperando *::after { animation-play-state: paused !important; }
+
 .intro__centro { padding: 1.5rem; text-align: center; }
 .intro__marca { display: block; width: min(84vw, 36rem); height: auto; margin-inline: auto; overflow: visible; }
 .intro__marca path { fill: var(--tinta); }
@@ -2345,22 +2377,16 @@ html:has(.detalle[open]) { overflow: hidden; }
   .detalle__cerrar { position: sticky; top: 0.75rem; margin: 0.75rem 0.75rem -3.5rem auto; }
 
   .riel { grid-auto-columns: 72vw; }
-  .riel__controles { width: 100%; }
-  .riel__controles .btn { width: 100%; margin-left: 0; }
   .buscar__familia { display: none; }
-  .clientes__muro {
-    display: flex;
-    gap: 0.85rem;
-    margin-inline: calc(var(--borde) * -1);
-    padding-inline: var(--borde);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--borde);
-    scrollbar-width: none;
-  }
-  .clientes__muro::-webkit-scrollbar { display: none; }
-  .cliente { flex: 0 0 78%; margin-bottom: 0; scroll-snap-align: start; }
-  .clientes__cabecera .btn { width: 100%; }
+  /* Testimonio en el teléfono: el círculo arriba y la frase debajo */
+  .cliente { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 2rem 1.35rem 4rem; }
+  .cliente__circulo { width: 11rem; }
+  .cliente__hoja--1 { left: 16%; font-size: 2.6rem; }
+  .cliente__hoja--2 { left: 8%; font-size: 2rem; }
+  .cliente__hoja--3 { left: 22%; font-size: 2.3rem; }
+  .cliente__comillas { height: 2rem; font-size: 4.25rem; }
+  .cliente__texto { font-size: 1.3rem; }
+  .cliente__aviso { left: 1.35rem; right: auto; bottom: 1.25rem; }
 
   /* Rendimiento en el teléfono: sin vidrio esmerilado sobre contenido que se desliza
      (cuesta mucho redibujarlo) y sin capas reservadas para el parallax, que aquí no corre */
