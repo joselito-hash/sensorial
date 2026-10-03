@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sensorial Boutique | Perfumes de diseñador y árabes</title>
+  <meta name="description" content="Perfumes de diseñador y árabes. Elige por familia olfativa, arma tu lista y pídela por WhatsApp en un solo mensaje.">
+  <meta name="theme-color" content="#221c20">
+  <script>
+    (function () {
+      var raiz = document.documentElement;
+      raiz.classList.add("js");
+      /* La intro corre una sola vez por visita: no vuelve al regresar al inicio ni al recargar.
+         Tampoco corre con "reducir movimiento" ni al llegar directo al catálogo o al pedido. */
+      var vista = false;
+      try { vista = sessionStorage.getItem("sb-intro") === "1"; } catch (e) {}
+      var enInicio = !location.hash || location.hash === "#inicio";
+      var conIntro = enInicio && !vista && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      raiz.classList.add(conIntro ? "con-intro" : "sin-intro");
+      if (conIntro) {
+        raiz.classList.add("intro-activa");
+        try { sessionStorage.setItem("sb-intro", "1"); } catch (e) {}
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300..800;1,300..800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-familia="frescos" data-vista="inicio">
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro__centro">
+      <svg class="intro__marca" viewBox="112 154 827 439" aria-hidden="true" focusable="false">
+        <path class="logo-letra" style="--d:0" pathLength="1" d="M208.82,449.24 C197.6,443.67 186.27,439.17 175.71,433.09 C170.49,430.08 165.6,426.66 161.34,422.36 C144.08,404.91 147.13,380.86 168.22,368.33 C187.34,356.98 218.77,358.45 236.65,371.7 C242.64,376.14 246.9,381.73 246.28,389.81 C246.09,392.22 245.31,394.41 243.48,396.03 C240.71,398.49 237.65,397.45 236.78,393.85 C232.75,377.1 221.33,367.42 204.12,366.18 C194.64,365.5 185.5,366.44 177.14,371.55 C162.76,380.34 160.32,398.23 171.85,410.42 C177.58,416.48 184.81,420.25 192.09,423.97 C204.25,430.18 217.03,435.14 228.76,442.22 C237.88,447.73 246.02,454.28 250.89,464.03 C258.68,479.62 253.68,499.23 238.78,511.6 C222.77,524.89 204.09,529.97 183.53,529.57 C166.45,529.24 151,524.7 138.03,513.21 C126.62,503.11 122.25,487.85 126.83,474.78 C131.33,461.93 145.92,451.41 160.33,450.76 C165.48,450.52 170.68,450.18 175.59,452.35 C176.81,452.89 178.32,453.5 177.91,455.14 C177.4,457.14 175.71,456.79 174.22,456.38 C162.22,453.15 151.77,455.83 144.41,465.93 C136.15,477.24 136.5,489.63 142.68,501.84 C147.86,512.07 156.56,518.53 167.32,521.66 C187.96,527.63 207.24,524.79 224.27,511 C232.22,504.56 237.23,496.21 238.59,486.02 C240,475.44 235.33,467.27 227.37,460.74 C221.81,456.17 215.5,452.75 208.82,449.24 z"/>
+        <path class="logo-luna" pathLength="1" d="M539.42,359.58 C504.54,376.15 467.58,357.28 461.2,319.99 C457.71,299.56 468.76,276.76 487.35,266.25 C490.68,264.37 494.18,262.78 497.68,261.23 C499.27,260.53 501.03,259.6 503.01,261.26 C502.69,263.78 500.49,264.95 498.92,266.5 C480.98,284.24 480.09,314.33 497.02,331.46 C512.42,347.04 537.93,347.02 555.98,331.64 C560.77,327.56 564.5,322.5 569.07,317.79 C572.37,328.17 556.76,349.8 539.42,359.58 z"/>
+        <path class="logo-letra" style="--d:2" pathLength="1" d="M445.31,432.92 C448.02,438.23 449.34,443.49 449.33,449.1 C449.3,463.25 449.34,477.41 449.3,491.56 C449.29,494.74 449.54,497.87 450.28,500.96 C451.65,506.67 454.95,509.44 460.75,509.73 C462.33,509.81 464.49,509.18 464.63,511.62 C464.75,513.72 462.74,514.08 461.16,514.59 C450.24,518.13 437.12,509.9 434.87,497.87 C434.2,494.3 434.07,490.59 434.03,486.95 C433.93,475.12 434,463.3 433.97,451.48 C433.96,446.63 433.68,441.8 431.46,437.35 C424.75,423.92 405.5,421.92 393.96,433.42 C390.14,437.22 388.01,441.42 388.12,447.13 C388.42,463.12 388.18,479.11 388.22,495.09 C388.24,501.86 385.96,509.71 396.48,511.54 C392.81,514.83 369.67,515.13 365.49,512.55 C365.55,512.23 365.56,511.67 365.7,511.64 C372.69,509.75 373.06,504.55 372.99,498.48 C372.74,477.5 372.89,456.52 372.86,435.53 C372.86,431.05 373.59,426.29 366.61,425.95 C364.19,425.83 364.7,423.43 366.54,422.49 C370.85,420.28 375.3,418.26 380.34,418.88 C384.41,419.37 387.04,421.62 387.83,425.76 C388.14,427.34 388.32,428.95 388.68,431.32 C398.48,420.58 410.11,416.1 423.95,418.27 C433.18,419.71 440.34,424.46 445.31,432.92 z"/>
+        <path class="logo-letra" style="--d:7" pathLength="1" d="M810.69,420.01 C825.91,425.94 831.69,434.46 831.93,451.71 C832.12,465.54 831.92,479.36 831.97,493.19 C831.98,497 831.77,500.87 833.63,504.44 C836.18,509.33 840.16,510.47 844.73,507.53 C846.08,506.67 847.38,504.85 849.01,506.61 C850.78,508.54 848.92,509.98 847.72,511.26 C840.01,519.51 824.17,516.86 819.25,506.46 C818.07,503.96 817.26,501.28 816.14,498.29 C809.76,507.76 801.32,513.73 790.21,515.65 C782.11,517.05 774.27,516.24 766.73,513.01 C747.62,504.83 744.73,482.24 761.18,469.48 C769.41,463.09 779.1,460.05 789.1,457.92 C796.25,456.4 803.44,454.86 810.8,454.7 C815.2,454.6 816.8,452.59 816.78,448.13 C816.73,435.62 812.99,428.61 803.88,425.09 C793.23,420.98 777.84,424 771.34,431.58 C768.77,434.58 767.39,438.15 767.4,442.12 C767.4,444.67 767.85,447.39 764.41,448.01 C760.77,448.66 758.06,446.94 756.87,443.66 C754.98,438.45 756.63,433.8 760.34,429.93 C767.75,422.2 777.24,418.81 787.59,417.82 C795.23,417.1 802.92,417.28 810.69,420.01 M816.74,473.46 C816.73,469.97 816.64,466.47 816.73,462.98 C816.8,460.16 815.51,458.93 812.79,459.32 C807.85,460.02 802.88,460.58 798.02,461.62 C787.85,463.79 777.93,466.64 770.68,474.86 C764.54,481.82 763.54,492.71 768.22,500.48 C772.41,507.43 781.6,510.92 790.51,508.93 C807.03,505.24 816.71,492.51 816.74,473.46 z"/>
+        <path class="logo-letra" style="--d:4" pathLength="1" d="M615.32,510.48 C588.22,523.88 557.47,514.52 545.36,489.03 C532.19,461.31 544.63,423.97 580.65,417.02 C605.4,412.24 628.82,425.05 637.19,447.49 C645.95,470.93 637.68,498.26 615.32,510.48 M623.85,473.22 C624.85,459.78 623.14,446.95 615.21,435.57 C603.83,419.22 582.39,417.51 568.61,431.82 C551.36,449.73 552.24,485.75 570.35,502.91 C582.61,514.54 600.31,514.02 611.81,501.57 C618.96,493.85 622.56,484.49 623.85,473.22 z"/>
+        <path class="logo-letra" style="--d:8" pathLength="1" d="M916.87,519.93 C900.57,532.25 878.29,531.01 865.65,517.32 C858.89,510 857.02,501.03 857.02,491.44 C857.02,455.62 857.03,419.81 856.99,383.99 C856.99,381.17 857.08,378.26 856.45,375.54 C855.53,371.53 853.58,368.23 848.44,369.75 C846.99,370.18 845.69,370.04 845.14,368.49 C844.6,366.99 845.71,366.03 846.67,365.09 C853.95,357.99 865.28,359.91 869.79,369.08 C871.89,373.36 872.29,377.98 872.29,382.7 C872.26,419.35 872.29,456 872.26,492.65 C872.26,497.01 872.55,501.33 874.04,505.44 C877.33,514.48 883.61,520.21 893.26,521.57 C903.91,523.08 912.46,519.26 919.12,510.8 C920.54,508.98 921.38,504.4 924.54,506.7 C927.66,508.98 923.97,511.72 922.55,513.84 C921.09,516.02 918.97,517.76 916.87,519.93 z"/>
+        <path class="logo-letra" style="--d:1" pathLength="1" d="M265.39,453.7 C275.21,424.36 308.7,408.82 336.91,420.38 C346.58,424.33 353.96,430.74 356.55,441.44 C358.07,447.75 355.74,451.68 349.39,453.4 C328.03,459.2 306.44,464.09 285.24,470.48 C278.78,472.42 278.63,472.6 280.27,479.17 C287.76,509.23 319.77,518.78 342.58,497.77 C346.14,494.49 349.45,490.99 352.09,486.89 C352.91,485.62 354.03,484.29 355.76,485.24 C357.93,486.44 356.79,488.16 355.97,489.53 C344.29,509 322.92,520.42 300.46,514.45 C276.33,508.02 261.98,488.59 263.52,464.88 C263.76,461.21 264.18,457.6 265.39,453.7 M322.75,422.57 C298.33,420.13 272.98,445.99 280.16,466.07 C281.69,466.58 283.11,465.91 284.52,465.51 C295.58,462.43 306.65,459.34 317.68,456.13 C323.11,454.55 328.71,453.5 333.88,451.08 C341.45,447.54 343.28,442.43 339.76,434.78 C336.56,427.81 330.86,424.24 322.75,422.57 z"/>
+        <path class="logo-letra" style="--d:3" pathLength="1" d="M466.9,481.82 C470.8,480.4 471.11,482.76 471.33,485.31 C471.98,492.77 475.17,498.99 480.56,504.14 C488.22,511.46 497.48,512.48 507.11,510.13 C513.69,508.53 518.03,503.72 519.37,496.92 C520.72,490.06 517.81,484.51 512.88,480.01 C506.78,474.44 499.25,471.11 492.03,467.33 C487.45,464.94 482.88,462.54 478.8,459.33 C471.2,453.32 467.07,445.62 468.6,435.83 C470.14,425.98 477,420.51 485.98,417.82 C498.58,414.03 511.05,414.87 522.83,420.94 C529.91,424.59 532.73,431.21 530.38,436.95 C529.44,439.24 528.11,441.25 525.39,441.14 C522.15,441.01 522.93,438.23 522.58,436.22 C521.85,432.12 519.82,428.78 516.6,426.14 C509.21,420.1 495.07,419.03 486.81,423.9 C478.86,428.59 478.13,438.56 485.39,445.55 C489.77,449.76 495.26,452.3 500.65,454.92 C507.7,458.34 514.71,461.82 520.97,466.6 C533.19,475.93 536.79,489.91 529.69,501.81 C524.87,509.89 517.18,514.24 508.08,515.59 C493.29,517.77 479.38,515.88 468.45,504.41 C461.52,497.12 460.98,488.31 466.9,481.82 z"/>
+        <path class="logo-letra" style="--d:5" pathLength="1" d="M652.68,459 C652.68,450.17 652.68,441.84 652.67,433.51 C652.66,429.74 652.13,426.37 647.22,426.25 C646.14,426.22 645.27,425.67 645.15,424.49 C645.06,423.58 645.61,422.86 646.38,422.49 C650.9,420.33 655.44,418.03 660.67,418.98 C665.78,419.91 667.35,423.92 668.07,428.46 C670.26,428.33 670.83,426.52 671.93,425.44 C678.37,419.2 685.93,415.99 694.98,416.69 C703.2,417.32 708.95,423.12 708.56,430.37 C708.32,434.9 705.64,438.1 701.81,438.31 C697.03,438.58 695.55,435.57 694.92,431.5 C693.98,425.41 689.71,422.97 683.72,424.93 C674.2,428.04 667.26,439.44 667.53,450.11 C667.93,466.25 668.07,482.4 667.69,498.54 C667.55,504.81 667.99,509.85 675.34,511.41 C672.18,514.93 649.41,515.26 645.4,512.41 C645.43,511.41 646.09,510.92 646.92,510.7 C651.42,509.48 652.72,506.27 652.7,501.98 C652.63,487.82 652.68,473.66 652.68,459 z"/>
+        <path class="logo-letra" style="--d:6" pathLength="1" d="M735.35,456 C735.35,469.33 735.38,482.16 735.32,494.99 C735.31,497.85 735.56,500.65 736.32,503.39 C737.38,507.25 739.34,510.09 743.97,509.66 C745.48,509.52 747.2,509.38 747.44,511.48 C747.66,513.35 746.08,513.94 744.69,514.55 C732.83,519.73 720.88,511.54 720.76,497.88 C720.59,477.88 720.7,457.89 720.7,437.89 C720.7,436.4 720.74,434.89 720.64,433.4 C720.46,430.69 719.61,428.46 716.37,428.26 C715.16,428.19 713.92,428.01 713.75,426.51 C713.59,425.11 714.69,424.44 715.75,423.93 C718,422.85 720.23,421.69 722.58,420.87 C730.97,417.93 735.32,421.08 735.34,430.01 C735.36,438.5 735.35,447 735.35,456 z"/>
+        <path class="logo-onda logo-onda--der" style="--d:0" d="M733.35,313.41 C744.25,314.41 753.19,319.1 761.8,324.68 C766.41,327.66 770.89,330.96 775.8,333.34 C780.67,335.7 786.03,338.07 790.86,332.7 C792,331.45 793.61,331.27 794.78,332.72 C795.92,334.13 795.38,335.58 794.17,336.72 C790.99,339.7 787.07,340.18 782.98,339.8 C777.2,339.26 772.16,336.74 767.27,333.76 C764.92,332.33 762.79,330.38 759.5,329.75 C759.88,333.71 760.62,337.27 760.36,340.9 C759.97,346.28 757.55,350.47 753.13,353.4 C747.86,356.9 740.36,354.93 738.28,349.47 C737.11,346.39 737.11,343.46 741.68,342.16 C742.42,346.02 742.13,350.16 747.11,350.22 C751.06,350.26 754.39,346.8 755.48,341.6 C756.98,334.42 752.62,326.33 744.8,322.48 C734.45,317.37 723.65,317.31 712.67,320.15 C702.51,322.78 693.58,327.9 684.96,333.67 C670.89,343.08 656.29,351.15 639.2,353.89 C617.57,357.36 597.52,352.88 578.38,342.96 C577.15,342.32 575.47,341.8 575.81,339.51 C578.15,337.84 580.1,339.67 582.07,340.54 C603.02,349.74 624.61,352.52 646.89,346.52 C661.6,342.56 673.97,333.92 686.67,325.93 C700.75,317.07 715.73,311.04 733.35,313.41 z"/>
+        <path class="logo-onda logo-onda--izq" style="--d:0" d="M408.86,354.27 C385.68,355.62 365.41,348.72 346.63,336.4 C337.02,330.09 327.2,324.1 315.97,320.91 C304.43,317.64 292.99,316.98 281.84,322.27 C272.84,326.55 268.39,335.99 271.37,343.97 C272.09,345.89 273.1,347.57 274.85,348.72 C278.86,351.38 282.71,349.91 283.74,345.24 C284.04,343.9 284.01,342.39 285.88,342.57 C287.43,342.71 287.98,343.97 288.27,345.37 C289.45,351.07 283.17,356.25 276.78,354.84 C268.79,353.07 264.08,344.27 265.97,334.51 C266.28,332.9 266.81,331.32 267.55,328.55 C262.92,331.47 259.2,334.04 255.26,336.24 C248.77,339.86 242.06,342.77 234.36,340.24 C232.6,339.66 230.85,338.99 229.98,337.18 C229.37,335.9 229.34,334.57 230.62,333.59 C231.76,332.72 232.97,333.03 233.75,333.99 C237.68,338.82 242.51,337.11 246.99,335.54 C253.34,333.32 258.58,329.04 264.03,325.21 C272.6,319.19 281.8,314.91 292.37,313.6 C306.28,311.88 319.21,314.97 331.45,321.2 C338.12,324.59 344.59,328.44 350.86,332.53 C381.28,352.39 413.04,354.08 446.11,340.04 C447.82,339.31 449.5,337.72 451.68,338.84 C449.92,344.91 426.71,353.33 408.86,354.27 z"/>
+        <path class="logo-rayo" style="--d:1" d="M542.16,272.23 C552.51,248.23 562.7,224.58 572.89,200.92 C573.29,200 573.6,199.05 574.05,198.16 C574.8,196.7 575.53,194.77 577.64,195.64 C579.9,196.57 578.8,198.43 578.19,199.91 C575.73,205.91 573.26,211.9 570.68,217.85 C562.54,236.6 554.34,255.33 546.16,274.06 C545.76,274.98 545.4,275.91 544.95,276.8 C544.2,278.31 543.37,280.16 541.31,279.18 C539.08,278.12 540.52,276.35 541.04,274.87 C541.31,274.09 541.68,273.34 542.16,272.23 z"/>
+        <path class="logo-sub" style="--d:5" d="M558.84,564.6 C558.83,554.64 563.57,548.96 572.21,548.1 C578.99,547.42 585.33,552.47 586.79,559.74 C587.66,564.09 586.76,568.22 583.87,571.42 C580.51,575.13 581.22,577.02 585.77,578.2 C586.23,578.32 586.61,578.71 587.75,579.43 C584.25,582.77 581.28,582.12 578.88,579.59 C576.74,577.33 574.51,576.7 571.52,576.51 C564.45,576.05 560.57,571.64 558.84,564.6 M581.99,563.31 C582.15,559.84 581.45,556.66 578.48,554.48 C575.1,552.01 571.55,551.4 567.91,554 C564.19,556.65 562.72,561.46 564.16,565.91 C565.6,570.35 568.75,572.23 573.24,572 C578.23,571.75 581.21,569.17 581.99,563.31 z"/>
+        <path class="logo-linea logo-linea--der" d="M771,563.99 C757.53,563.71 744.54,564.49 731.59,563.37 C731.01,563.32 730.42,562.74 730.74,560.69 C770.43,558.89 810.32,561.43 850.2,560.64 C850.21,561.45 850.22,562.25 850.23,563.05 C823.99,563.36 797.74,563.68 771,563.99 z"/>
+        <path class="logo-brillo" style="--d:1" d="M667.45,279.6 C668,277.74 669,276.42 669.96,278.5 C671.48,281.8 672.45,285.31 675.12,288.02 C677.74,290.69 681.63,290.93 684.99,293.19 C681.42,295.75 677.21,296.25 674.49,299.31 C671.9,302.22 670.97,305.93 668.81,309.98 C666.72,301 661.3,295.67 652.13,293.3 C659.8,291.17 665.14,287.24 667.45,279.6 z"/>
+        <path class="logo-rayo" style="--d:3" d="M570.53,287.51 C587.47,270.04 604.16,252.83 620.86,235.61 C621.67,234.78 622.4,233.81 623.34,233.16 C625.03,231.97 626.3,228.27 628.78,230.75 C630.77,232.74 627.94,234.6 626.54,236.04 C614.05,248.97 601.49,261.84 588.93,274.71 C583.82,279.96 578.68,285.18 573.47,290.34 C572.27,291.53 570.92,293.77 568.99,291.93 C567.3,290.32 569.31,289.01 570.53,287.51 z"/>
+        <path class="logo-brillo" style="--d:1" d="M363.82,298.79 C360.35,301.68 359.99,306 357.2,310.22 C355,301.2 349.95,295.77 341.23,293.29 C349.63,290.84 354.92,285.71 357.46,277.3 C360.11,285.69 365.3,290.94 374.71,292.68 C370.67,295.69 366.71,295.95 363.82,298.79 z"/>
+        <path class="logo-linea logo-linea--izq" d="M182.21,563.29 C179.82,563.14 177.78,563.7 175.9,562.47 C179.08,559.93 288.37,559.17 295.86,561.58 C294.37,564.9 291.37,563.84 289.04,563.83 C258.58,563.72 228.12,563.5 197.66,563.31 C192.67,563.28 187.67,563.3 182.21,563.29 z"/>
+        <path class="logo-punto" d="M717.43,391.57 C721.23,387.44 725.5,386.34 730.28,388.47 C734.67,390.43 736.75,394.05 736.43,398.87 C736.12,403.3 733.65,406.32 729.55,407.75 C725.09,409.3 721.01,408.37 717.84,404.7 C714.32,400.63 714.46,396.29 717.43,391.57 z"/>
+        <path class="logo-onda logo-onda--der" style="--d:1" d="M692.3,342.11 C686.1,344.65 681.4,349.19 675.21,351.08 C678.77,346.62 683.44,343.68 688.19,340.95 C691.24,339.21 694.03,337.27 696.71,334.99 C704.82,328.05 714.01,325.78 725.21,329.25 C720.71,336.22 714.86,339.76 707.48,341.45 C702.51,342.58 697.54,340.26 692.3,342.11 z"/>
+        <path class="logo-onda logo-onda--izq" style="--d:1" d="M330.71,341.34 C320.54,342.79 311.75,340.95 304.53,333.79 C303.4,332.67 301.76,331.85 301.82,329.29 C308.9,326.54 316.23,326.73 322.68,330.49 C332.4,336.18 341.55,342.86 350.91,349.16 C351.37,349.47 351.55,350.2 352.5,351.83 C344.05,349.29 339.02,342.23 330.71,341.34 z"/>
+        <path class="logo-sub" style="--d:0" d="M374.47,564.18 C376.33,572.22 373.49,576 365.82,576.26 C354.45,576.65 354.46,576.65 354.59,565.6 C354.64,561.28 354.68,556.96 354.6,552.65 C354.55,549.99 355.53,548.59 358.35,548.67 C361.33,548.75 364.34,548.52 367.31,548.76 C372.86,549.2 375.69,553.38 373.66,558.52 C372.8,560.69 372.62,562.23 374.47,564.18 M362.68,564.03 C359.51,564.02 358.84,565.98 359.09,568.62 C359.38,571.76 363.44,573.13 367.86,571.62 C369.6,571.03 370.66,569.93 370.67,568.04 C370.69,566.15 369.7,564.87 367.92,564.44 C366.5,564.1 364.99,564.13 362.68,564.03 M369.56,556.36 C368.28,552.77 364.63,551.1 361.04,552.47 C358.47,553.44 358.86,555.69 359.25,557.53 C359.98,560.96 365.94,560.67 369.56,556.36 z"/>
+        <path class="logo-onda logo-onda--der" style="--d:0" d="M642.26,328.24 C637.93,332.67 633.02,335.45 627.31,336.45 C622.92,337.22 619.19,340.09 614.75,340.43 C613.96,338.73 615.23,338.33 615.98,338 C619.71,336.34 621.74,333.27 623.65,329.83 C628.68,320.73 639.07,315.07 648.38,316.39 C648.11,321.14 645.07,324.45 642.26,328.24 z"/>
+        <path class="logo-rayo" style="--d:3" d="M431.87,262.13 C438.57,269.12 445.03,275.85 451.44,282.63 C452.64,283.89 454.76,285.42 452.91,287.18 C450.93,289.04 449.66,286.5 448.54,285.35 C432.24,268.66 416,251.92 399.77,235.16 C398.57,233.92 396.41,232.36 398.26,230.61 C400.38,228.61 401.81,231.16 403.09,232.47 C412.64,242.23 422.12,252.07 431.87,262.13 z"/>
+        <path class="logo-sub" style="--d:1" d="M424.15,560.36 C424.19,570.79 418.77,576.71 409.78,576.51 C401.3,576.33 396.1,570.05 396.67,560.69 C397.07,554 401.8,549.11 408.7,548.26 C416.07,547.35 421.72,551.63 424.15,560.36 M402.14,567.05 C405.57,572.15 409.71,573.61 414.33,571.36 C418.64,569.27 420.72,563.76 419,558.98 C417.34,554.35 412.87,551.58 408.51,552.49 C403.66,553.5 400.87,557.65 401.24,563.43 C401.3,564.41 401.61,565.38 402.14,567.05 z"/>
+        <path class="logo-onda logo-onda--izq" style="--d:0" d="M387.77,331.36 C382.93,327.33 379.67,322.7 377.93,316.99 C383.56,314.85 394,318.69 399.01,324.5 C400.1,325.75 401.26,327.06 401.91,328.55 C404.05,333.47 407.6,336.97 412.21,339.93 C404.08,337.12 395.39,336.4 387.77,331.36 z"/>
+        <path class="logo-rayo" style="--d:1" d="M458.47,225.43 C454.7,216.86 451.07,208.66 447.52,200.42 C446.84,198.84 445.29,196.7 447.59,195.61 C450.27,194.33 450.83,197.15 451.57,198.82 C459.89,217.5 468.14,236.2 476.38,254.9 C477.11,256.56 478.15,258.67 475.76,259.6 C473.69,260.41 472.98,258.2 472.34,256.78 C467.72,246.47 463.19,236.11 458.47,225.43 z"/>
+        <path class="logo-sub" style="--d:2" d="M466.11,548.91 C469.29,556.86 469.47,564.92 465.89,572.38 C463.86,576.62 458.95,577.12 454.41,576.38 C450,575.66 447.2,573.06 446.36,568.65 C445.29,563.06 445.95,557.39 446.01,551.75 C446.03,550.38 446.45,549.02 448.23,549.01 C450.08,548.99 450.31,550.4 450.33,551.76 C450.39,555.75 450.32,559.74 450.39,563.73 C450.51,569.8 452.48,572.15 457.2,572.02 C461.82,571.89 463.73,569.13 463.47,563.29 C463.29,559.48 463.34,555.67 463.3,551.86 C463.28,550.21 463.64,548.84 466.11,548.91 z"/>
+        <path class="logo-sub" style="--d:7" d="M663.96,564.2 C662.02,564.29 660.46,564.13 659.05,564.5 C656.86,565.07 657.38,567.07 657.32,568.67 C657.25,570.68 658.21,571.81 660.27,571.85 C662.93,571.9 665.6,571.85 668.26,571.99 C669.6,572.06 671.06,572.41 670.99,574.21 C670.92,576 669.46,576.22 668.11,576.23 C664.11,576.27 660.12,576.21 656.12,576.23 C653.49,576.24 652.71,574.73 652.71,572.39 C652.74,565.73 652.75,559.07 652.71,552.41 C652.7,549.99 653.62,548.67 656.22,548.7 C660.21,548.75 664.21,548.66 668.2,548.7 C669.33,548.71 670.77,548.74 670.86,550.29 C670.97,552.18 669.4,552.25 668.07,552.3 C665.91,552.37 663.74,552.41 661.58,552.31 C658.8,552.19 657.17,552.95 657.24,556.2 C657.31,559.14 658.78,559.95 661.34,559.85 C662.33,559.81 663.34,559.79 664.33,559.89 C666.05,560.07 668.68,559.39 668.87,561.77 C669.11,564.81 666.2,563.89 663.96,564.2 z"/>
+        <path class="logo-sub" style="--d:6" d="M619.92,576.38 C611.61,575.91 608.83,573.05 608.71,565.17 C608.64,560.84 608.68,556.51 608.74,552.18 C608.76,550.67 608.84,548.98 610.97,548.98 C613.11,548.98 613.19,550.67 613.21,552.17 C613.28,556.67 613.3,561.17 613.28,565.67 C613.26,570.02 615.65,572.35 619.71,572.3 C623.6,572.24 625.7,569.7 625.76,565.75 C625.83,561.25 625.78,556.75 625.85,552.25 C625.88,550.74 625.98,549.04 628.06,549 C630.22,548.97 630.24,550.72 630.25,552.21 C630.29,557.21 630.48,562.22 630.2,567.2 C629.87,572.88 626.72,575.6 619.92,576.38 z"/>
+        <path class="logo-rayo" style="--d:0" d="M510.69,170.39 C510.86,168.57 511.08,167.12 512.86,167.17 C514.55,167.22 514.99,168.68 515.04,170.01 C515.19,173.5 515.22,176.99 515.22,180.48 C515.21,191.94 515.2,203.41 515.12,214.88 C515.1,216.77 515.46,219.56 512.68,219.46 C509.86,219.36 510.6,216.64 510.6,214.72 C510.62,200.09 510.65,185.47 510.69,170.39 z"/>
+        <path class="logo-brillo logo-brillo--bajo" style="--d:1" d="M716.66,551.74 C718.31,557.22 722.32,559.67 727.54,561.72 C721.29,563.73 717.33,567.69 715.38,574.17 C712.87,568.3 710.19,563.03 702.76,562.04 C708.85,559.75 712.68,556.44 714.37,550.65 C714.92,548.76 716.08,550.26 716.66,551.74 z"/>
+        <path class="logo-brillo logo-brillo--bajo" style="--d:0" d="M300.56,563.08 C299.47,562.41 298.21,561.31 299.78,560.95 C305.93,559.53 309.13,555.4 311.03,549.15 C312.85,555.94 316.66,560.03 323.75,561.1 C321.2,564.05 317.79,563.73 315.66,565.89 C313.45,568.14 313.12,571.22 310.68,574.97 C308.75,569.29 306.88,564.15 300.56,563.08 z"/>
+        <path class="logo-brillo" style="--d:0" d="M513.02,230.35 C515.27,235.77 518.47,239.92 524.96,241.55 C518.97,243.83 514.61,247.17 513.09,253.85 C510.9,247.87 507.86,243.41 501.04,241.86 C507.47,240.04 510.68,235.78 513.02,230.35 z"/>
+        <path class="logo-rayo" style="--d:2" d="M567.74,261.8 C570.54,257.46 573.12,253.4 575.75,249.39 C576.58,248.12 577.62,246.73 579.34,247.97 C580.76,249.01 579.99,250.41 579.29,251.52 C572.85,261.77 566.39,271.99 559.89,282.2 C559.09,283.45 557.9,284.92 556.28,283.79 C554.65,282.66 555.73,281.08 556.5,279.83 C560.16,273.9 563.86,268.01 567.74,261.8 z"/>
+        <path class="logo-rayo" style="--d:4" d="M600.43,295.47 C595.75,298.39 591.4,301.15 587,303.84 C585.65,304.66 584,306.2 582.69,304.17 C581.59,302.46 583.39,301.45 584.58,300.69 C594.39,294.42 604.23,288.19 614.1,282.02 C615.31,281.27 617.02,280.23 618.08,281.97 C619.33,284.03 617.3,284.93 615.98,285.78 C610.94,289 605.83,292.11 600.43,295.47 z"/>
+        <path class="logo-sub" style="--d:3" d="M502.3,562.08 C502.28,566.05 502.3,569.53 502.24,573.01 C502.21,574.37 502,575.84 500.25,575.93 C498.24,576.03 497.81,574.51 497.79,572.92 C497.73,567.95 497.6,562.97 497.8,558 C497.95,554.26 497.31,551.77 492.74,552.33 C491.39,552.49 489.32,552.69 489.26,550.58 C489.21,548.44 491.26,548.74 492.66,548.72 C497.96,548.67 503.26,548.7 508.57,548.76 C509.75,548.77 511,549.02 510.91,550.64 C510.84,551.87 509.82,552.39 508.81,552.26 C500.68,551.26 502.38,557.03 502.3,562.08 z"/>
+        <path class="logo-rayo" style="--d:5" d="M591.87,322.26 C590.33,322.38 588.99,322.47 588.83,320.88 C588.66,319.15 590.22,318.74 591.42,318.31 C597.69,316.1 603.99,313.97 610.28,311.81 C615,310.18 619.7,308.49 624.44,306.95 C625.96,306.46 628.05,305.69 628.78,307.8 C629.55,310.07 627.24,310.45 625.78,310.95 C614.61,314.75 603.4,318.46 591.87,322.26 z"/>
+        <path class="logo-rayo" style="--d:4" d="M427.05,296 C421.27,292.35 415.78,288.93 410.35,285.42 C409.16,284.66 407.43,283.77 408.72,281.96 C409.72,280.56 411.22,281.26 412.32,281.96 C422.44,288.31 432.52,294.7 442.6,301.12 C443.73,301.84 444.95,302.84 443.97,304.33 C442.99,305.82 441.55,305.04 440.44,304.36 C436.05,301.69 431.71,298.93 427.05,296 z"/>
+        <path class="logo-rayo" style="--d:5" d="M404.14,312.06 C401.73,310.65 397.07,311.15 398.14,307.89 C399.21,304.67 402.79,307.31 405.06,308.05 C414.37,311.11 423.61,314.38 432.87,317.61 C434.67,318.24 436.87,318.36 437.63,320.89 C435.93,323.35 433.8,321.96 431.93,321.34 C422.77,318.34 413.64,315.24 404.14,312.06 z"/>
+        <path class="logo-sub" style="--d:4" d="M532.63,563.95 C532.62,559.49 532.6,555.52 532.61,551.56 C532.62,550.13 532.91,548.85 534.75,548.88 C536.45,548.91 537.06,550.05 537.07,551.5 C537.11,558.78 537.11,566.05 537.07,573.33 C537.06,574.76 536.47,576.01 534.78,576.02 C532.63,576.03 532.62,574.4 532.62,572.86 C532.61,570.05 532.63,567.24 532.63,563.95 z"/>
+        <path class="logo-rayo" style="--d:2" d="M446.61,249.85 C447.17,246.46 449.05,246.97 450.23,248.72 C454.58,255.17 458.67,261.79 462.78,268.39 C463.49,269.54 463.87,271.08 462.2,271.77 C460.58,272.43 459.83,270.93 459.14,269.87 C454.95,263.32 450.82,256.74 446.61,249.85 z"/>
+        <path class="logo-rayo" style="--d:3" d="M587.49,234.27 C589.63,236.51 589.02,238.1 586.72,238.97 C585.07,239.6 583.69,238.66 583.51,236.97 C583.23,234.37 584.73,233.51 587.49,234.27 z"/>
+        <path class="logo-rayo" style="--d:4" d="M627.98,276.69 C626.33,274.14 627.24,272.59 629.6,272.14 C631.26,271.83 632.47,273.08 632.36,274.78 C632.19,277.54 630.47,277.87 627.98,276.69 z"/>
+        <path class="logo-rayo" style="--d:2" d="M536.97,217.2 C538.47,214.75 540.1,214.34 541.64,216.55 C542.62,217.95 542.17,219.54 540.63,220.23 C538.18,221.31 537,220.06 536.97,217.2 z"/>
+        <path class="logo-rayo" style="--d:2" d="M488.7,216.5 C489.39,219.36 488.37,220.72 485.78,220.37 C484.25,220.16 483.51,218.82 483.99,217.41 C484.81,215.02 486.41,214.46 488.7,216.5 z"/>
+        <path class="logo-rayo" style="--d:4" d="M394.03,274.09 C395.63,271.62 397.32,271.4 398.83,273.57 C399.7,274.8 399.29,276.32 397.94,276.94 C395.61,278 394.16,277.07 394.03,274.09 z"/>
+        <path class="logo-rayo" style="--d:3" d="M437.89,236.08 C439.08,233.61 440.69,233.18 442.35,234.84 C443.67,236.16 443.21,237.77 441.7,238.61 C439.53,239.81 438.26,238.77 437.89,236.08 z"/>
+      </svg>
+      <p class="intro__lema">Perfumes de diseñador y árabes</p>
+    </div>
+  </div>
+
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <div class="hoja">
+    <header class="nav">
+      <a class="marca" href="#inicio">
+        <img class="marca__logo" src="img/sensorial-logo.svg" alt="Sensorial Boutique, ir al inicio" width="827" height="439">
+      </a>
+
+      <nav class="nav__enlaces" aria-label="Principal">
+        <a href="#inicio" data-pestana="inicio" aria-current="page">Inicio</a>
+        <a href="#catalogo" data-pestana="catalogo">Catálogo</a>
+        <a href="#pedido" data-pestana="pedido">Pedido<span class="nav__conteo" id="nav-conteo" hidden></span></a>
+        <span class="nav__indicador" aria-hidden="true"></span>
+      </nav>
+
+      <div class="nav__acciones">
+        <form class="buscar" id="buscar" role="search">
+          <label class="oculto" for="buscar-campo">Buscar perfume</label>
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input id="buscar-campo" type="search" placeholder="Buscar perfume" autocomplete="off" aria-controls="buscar-sugerencias" aria-expanded="false">
+          <div class="buscar__sugerencias" id="buscar-sugerencias" aria-label="Sugerencias de perfumes" hidden></div>
+        </form>
+      </div>
+    </header>
+    <button class="buscar__velo" id="buscar-velo" type="button" aria-label="Cerrar búsqueda" tabindex="-1"></button>
+
+    <!-- Las tres pestañas viven en esta página. Solo una se muestra; al cambiar, se deslizan de lado. -->
+    <main class="vistas" id="contenido">
+
+      <!-- ============ Inicio ============ -->
+      <div class="pestana" id="vista-inicio" data-vista="inicio" tabindex="-1">
+        <section class="hero" data-marco aria-labelledby="titulo-hero">
+          <div class="hero__marco" data-marco>
+            <div class="hero__capas" id="capas">
+              <div class="hero__capa es-activa" data-familia="frescos">
+                <img class="hero__foto" data-parallax="0.09" data-profundidad="-10"
+                  src="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600"
+                  srcset="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=900 900w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600 1600w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=2400 2400w"
+                  sizes="100vw" alt="Frasco de Dior Sauvage iluminado con luz azul" fetchpriority="high" style="object-position: 50% 46%">
+              </div>
+            </div>
+            <div class="hero__velo" aria-hidden="true"></div>
+
+            <div class="selector" id="selector" role="group" aria-label="Elegir familia olfativa"></div>
+
+            <div class="hero__texto">
+              <h1 id="titulo-hero">Encuentra tu próximo perfume.</h1>
+              <p>Aromas frescos, dulces, amaderados y orientales, de diseñador y árabes. Guarda los que te gusten y pídelos todos en un solo mensaje.</p>
+              <a class="btn btn--claro" href="#catalogo">
+                Explorar el catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+          </div>
+
+          <article class="destacado" id="destacado" data-parallax="-22" data-profundidad="16" data-solo-escritorio aria-live="polite"></article>
+        </section>
+
+        <!-- Selección: una fila que se desliza de lado -->
+        <section class="seleccion" aria-labelledby="titulo-seleccion">
+          <div class="contenedor seccion__cabecera revelar">
+            <div>
+              <h2 id="titulo-seleccion">Para empezar</h2>
+              <p>Una selección para conocer el catálogo. Toca un perfume para ver sus notas o agrégalo a tu lista.</p>
+            </div>
+            <div class="riel__controles">
+              <button class="riel__flecha" type="button" data-riel="-1" aria-label="Ver perfumes anteriores"><i class="ph ph-arrow-left" aria-hidden="true"></i></button>
+              <button class="riel__flecha" type="button" data-riel="1" aria-label="Ver más perfumes"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+            </div>
+          </div>
+          <ul class="riel" id="riel" aria-label="Selección de perfumes"></ul>
+          <div class="contenedor seleccion__pie">
+            <a class="enlace" href="#catalogo?todo">Ver todo el catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          </div>
+        </section>
+
+        <!-- Diseñador y árabes: dos filas grandes que llevan al catálogo ya filtrado -->
+        <section class="mundos contenedor" aria-labelledby="titulo-mundos">
+          <div class="mundos__texto revelar">
+            <h2 id="titulo-mundos">Diseñador y árabes, sin tener que elegir.</h2>
+            <p>Los clásicos de las casas que ya conoces y la intensidad de las casas de Emiratos, en el mismo catálogo.</p>
+          </div>
+          <ul class="mundos__lista">
+            <li class="revelar" style="--orden: 1">
+              <a class="mundo" href="#catalogo?origen=disenador">
+                <span class="mundo__foto">
+                  <!-- FOTO DE STOCK (Unsplash): Chanel N°5 -->
+                  <img src="https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=500" alt="" loading="lazy" width="500" height="500">
+                </span>
+                <span class="mundo__texto">
+                  <strong>Diseñador</strong>
+                  <span>Dior, Chanel, Yves Saint Laurent, Versace</span>
+                </span>
+                <span class="mundo__conteo" data-conteo-origen="Diseñador"></span>
+                <i class="ph ph-arrow-up-right mundo__flecha" aria-hidden="true"></i>
+              </a>
+            </li>
+            <li class="revelar" style="--orden: 2">
+              <a class="mundo" href="#catalogo?origen=arabe">
+                <span class="mundo__foto">
+                  <!-- FOTO DE STOCK (Unsplash): perfume de oud -->
+                  <img src="https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=500" alt="" loading="lazy" width="500" height="500">
+                </span>
+                <span class="mundo__texto">
+                  <strong>Árabes</strong>
+                  <span>Lattafa, Armaf, Afnan, Rasasi</span>
+                </span>
+                <span class="mundo__conteo" data-conteo-origen="Árabe"></span>
+                <i class="ph ph-arrow-up-right mundo__flecha" aria-hidden="true"></i>
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Cómo funciona: tres pasos en escalera, unidos por una línea -->
+        <section class="como contenedor" aria-labelledby="titulo-como">
+          <div class="como__cabecera revelar">
+            <h2 id="titulo-como">Tu pedido cabe en un mensaje.</h2>
+            <a class="btn btn--claro" href="#pedido">Ver tu pedido<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          </div>
+          <ol class="como__pasos">
+            <li class="revelar" style="--orden: 1">
+              <span class="como__num">01</span>
+              <i class="ph ph-plus-circle" aria-hidden="true"></i>
+              <h3>Agrega</h3>
+              <p>Guarda en tu lista los perfumes que te llamen la atención.</p>
+            </li>
+            <li class="revelar" style="--orden: 2">
+              <span class="como__num">02</span>
+              <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>
+              <h3>Envía</h3>
+              <p>El botón abre WhatsApp con tu lista ya escrita. Solo tienes que mandarla.</p>
+            </li>
+            <li class="revelar" style="--orden: 3">
+              <span class="como__num">03</span>
+              <i class="ph ph-chats-circle" aria-hidden="true"></i>
+              <h3>Coordina</h3>
+              <p>Por el chat te confirmamos precio, disponibilidad y entrega.</p>
+            </li>
+          </ol>
+        </section>
+      </div>
+
+      <!-- ============ Catálogo: origen, familia y perfumes ============ -->
+      <div class="pestana recorrido" id="vista-catalogo" data-vista="catalogo" data-paso="origen" tabindex="-1" hidden>
+        <div class="recorrido__progreso contenedor">
+          <ol class="pasos-nav" aria-label="Pasos para encontrar tu perfume">
+            <li><button type="button" data-ir-paso="origen" aria-current="step"><span>1</span>Origen</button></li>
+            <li><button type="button" data-ir-paso="familia" disabled><span>2</span>Familia</button></li>
+            <li><button type="button" data-ir-paso="catalogo" disabled><span>3</span>Perfumes</button></li>
+          </ol>
+        </div>
+
+        <!-- Paso 1: diseñador o árabes -->
+        <section class="paso contenedor" id="paso-origen" aria-labelledby="titulo-origen">
+          <div class="paso__cabecera">
+            <h1 id="titulo-origen">Diseñador y árabes, en un mismo lugar.</h1>
+            <p>¿Qué quieres explorar primero?</p>
+          </div>
+
+          <div class="eleccion-origen">
+            <button class="opcion" type="button" data-elegir-origen="Diseñador" style="--i: 0">
+              <!-- FOTO DE STOCK (Unsplash): Chanel N°5. Reemplazar por foto propia si quieres -->
+              <img alt="" src="https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1400"
+                srcset="https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=800 800w, https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1400 1400w, https://images.unsplash.com/photo-1769671318982-0eccafbef5ae?auto=format&fit=crop&q=80&w=1990 1990w"
+                sizes="(max-width: 56rem) 100vw, 58vw" loading="lazy">
+              <span class="opcion__texto">
+                <span class="opcion__titulo">Diseñador<i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+                <span class="opcion__desc">Las casas que ya conoces: Dior, Chanel, Yves Saint Laurent, Versace. Los clásicos que la gente reconoce al pasar.</span>
+                <span class="opcion__conteo" data-conteo-origen="Diseñador"></span>
+              </span>
+            </button>
+            <button class="opcion" type="button" data-elegir-origen="Árabe" style="--i: 1">
+              <!-- FOTO DE STOCK (Unsplash): perfume de oud. Reemplazar por foto propia si quieres -->
+              <img alt="" src="https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=1400"
+                srcset="https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=800 800w, https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=1400 1400w, https://images.unsplash.com/photo-1785357693688-5329ad1840a9?auto=format&fit=crop&q=80&w=2200 2200w"
+                sizes="(max-width: 56rem) 100vw, 42vw" loading="lazy">
+              <span class="opcion__texto">
+                <span class="opcion__titulo">Árabes<i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+                <span class="opcion__desc">Casas de Emiratos como Lattafa, Armaf, Afnan y Rasasi. Aromas intensos, con mucho oud, vainilla y especias.</span>
+                <span class="opcion__conteo" data-conteo-origen="Árabe"></span>
+              </span>
+            </button>
+          </div>
+
+          <div class="paso__pie" style="--i: 2">
+            <button class="ver-todo" type="button" data-ver-todo>Ver todo<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </div>
+        </section>
+
+        <!-- Paso 2: la familia -->
+        <section class="paso contenedor" id="paso-familia" aria-labelledby="titulo-familia" hidden>
+          <div class="paso__cabecera">
+            <button class="volver" type="button" data-ir-paso="origen"><i class="ph ph-arrow-left" aria-hidden="true"></i>Cambiar origen</button>
+            <h1 id="titulo-familia">¿A qué familia te inclinas?</h1>
+            <p id="familia-sub"></p>
+            <button class="enlace" type="button" id="ver-todo-origen"><span>Ver todos</span><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </div>
+
+          <ul class="familias__rejilla" id="eleccion-familias"></ul>
+
+          <div class="paso__pie" style="--i: 4">
+            <button class="ver-todo" type="button" data-ver-todo>Ver todo<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </div>
+        </section>
+
+        <!-- Paso 3: el catálogo con los filtros elegidos -->
+        <section class="paso contenedor catalogo" id="paso-catalogo" aria-labelledby="titulo-catalogo" hidden>
+          <div class="paso__cabecera">
+            <button class="volver" type="button" data-ir-paso="origen"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Empezar de nuevo</button>
+            <h1 id="titulo-catalogo">Todo el catálogo</h1>
+            <p>Cada tarjeta muestra las tres notas principales del perfume. Toca uno para ver su ficha, o agrégalo a tu lista y pídelos todos en un solo mensaje.</p>
+          </div>
+
+          <div class="filtros">
+            <div class="filtros__grupo" role="group" aria-labelledby="filtro-familia">
+              <span class="filtros__titulo" id="filtro-familia">Familia</span>
+              <button class="chip" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true">Todas</button>
+              <button class="chip" type="button" data-grupo="familia" data-valor="frescos" aria-pressed="false">Frescos</button>
+              <button class="chip" type="button" data-grupo="familia" data-valor="dulces" aria-pressed="false">Dulces</button>
+              <button class="chip" type="button" data-grupo="familia" data-valor="amaderados" aria-pressed="false">Amaderados</button>
+              <button class="chip" type="button" data-grupo="familia" data-valor="orientales" aria-pressed="false">Orientales</button>
+            </div>
+            <div class="filtros__grupo" role="group" aria-labelledby="filtro-origen">
+              <span class="filtros__titulo" id="filtro-origen">Origen</span>
+              <button class="chip" type="button" data-grupo="origen" data-valor="todos" aria-pressed="true">Todos</button>
+              <button class="chip" type="button" data-grupo="origen" data-valor="Diseñador" aria-pressed="false">Diseñador</button>
+              <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
+            </div>
+            <p class="filtros__conteo" id="conteo" aria-live="polite"></p>
+          </div>
+
+          <div id="capitulos"></div>
+
+          <div class="vacio" id="vacio" hidden>
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+            <p>No hay perfumes con esta combinación todavía.</p>
+            <button class="enlace" type="button" id="quitar-filtros">Ver todo el catálogo</button>
+          </div>
+
+          <noscript>
+            <p class="vacio">Activa JavaScript para ver el catálogo, o escríbenos por WhatsApp y te lo enviamos.</p>
+          </noscript>
+        </section>
+      </div>
+
+      <!-- ============ Pedido: la lista completa, el mensaje y las dudas ============ -->
+      <div class="pestana" id="vista-pedido" data-vista="pedido" tabindex="-1" hidden>
+        <section class="pedido contenedor" aria-labelledby="titulo-pedido">
+          <div class="pedido__principal">
+            <div class="pedido__cabecera">
+              <h1 id="titulo-pedido">Tu pedido</h1>
+              <p id="pedido-resumen"></p>
+            </div>
+
+            <ul class="pedido__items" id="pedido-items"></ul>
+            <div class="pedido__acciones" id="pedido-acciones" hidden>
+              <a class="enlace" href="#catalogo">Seguir explorando<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+              <button class="enlace pedido__vaciar" type="button" id="vaciar-pedido"><i class="ph ph-trash" aria-hidden="true"></i>Vaciar lista</button>
+            </div>
+
+            <div class="pedido__vacio" id="pedido-vacio" hidden>
+              <span class="pedido__vacio-icono"><i class="ph ph-shopping-bag-open" aria-hidden="true"></i></span>
+              <h2>Todavía no agregas perfumes.</h2>
+              <p>Agrega los que te gusten desde el catálogo y aquí armamos el mensaje por ti. También puedes escribirnos sin lista y te recomendamos.</p>
+              <a class="btn btn--claro" href="#catalogo">Ir al catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+            </div>
+          </div>
+
+          <aside class="mensaje" aria-labelledby="titulo-mensaje">
+            <p class="mensaje__titulo" id="titulo-mensaje"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Así llegará tu mensaje</p>
+            <p class="mensaje__texto" id="mensaje-texto" aria-live="polite"></p>
+            <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+              <i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>Enviar por WhatsApp
+            </a>
+            <ol class="mensaje__pasos">
+              <li><span>1</span>Envías el mensaje</li>
+              <li><span>2</span>Te confirmamos precio y disponibilidad</li>
+              <li><span>3</span>Coordinamos la entrega</li>
+            </ol>
+          </aside>
+        </section>
+
+        <section class="preguntas contenedor" aria-labelledby="titulo-preguntas">
+          <div class="preguntas__intro">
+            <h2 id="titulo-preguntas">Antes de pedir</h2>
+            <p>Lo que más nos preguntan. Si tu duda no está aquí, escríbenos y lo vemos en el chat.</p>
+          </div>
+
+          <div class="preguntas__lista">
+            <div class="pregunta">
+              <h3>
+                <button class="pregunta__boton" type="button" id="pregunta-1" aria-expanded="false" aria-controls="respuesta-1">
+                  <span>¿Cómo elijo un perfume sin olerlo antes?</span><i class="ph ph-plus" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="pregunta__respuesta" id="respuesta-1" role="region" aria-labelledby="pregunta-1">
+                <div><p>Cuéntanos qué perfumes ya te gustan o a qué quieres oler (dulce, fresco, intenso) y te sugerimos opciones parecidas. Las notas de cada ficha también te orientan.</p></div>
+              </div>
+            </div>
+            <div class="pregunta">
+              <h3>
+                <button class="pregunta__boton" type="button" id="pregunta-2" aria-expanded="false" aria-controls="respuesta-2">
+                  <span>¿Qué son las notas de salida, corazón y fondo?</span><i class="ph ph-plus" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="pregunta__respuesta" id="respuesta-2" role="region" aria-labelledby="pregunta-2">
+                <div><p>Salida es lo que hueles en los primeros minutos. Corazón es el aroma principal, que aparece después. Fondo es lo que queda en la piel al final del día.</p></div>
+              </div>
+            </div>
+            <div class="pregunta">
+              <h3>
+                <button class="pregunta__boton" type="button" id="pregunta-3" aria-expanded="false" aria-controls="respuesta-3">
+                  <span>¿Qué diferencia hay entre EDT, EDP y extracto?</span><i class="ph ph-plus" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="pregunta__respuesta" id="respuesta-3" role="region" aria-labelledby="pregunta-3">
+                <div><p>Es la concentración de aceites. Eau de Toilette es la más ligera, Eau de Parfum es más intensa y el extracto es la más concentrada. A mayor concentración, suele durar más en la piel.</p></div>
+              </div>
+            </div>
+            <div class="pregunta">
+              <h3>
+                <button class="pregunta__boton" type="button" id="pregunta-4" aria-expanded="false" aria-controls="respuesta-4">
+                  <span>¿Qué es un perfume árabe?</span><i class="ph ph-plus" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="pregunta__respuesta" id="respuesta-4" role="region" aria-labelledby="pregunta-4">
+                <div><p>Es un perfume de una casa de Medio Oriente, sobre todo de Emiratos Árabes. Suelen ser intensos y usar notas como oud, ámbar, vainilla y especias.</p></div>
+              </div>
+            </div>
+            <div class="pregunta">
+              <h3>
+                <button class="pregunta__boton" type="button" id="pregunta-5" aria-expanded="false" aria-controls="respuesta-5">
+                  <span>¿Hacen envíos y qué formas de pago aceptan?</span><i class="ph ph-plus" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="pregunta__respuesta" id="respuesta-5" role="region" aria-labelledby="pregunta-5">
+                <div><p>Escríbenos por WhatsApp con tu ciudad y te confirmamos las opciones de entrega y de pago disponibles.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="pie">
+      <a class="marca" href="#inicio">
+        <img class="marca__logo" src="img/sensorial-logo.svg" alt="Sensorial Boutique" width="827" height="439">
+      </a>
+      <nav aria-label="Pie de página">
+        <a href="#inicio">Inicio</a>
+        <a href="#catalogo">Catálogo</a>
+        <a href="#pedido">Pedido</a>
+      </nav>
+      <p>© 2026 Sensorial Boutique. Las marcas mencionadas pertenecen a sus respectivos dueños.</p>
+    </footer>
+  </div>
+
+  <dialog class="detalle" id="detalle" aria-labelledby="detalle-nombre"></dialog>
+
+  <div class="barra" id="barra" role="region" aria-label="Tu lista" inert>
+    <div class="barra__panel" id="barra-panel" aria-labelledby="barra-titulo" inert>
+      <div class="barra__cabecera">
+        <h2 id="barra-titulo">Tu lista</h2>
+        <span class="barra__total" id="barra-total"></span>
+        <button class="barra__cerrar" type="button" id="cerrar-lista" aria-label="Cerrar la lista"><i class="ph ph-x" aria-hidden="true"></i></button>
+      </div>
+      <ul class="barra__items" id="barra-items"></ul>
+      <div class="barra__pie">
+        <a class="enlace barra__ir" href="#pedido">Ver tu pedido<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <button class="enlace barra__vaciar" type="button" id="vaciar"><i class="ph ph-trash" aria-hidden="true"></i>Vaciar lista</button>
+      </div>
+    </div>
+    <div class="barra__fila">
+      <button class="barra__resumen" type="button" id="mostrar-lista" aria-controls="barra-panel" aria-expanded="false">
+        <span class="barra__pila" id="barra-pila" aria-hidden="true"></span>
+        <span class="barra__texto">
+          <strong id="barra-conteo">0 perfumes</strong>
+          <span class="barra__estado" id="barra-estado" aria-live="polite">Ver tu lista</span>
+        </span>
+        <i class="ph ph-caret-up barra__flecha" aria-hidden="true"></i>
+      </button>
+      <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener">
+        <i class="ph ph-whatsapp-logo" aria-hidden="true"></i><span>Pedir por WhatsApp</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
