@@ -153,27 +153,22 @@
               <p>Los perfumes que más nos piden. Toca uno para ver sus notas o agrégalo a tu lista.</p>
             </div>
             <div class="riel__controles">
-              <button class="riel__flecha" type="button" data-riel="-1" aria-label="Ver perfumes anteriores"><i class="ph ph-arrow-left" aria-hidden="true"></i></button>
-              <button class="riel__flecha" type="button" data-riel="1" aria-label="Ver más perfumes"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
               <a class="btn btn--claro" href="#catalogo">Ver catálogo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
             </div>
           </div>
           <ul class="riel" id="riel" aria-label="Perfumes más vendidos"></ul>
         </section>
 
-        <!-- ¿Para cuándo lo buscas?: los perfumes mejor votados para cada momento -->
-        <section class="ocasion contenedor" aria-labelledby="titulo-ocasion">
-          <div class="ocasion__intro revelar">
-            <h2 id="titulo-ocasion">¿Para cuándo lo buscas?</h2>
-            <p>Elige el momento y te mostramos los perfumes que mejor le van, según los votos de la comunidad de Fragrantica.</p>
-            <div class="ocasion__opciones" role="group" aria-label="Elegir el momento">
-              <button class="ocasion__opcion" type="button" data-ocasion="2" aria-pressed="true"><i class="ph ph-umbrella" aria-hidden="true"></i>Verano</button>
-              <button class="ocasion__opcion" type="button" data-ocasion="0" aria-pressed="false"><i class="ph ph-snowflake" aria-hidden="true"></i>Invierno</button>
-              <button class="ocasion__opcion" type="button" data-ocasion="4" aria-pressed="false"><i class="ph ph-sun" aria-hidden="true"></i>Día</button>
-              <button class="ocasion__opcion" type="button" data-ocasion="5" aria-pressed="false"><i class="ph ph-moon-stars" aria-hidden="true"></i>Noche</button>
+        <!-- Lo que dicen nuestros clientes: capturas o frases reales (se llenan en app.js, TESTIMONIOS) -->
+        <section class="clientes contenedor" id="clientes" aria-labelledby="titulo-clientes" hidden>
+          <div class="clientes__cabecera revelar">
+            <div>
+              <h2 id="titulo-clientes">Lo que dicen nuestros clientes</h2>
+              <p>Mensajes que nos han mandado por WhatsApp después de recibir su perfume.</p>
             </div>
+            <a class="btn btn--claro js-wa" href="https://wa.me/" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Escríbenos</a>
           </div>
-          <ol class="ocasion__lista" id="ocasion-lista" aria-live="polite"></ol>
+          <ul class="clientes__muro" id="clientes-muro"></ul>
         </section>
       </div>
 
@@ -239,7 +234,18 @@
             <p>Cada tarjeta muestra las tres notas principales del perfume. Toca uno para ver su ficha, o agrégalo a tu lista y pídelos todos en un solo mensaje.</p>
           </div>
 
-          <div class="filtros">
+          <!-- En el teléfono, los filtros viven en una hoja que sube desde abajo -->
+          <button class="filtros__abrir" type="button" id="abrir-filtros" aria-controls="filtros" aria-expanded="false">
+            <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
+            <span class="filtros__abrir-texto"><strong>Filtros</strong><span id="filtros-resumen">Todo el catálogo</span></span>
+            <span class="filtros__abrir-conteo" id="filtros-activos" hidden></span>
+          </button>
+          <div class="filtros__fondo" id="filtros-fondo"></div>
+          <div class="filtros" id="filtros" aria-labelledby="filtros-titulo">
+            <div class="filtros__cabecera">
+              <h2 id="filtros-titulo">Filtros</h2>
+              <button class="filtros__cerrar" type="button" id="cerrar-filtros" aria-label="Cerrar filtros"><i class="ph ph-x" aria-hidden="true"></i></button>
+            </div>
             <div class="filtros__grupo" role="group" aria-labelledby="filtro-familia">
               <span class="filtros__titulo" id="filtro-familia">Familia</span>
               <button class="chip" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true">Todas</button>
@@ -255,6 +261,10 @@
               <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
             </div>
             <p class="filtros__conteo" id="conteo" aria-live="polite"></p>
+            <div class="filtros__pie">
+              <button class="enlace" type="button" id="limpiar-filtros">Limpiar</button>
+              <button class="btn btn--claro" type="button" id="aplicar-filtros">Ver<span id="conteo-boton">perfumes</span></button>
+            </div>
           </div>
 
           <div id="capitulos"></div>

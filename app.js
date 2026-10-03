@@ -8,11 +8,21 @@
      ------------------------------------------------------------------ */
   const CONFIG = {
     marca: "Sensorial Boutique",
-    whatsapp: "",
+    whatsapp: "527445424972",
     /* Perfumes de "Más vendidos" (inicio y búsqueda), en orden. Usa el id de cada perfume
        de la lista PERFUMES. Los de ahora son de ejemplo: pon los que más vendes. */
     masVendidos: ["sauvage", "bleu-de-chanel", "oud-for-glory", "eros", "acqua-di-gio", "libre", "1-million", "la-vie-est-belle"],
   };
+
+  /* ------------------------------------------------------------------
+     LO QUE DICEN NUESTROS CLIENTES: solo mensajes reales.
+     Cada uno puede ser una captura de WhatsApp o una frase copiada tal cual:
+       { captura: "img/clientes/cliente-1.jpg", alt: "Mensaje de una clienta feliz con su Libre" }
+       { texto: "Me encantó, huele increíble", nombre: "Ana", ciudad: "Acapulco", perfume: "libre" }
+     nombre, ciudad y perfume (el id del perfume) son opcionales.
+     Mientras la lista esté vacía, la sección no aparece en la página publicada.
+     ------------------------------------------------------------------ */
+  const TESTIMONIOS = [];
 
   /* ------------------------------------------------------------------
      FOTOS
@@ -653,6 +663,7 @@
     document.title = TITULOS[id];
     cerrarPanelLista();
     cerrarNotas();
+    cerrarFiltros();
     mostrarBarra();
 
     const actual = anterior ? $(`#vista-${anterior}`) : null;
@@ -800,55 +811,115 @@
         </div>
       </li>`;
     }).join("");
-
-    const flechas = $$("[data-riel]");
-    const actualizar = () => {
-      const fin = riel.scrollWidth - riel.clientWidth - 4;
-      flechas.forEach((btn) => {
-        btn.disabled = btn.dataset.riel === "-1" ? riel.scrollLeft <= 4 : riel.scrollLeft >= fin;
-      });
-    };
-    riel.addEventListener("scroll", actualizar, { passive: true });
-    window.addEventListener("resize", actualizar);
-    actualizar();
   }
 
-  function moverRiel(sentido) {
-    const riel = $("#riel");
-    const paso = riel.querySelector(".riel__item");
-    const ancho = paso ? paso.getBoundingClientRect().width + 16 : riel.clientWidth * 0.8;
-    riel.scrollBy({ left: sentido * ancho * 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
-  }
+  /* ---------- Inicio: lo que dicen nuestros clientes ----------
+     Un muro de capturas de WhatsApp y frases reales (TESTIMONIOS). Si la lista está vacía,
+     la sección no se muestra. Solo en la vista previa local aparecen marcos de ejemplo para
+     ver el diseño; nunca en la página publicada. */
 
-  /* ---------- Inicio: ¿para cuándo lo buscas? ----------
-     Los cuatro perfumes mejor votados para el momento elegido. Usa el campo "uso" de cada
-     perfume (votos de Fragrantica: invierno, primavera, verano, otoño, día, noche). */
+  const enVistaPrevia = ["localhost", "127.0.0.1"].includes(location.hostname);
 
-  const NOMBRES_USO = ["invierno", "primavera", "verano", "otoño", "el día", "la noche"];
-
-  function pintarOcasion(indice) {
-    const lista = $("#ocasion-lista");
-    if (!lista) return;
-    $$("[data-ocasion]").forEach((btn) => btn.setAttribute("aria-pressed", String(Number(btn.dataset.ocasion) === indice)));
-    const mejores = PERFUMES.filter((p) => p.uso).sort((a, b) => b.uso[indice] - a.uso[indice]).slice(0, 4);
-    lista.innerHTML = mejores.map((p, i) => {
-      const f = familiaPorId.get(p.familia);
-      const nivel = p.uso[indice];
-      return `
-      <li class="ocasion__item" style="--campo: var(--c-${f.id}); --nivel: ${nivel}%; --i: ${i}">
-        <span class="ocasion__puesto" aria-hidden="true">${i + 1}</span>
-        <button class="ocasion__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <img src="${p.lamina || url(p.foto, 240)}" alt="" width="120" height="120" loading="lazy">
-        </button>
-        <div class="ocasion__info">
-          <h3><button type="button" data-ficha="${p.id}">${p.nombre}</button></h3>
-          <p>${p.casa} · ${f.nombre}</p>
-          <span class="ocasion__barra" role="img" aria-label="Para ${NOMBRES_USO[indice]}: ${nivel} de 100"><span></span></span>
-        </div>
-        <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+  function tarjetaCliente(t, i) {
+    if (t.ejemplo) {
+      return t.captura
+        ? `<li class="cliente cliente--captura cliente--ejemplo" style="--i: ${i}">
+            <div class="cliente__marco"><i class="ph ph-image" aria-hidden="true"></i><span>Aquí va la captura de WhatsApp de un cliente</span></div>
+            <span class="cliente__aviso">Ejemplo, solo visible en tu computadora</span>
+          </li>`
+        : `<li class="cliente cliente--frase cliente--ejemplo" style="--i: ${i}">
+            <p class="cliente__burbuja">Aquí va lo que te escribió un cliente, copiado tal cual.</p>
+            <p class="cliente__quien"><strong>Nombre del cliente</strong><span>Ciudad</span></p>
+            <span class="cliente__aviso">Ejemplo, solo visible en tu computadora</span>
+          </li>`;
+    }
+    if (t.captura) {
+      return `<li class="cliente cliente--captura" style="--i: ${i}">
+        <img class="cliente__captura" src="${t.captura}" alt="${t.alt || "Mensaje de un cliente por WhatsApp"}" loading="lazy">
       </li>`;
-    }).join("");
-    pintarBotones();
+    }
+    const p = t.perfume ? porId.get(t.perfume) : null;
+    const f = p ? familiaPorId.get(p.familia) : null;
+    return `<li class="cliente cliente--frase" style="--i: ${i}${f ? `; --campo: var(--c-${f.id})` : ""}">
+      <p class="cliente__burbuja"></p>
+      <p class="cliente__quien"><strong></strong><span></span></p>
+      ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}"><img src="${p.lamina || url(p.foto, 120)}" alt="" width="28" height="28">${p.nombre}</button>` : ""}
+    </li>`;
+  }
+
+  function pintarClientes() {
+    const seccion = $("#clientes");
+    if (!seccion) return;
+    const lista = TESTIMONIOS.length ? TESTIMONIOS
+      : enVistaPrevia ? [{ ejemplo: true, captura: true }, { ejemplo: true }, { ejemplo: true }, { ejemplo: true, captura: true }]
+      : [];
+    seccion.hidden = lista.length === 0;
+    const muro = $("#clientes-muro");
+    muro.innerHTML = lista.map(tarjetaCliente).join("");
+    /* El texto de los clientes se escribe como texto, nunca como HTML */
+    $$(".cliente--frase:not(.cliente--ejemplo)", muro).forEach((li, n) => {
+      const t = lista.filter((x) => !x.captura && !x.ejemplo)[n];
+      $(".cliente__burbuja", li).textContent = t.texto;
+      $(".cliente__quien strong", li).textContent = t.nombre || "Cliente";
+      $(".cliente__quien span", li).textContent = t.ciudad || "";
+    });
+  }
+
+  /* ---------- Catálogo: hoja de filtros en el teléfono ----------
+     En escritorio los filtros van en línea. En el teléfono se abren desde un botón fijo
+     ("Filtros" con el resumen de lo elegido) en una hoja que sube desde abajo; los cambios
+     se aplican al momento y "Ver N perfumes" la cierra. */
+
+  const filtrosMovil = window.matchMedia("(max-width: 40rem)");
+  const hojaFiltros = $("#filtros");
+
+  function ajustarHojaFiltros() {
+    if (!hojaFiltros) return;
+    const abierta = hojaFiltros.classList.contains("abierta");
+    hojaFiltros.inert = filtrosMovil.matches && !abierta;
+    if (filtrosMovil.matches) {
+      hojaFiltros.setAttribute("role", "dialog");
+      hojaFiltros.setAttribute("aria-modal", "true");
+    } else {
+      hojaFiltros.removeAttribute("role");
+      hojaFiltros.removeAttribute("aria-modal");
+      if (abierta) cerrarFiltros();
+    }
+  }
+
+  function abrirFiltros() {
+    if (!hojaFiltros) return;
+    hojaFiltros.classList.add("abierta");
+    $("#filtros-fondo").classList.add("es-visible");
+    document.documentElement.classList.add("filtros-abiertos");
+    $("#abrir-filtros").setAttribute("aria-expanded", "true");
+    ajustarHojaFiltros();
+    $("#cerrar-filtros").focus({ preventScroll: true });
+  }
+
+  function cerrarFiltros() {
+    if (!hojaFiltros || !hojaFiltros.classList.contains("abierta")) return;
+    hojaFiltros.classList.remove("abierta");
+    $("#filtros-fondo").classList.remove("es-visible");
+    document.documentElement.classList.remove("filtros-abiertos");
+    $("#abrir-filtros").setAttribute("aria-expanded", "false");
+    ajustarHojaFiltros();
+    if (filtrosMovil.matches) $("#abrir-filtros").focus({ preventScroll: true });
+  }
+
+  /* El botón de la hoja resume lo elegido: "Orientales · Árabes" y cuántos filtros hay */
+  function resumirFiltros(visibles) {
+    const { familia, origen } = estado.filtros;
+    const partes = [];
+    if (familia !== "todas") partes.push(familiaPorId.get(familia).nombre);
+    if (origen !== "todos") partes.push(origen === "Árabe" ? "Árabes" : "Diseñador");
+    const resumen = $("#filtros-resumen");
+    if (!resumen) return;
+    resumen.textContent = partes.length ? partes.join(" · ") : "Todo el catálogo";
+    const activos = $("#filtros-activos");
+    activos.hidden = partes.length === 0;
+    activos.textContent = String(partes.length);
+    $("#conteo-boton").textContent = textoPerfumes(visibles);
   }
 
   /* ---------- Catálogo ---------- */
@@ -927,6 +998,7 @@
       chip.setAttribute("aria-pressed", String(estado.filtros[chip.dataset.grupo] === chip.dataset.valor));
     });
     $("#conteo").textContent = textoPerfumes(visibles);
+    resumirFiltros(visibles);
     $("#vacio").hidden = visibles > 0;
     const titulo = $("#titulo-catalogo");
     if (titulo) titulo.textContent = tituloCatalogo(estado.filtros);
@@ -950,8 +1022,11 @@
   /* Al enfocar, la barra crece (transición CSS de ancho) y justo después el velo difumina la
      página de forma gradual. Al cerrar ocurre al revés: primero se va el velo y luego la barra
      vuelve a su tamaño. */
+  /* Mientras se busca, la página queda quieta: al escribir, el navegador intentaba mantener
+     el cursor a la vista y la iba subiendo poco a poco */
   function abrirBusqueda() {
     document.body.classList.add("buscando");
+    document.documentElement.classList.add("pagina-quieta");
     veloBusqueda.classList.add("es-activo");
   }
 
@@ -961,6 +1036,7 @@
     campoBusqueda.value = "";
     veloBusqueda.classList.remove("es-activo");
     document.body.classList.remove("buscando");
+    document.documentElement.classList.remove("pagina-quieta");
   }
 
   /* Resalta la parte del nombre que coincide con lo escrito (sin distinguir acentos) */
@@ -1411,19 +1487,30 @@
     hoja.inert = true;
     barra.inert = true;
 
+    /* Al liberar, la intro deja de recibir toques de inmediato y se retira del todo.
+       Antes, si el teléfono arrancaba la animación tarde (al cargar las fotos), el respaldo
+       liberaba la página pero la capa de la intro seguía encima tapando los botones. */
     let liberada = false;
-    const liberar = () => {
+    const liberar = (forzada) => {
       if (liberada) return;
       liberada = true;
       raiz.classList.remove("intro-activa");
       hoja.inert = false;
       mostrarBarra();
+      intro.style.pointerEvents = "none";
+      if (forzada) {
+        intro.style.transition = "opacity 400ms ease";
+        intro.style.opacity = "0";
+        window.setTimeout(() => { intro.hidden = true; }, 420);
+      } else {
+        intro.hidden = true;
+      }
     };
     intro.addEventListener("animationend", (evento) => {
-      if (evento.animationName === "intro-desvanece") liberar();
+      if (evento.animationName === "intro-desvanece") liberar(false);
     });
-    /* Respaldo por si el navegador no avisa del final de la animación */
-    window.setTimeout(liberar, 4800);
+    /* Respaldo por si la animación se atrasa o el navegador no avisa de su final */
+    window.setTimeout(() => liberar(true), 5600);
   }
 
   /* ---------- Eventos ---------- */
@@ -1474,10 +1561,14 @@
       else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
         irA({ vista: "catalogo", paso: "familia", origen: rutaActual.origen, familia: "todas" });
       }
-    } else if (boton.dataset.ocasion) {
-      pintarOcasion(Number(boton.dataset.ocasion));
-    } else if (boton.dataset.riel) {
-      moverRiel(Number(boton.dataset.riel));
+    } else if (boton.id === "abrir-filtros") {
+      abrirFiltros();
+    } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
+      cerrarFiltros();
+    } else if (boton.id === "limpiar-filtros") {
+      estado.filtros = { familia: "todas", origen: "todos" };
+      aplicarFiltros();
+      sincronizarDireccion();
     } else if (boton.dataset.sugerencia) {
       const p = porId.get(boton.dataset.sugerencia);
       if (!p) return;
@@ -1493,8 +1584,8 @@
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       if (boton.closest(".barra")) cerrarPanelLista();
-      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item, .ocasion__item");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto, .ocasion__foto", tarjeta) : null);
+      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto", tarjeta) : null);
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
     } else if (boton.classList.contains("ficha__mas")) {
@@ -1525,6 +1616,16 @@
       actualizarPedido();
     }
   });
+
+  /* La hoja de filtros se cierra con Esc o tocando el fondo */
+  if (hojaFiltros) {
+    $("#filtros-fondo").addEventListener("click", cerrarFiltros);
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && !(detalle && detalle.open)) cerrarFiltros();
+    });
+    filtrosMovil.addEventListener("change", ajustarHojaFiltros);
+    ajustarHojaFiltros();
+  }
 
   /* El panel de la lista se cierra al tocar fuera de la barra o con Esc */
   document.addEventListener("pointerdown", (evento) => {
@@ -1597,7 +1698,7 @@
   iniciarIntro();
   pintarHero();
   pintarRiel();
-  pintarOcasion(2);
+  pintarClientes();
   pintarCatalogo();
   aplicarFiltros();
   iniciarPestanas();
