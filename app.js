@@ -30,7 +30,7 @@
      Si no hay foto, el círculo muestra el perfume que compró.
      Mientras la lista esté vacía, la sección no aparece en la página publicada.
      ------------------------------------------------------------------ */
-  const TESTIMONIOS = [];
+  let TESTIMONIOS = [];
 
   /* ------------------------------------------------------------------
      FOTOS
@@ -51,7 +51,7 @@
             con "reducir movimiento", con ahorro de datos o si la marca quita el video.
             Lattafa no tiene anuncio de Oud for Glory, así que Orientales usa su foto.
      ------------------------------------------------------------------ */
-  const FAMILIAS = [
+  let FAMILIAS = [
     { id: "frescos", nombre: "Frescos", desc: "Cítricos, marinos y limpios.",
       larga: "Cítricos, marinos y limpios. Para el calor, la oficina y oler a recién bañado.",
       hero: "1747916148863-7164d8920b57", heroAlt: "Frasco de Dior Sauvage iluminado con luz azul", heroPos: "50% 46%",
@@ -89,7 +89,7 @@
      acordes: [nombre, intensidad de 0 a 100, color "r,g,b"], del más al menos intenso.
      uso:     de 0 a 100, en este orden: invierno, primavera, verano, otoño, día, noche.
      ------------------------------------------------------------------ */
-  const PERFUMES = [
+  let PERFUMES = [
     { id: "sauvage", casa: "Dior", nombre: "Sauvage", version: "Eau de Parfum", origen: "Diseñador", familia: "frescos", foto: "1698867928110-2408e8e2f44a",
       fuente: "https://www.fragrantica.es/perfume/Dior/Sauvage-Eau-de-Parfum-48100.html",
       notas: { salida: "bergamota", corazon: "pimienta de Sichuan, lavanda, anís estrellado, nuez moscada", fondo: "ambroxan, vainilla" },
@@ -168,6 +168,53 @@
       acordes: [["cítrico", 100, "249,255,82"], ["amaderado", 63, "119,68,20"], ["pachulí", 62, "99,101,46"], ["dulce", 62, "238,54,59"], ["floral blanco", 60, "237,242,251"], ["rosas", 53, "254,1,107"], ["terrosos", 49, "84,72,56"], ["avainillado", 48, "255,254,192"]],
       uso: [69, 86, 49, 81, 100, 68] },
   ];
+
+  /* Datos publicados desde Supabase. Se mantienen los datos locales como respaldo
+     hasta que el proyecto tenga completo su catálogo y para poder abrir el sitio sin red. */
+  const REMOTO = window.SENSORIAL_REMOTE || {};
+  if (Array.isArray(REMOTO.perfumes) && REMOTO.perfumes.length) {
+    const locales = new Map(PERFUMES.map((p) => [p.id, p]));
+    PERFUMES = REMOTO.perfumes.map((p) => {
+      const local = locales.get(p.id) || {};
+      return {
+        ...local,
+        id: p.id, casa: p.casa, nombre: p.nombre,
+        version: p.version || "", origen: p.origen, familia: p.familia,
+        foto: p.foto, lamina: p.lamina || null,
+        notas: p.notas || local.notas || { salida: "", corazon: "", fondo: "" },
+        acordes: p.acordes || local.acordes || [],
+        uso: p.uso || local.uso || null,
+        galeria: p.galeria || local.galeria || [],
+        fuente: p.fuente || local.fuente || null,
+        fuenteNombre: p.fuente_nombre || local.fuenteNombre || "Fragrantica",
+      };
+    });
+    CONFIG.masVendidos = REMOTO.perfumes.filter((p) => p.best_seller_rank != null)
+      .sort((a, b) => a.best_seller_rank - b.best_seller_rank).map((p) => p.id);
+    CONFIG.novedades = REMOTO.perfumes.filter((p) => p.new_arrival_rank != null)
+      .sort((a, b) => a.new_arrival_rank - b.new_arrival_rank).map((p) => p.id);
+  }
+  if (Array.isArray(REMOTO.families) && REMOTO.families.length) {
+    FAMILIAS = REMOTO.families.map((f) => ({
+      id: f.id, nombre: f.name, desc: f.short_description,
+      larga: f.long_description, hero: f.hero_image, heroAlt: f.hero_alt,
+      heroPos: f.hero_position,
+      video: f.video_youtube_id ? { id: f.video_youtube_id, inicio: f.video_start_seconds, titulo: f.video_title } : null,
+      ingrediente: f.ingredient_image, ingredienteAlt: f.ingredient_alt,
+      destacado: f.featured_perfume_id,
+    }));
+  }
+  if (Array.isArray(REMOTO.featuredReviews)) {
+    TESTIMONIOS = REMOTO.featuredReviews.map((r) => ({
+      texto: r.texto, nombre: r.nombre, ciudad: r.ciudad, perfume: r.perfume,
+      foto: r.foto, estrellas: r.estrellas, verificado: r.verified_purchase,
+    }));
+  }
+  const RESENAS = Array.isArray(REMOTO.reviews) ? REMOTO.reviews : [];
+  const SUPABASE = window.SENSORIAL_SUPABASE || {};
+  const escaparHTML = (valor) => String(valor ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
 
   const CLAVE_LISTA = "sb-lista";
   const porId = new Map(PERFUMES.map((p) => [p.id, p]));
@@ -445,9 +492,12 @@
   }
 
   function pintarDestacado() {
-    const p = porId.get(familiaPorId.get(estado.familia).destacado);
     const caja = $("#destacado");
     if (!caja) return;
+    const familia = familiaPorId.get(estado.familia);
+    const p = familia && porId.get(familia.destacado);
+    if (!p) { caja.hidden = true; return; }
+    caja.hidden = false;
     caja.innerHTML = `
       <button class="destacado__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
         <img class="destacado__foto" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="" width="216" height="216">
@@ -1185,7 +1235,7 @@
           ${estrellas ? `<p class="cliente__estrellas" role="img" aria-label="${estrellas} de 5 estrellas">${"★".repeat(estrellas)}<span>${"★".repeat(5 - estrellas)}</span></p>` : ""}
           <blockquote class="cliente__texto"></blockquote>
           <figcaption class="cliente__quien"><strong></strong><span></span></figcaption>
-          ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}">Compró ${p.nombre}<i class="ph ph-arrow-up-right" aria-hidden="true"></i></button>` : ""}
+          ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}">${t.verificado ? "Compró" : "Reseñó"} ${p.nombre}<i class="ph ph-arrow-up-right" aria-hidden="true"></i></button>` : ""}
           ${t.ejemplo ? `<span class="cliente__aviso">Ejemplo de diseño, solo visible en tu computadora</span>` : ""}
         </figure>
       </li>`;
@@ -1716,6 +1766,42 @@
 
   let relojDetalle = null;
   let diapositivaDetalle = 0;
+  let captchaWidget = null;
+  let captchaCarga = null;
+
+  function cargarCaptcha() {
+    if (window.turnstile) return Promise.resolve();
+    if (!captchaCarga) captchaCarga = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("No se pudo cargar la verificación"));
+      document.head.append(script);
+    });
+    return captchaCarga;
+  }
+
+  function quitarCaptcha() {
+    if (captchaWidget !== null && window.turnstile) window.turnstile.remove(captchaWidget);
+    captchaWidget = null;
+  }
+
+  async function prepararCaptcha() {
+    const caja = $(".resena__captcha", detalle);
+    if (!caja) return;
+    try {
+      await cargarCaptcha();
+      if (!window.turnstile) throw new Error("Turnstile no disponible");
+      if (caja.isConnected) captchaWidget = window.turnstile.render(caja, {
+        sitekey: SUPABASE.turnstileSiteKey,
+        theme: "dark",
+      });
+    } catch {
+      const estado = $(".resena__estado", detalle);
+      if (estado) estado.textContent = "No se pudo cargar la verificación. Actualiza la página para intentarlo.";
+    }
+  }
 
   function mostrarDiapositiva(indice) {
     const fotos = $$(".detalle__foto", detalle);
@@ -1742,8 +1828,11 @@
   }
 
   function pintarDetalle(p) {
+    quitarCaptcha();
     const f = familiaPorId.get(p.familia);
     const otros = PERFUMES.filter((o) => o.familia === p.familia && o.id !== p.id).slice(0, 3);
+    const resenas = RESENAS.filter((r) => r.perfume_id === p.id).slice(0, 5);
+    const puedeEnviar = Boolean(SUPABASE.url && SUPABASE.publishableKey && SUPABASE.turnstileSiteKey);
     const texto = `Hola ${CONFIG.marca}, me interesa ${nombreCompleto(p)}. ¿Me pasan precio y disponibilidad?`;
     const enlace = `https://wa.me/${CONFIG.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`;
     const fotos = [
@@ -1814,7 +1903,29 @@
               ${otros.map((o) => `<li><button class="otro" type="button" data-ficha="${o.id}"><img src="${o.lamina || url(o.foto, 160)}" alt="" width="40" height="40">${o.nombre}</button></li>`).join("")}
             </ul>
           </div>` : ""}
-          ${p.fuente ? `<p class="detalle__fuente" style="--i: 9">Notas, acordes y uso según <a href="${p.fuente}" target="_blank" rel="noopener">Fragrantica</a>.</p>` : ""}
+          <section class="detalle__resenas" aria-label="Reseñas de ${escaparHTML(p.nombre)}" style="--i: 9">
+            <h3>Reseñas de clientes</h3>
+            ${resenas.length ? `<ul class="resenas__lista">${resenas.map((r) => `
+              <li>
+                <div class="resena__cabecera"><strong>${escaparHTML(r.author_name)}</strong>${r.rating ? `<span aria-label="${r.rating} de 5 estrellas">${"★".repeat(r.rating)}</span>` : ""}</div>
+                ${r.city ? `<small>${escaparHTML(r.city)}</small>` : ""}
+                <p>${escaparHTML(r.body)}</p>
+              </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía no hay reseñas publicadas de este perfume.</p>`}
+            ${puedeEnviar ? `<form class="resena__form" data-resena-perfume="${p.id}">
+              <h4>Cuéntanos qué te pareció</h4>
+              <div class="resena__campos">
+                <label>Tu nombre<input name="nombre" maxlength="80" minlength="2" required autocomplete="name"></label>
+                <label>Ciudad (opcional)<input name="ciudad" minlength="2" maxlength="80" autocomplete="address-level2"></label>
+              </div>
+              <label>Tu calificación<select name="estrellas" required><option value="">Elige una opción</option><option value="5">5 estrellas</option><option value="4">4 estrellas</option><option value="3">3 estrellas</option><option value="2">2 estrellas</option><option value="1">1 estrella</option></select></label>
+              <label>Tu reseña<textarea name="texto" minlength="15" maxlength="1500" rows="4" required></textarea></label>
+              <label class="resena__consentimiento"><input type="checkbox" name="publicar" required> Acepto que se publique mi nombre y reseña después de la revisión.</label>
+              <div class="resena__captcha"></div>
+              <p class="resena__estado" role="status" aria-live="polite">Tu reseña aparecerá cuando la revisemos.</p>
+              <button class="btn btn--claro" type="submit">Enviar reseña</button>
+            </form>` : ""}
+          </section>
+          ${p.fuente ? `<p class="detalle__fuente" style="--i: 9">Datos aromáticos según <a href="${p.fuente}" target="_blank" rel="noopener">${escaparHTML(p.fuenteNombre || "Fragrantica")}</a>.</p>` : ""}
         </div>
       </div>`;
     pintarBotones();
@@ -1880,6 +1991,7 @@
       detalle.scrollTop = 0;
       observarBloques();
       iniciarCarruselDetalle();
+      prepararCaptcha();
       return;
     }
     tarjetaOrigen = document.activeElement;
@@ -1889,6 +2001,7 @@
     observarBloques();
     volarImagen(desde);
     iniciarCarruselDetalle();
+    prepararCaptcha();
   }
 
   function cerrarDetalle() {
@@ -1896,6 +2009,7 @@
     if (relojDetalle) window.clearInterval(relojDetalle);
     relojDetalle = null;
     const cerrar = () => {
+      quitarCaptcha();
       detalle.classList.remove("es-cerrando");
       if (typeof detalle.close === "function") detalle.close();
       else detalle.removeAttribute("open");
@@ -1911,6 +2025,44 @@
   }
 
   if (detalle) {
+    detalle.addEventListener("submit", async (evento) => {
+      const form = evento.target.closest(".resena__form");
+      if (!form) return;
+      evento.preventDefault();
+      const estado = $(".resena__estado", form);
+      const boton = $("button[type='submit']", form);
+      const widget = captchaWidget;
+      const token = widget !== null && window.turnstile ? window.turnstile.getResponse(widget) : "";
+      if (!token) {
+        estado.textContent = "Completa la verificación antes de enviar.";
+        return;
+      }
+      const datos = new FormData(form);
+      boton.disabled = true;
+      estado.textContent = "Enviando reseña…";
+      try {
+        const urlFuncion = new URL("/functions/v1/submit-review", SUPABASE.url);
+        const respuesta = await fetch(urlFuncion, {
+          method: "POST",
+          headers: { apikey: SUPABASE.publishableKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            perfumeId: form.dataset.resenaPerfume,
+            nombre: datos.get("nombre"), ciudad: datos.get("ciudad"),
+            estrellas: datos.get("estrellas"), texto: datos.get("texto"),
+            publicationConsent: datos.get("publicar") === "on", token,
+          }),
+        });
+        const resultado = await respuesta.json();
+        if (!respuesta.ok) throw new Error(resultado.error || "No se pudo enviar la reseña");
+        form.reset();
+        estado.textContent = resultado.message;
+      } catch (error) {
+        estado.textContent = error.message || "No se pudo enviar la reseña. Inténtalo de nuevo.";
+      } finally {
+        if (window.turnstile && widget !== null && widget === captchaWidget) window.turnstile.reset(widget);
+        boton.disabled = false;
+      }
+    });
     /* Esc cierra con la misma animación; un clic fuera de la ficha también */
     detalle.addEventListener("cancel", (evento) => {
       evento.preventDefault();

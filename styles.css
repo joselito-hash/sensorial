@@ -1234,6 +1234,29 @@ html:has(.detalle[open]) { overflow: hidden; }
 .detalle__otros ul::-webkit-scrollbar { display: none; }
 .detalle__otros li { flex: none; }
 .detalle__fuente { margin-top: 1.5rem; color: var(--tinta-2); font-size: 0.8125rem; }
+.detalle__resenas { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--linea); }
+.detalle__resenas h3 { font-size: 1.15rem; }
+.resenas__vacio { margin-top: 0.75rem; color: var(--tinta-2); font-size: 0.9rem; }
+.resenas__lista { display: grid; gap: 0.75rem; margin-top: 1rem; }
+.resenas__lista li { padding: 1rem; border-radius: 1rem; background: rgb(255 255 255 / 0.055); }
+.resena__cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.resena__cabecera span { color: var(--campo); letter-spacing: 0.1em; }
+.resenas__lista small { color: var(--tinta-2); }
+.resenas__lista p { margin-top: 0.5rem; line-height: 1.5; overflow-wrap: anywhere; }
+.resena__form { display: grid; gap: 0.9rem; margin-top: 1.5rem; padding: 1.1rem; border-radius: 1.1rem; background: rgb(255 255 255 / 0.055); }
+.resena__form h4 { font-size: 1rem; }
+.resena__form label { display: grid; gap: 0.35rem; font-size: 0.86rem; font-weight: 600; }
+.resena__campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.resena__form input,
+.resena__form select,
+.resena__form textarea { width: 100%; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--linea); border-radius: 0.65rem; outline: none; background: #30272d; color: var(--tinta); font: inherit; }
+.resena__form textarea { resize: vertical; }
+.resena__form .resena__consentimiento { display: flex; align-items: flex-start; gap: 0.6rem; font-weight: 400; line-height: 1.35; }
+.resena__form .resena__consentimiento input { width: 1rem; min-width: 1rem; height: 1rem; margin-top: 0.1rem; padding: 0; accent-color: var(--campo); }
+.resena__form :is(input, select, textarea):focus-visible { border-color: var(--campo); }
+.resena__estado { min-height: 1.2rem; color: var(--tinta-2); font-size: 0.8rem; }
+.resena__form .btn { justify-self: start; }
+.resena__form .btn:disabled { cursor: wait; opacity: 0.6; }
 .otro {
   display: flex;
   align-items: center;
@@ -2658,6 +2681,7 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   /* En el teléfono los botones suben justo debajo de "Huele a…" (se ven sin bajar) y el
      contenido de cada uno va centrado */
   .detalle__info { display: flex; flex-direction: column; }
+  .resena__campos { grid-template-columns: minmax(0, 1fr); }
   .detalle__info > * { order: 5; }
   .detalle__meta { order: 1; }
   #detalle-nombre { order: 2; }

@@ -1,0 +1,5 @@
+project_id = "sensorial"
+
+[functions.submit-review]
+verify_jwt = false
+entrypoint = "./functions/submit-review/index.js"

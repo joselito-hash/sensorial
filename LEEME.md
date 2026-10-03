@@ -2,6 +2,8 @@
 
 Página estática (HTML + CSS + JS, sin instalación). Se publica subiendo la carpeta tal cual a cualquier hosting (Netlify, Vercel, GitHub Pages, cPanel).
 
+La estructura de Supabase, la carga inicial y el flujo de reseñas moderadas están preparados en [`SUPABASE.md`](SUPABASE.md). Hasta configurar un proyecto, la página conserva el catálogo local y el formulario público de reseñas permanece oculto.
+
 ## Pestañas
 
 Todo vive en `index.html`. El menú tiene tres pestañas y al cambiar de una a otra el contenido se desliza de lado (hacia la izquierda si avanzas en el orden del menú, hacia la derecha si regresas). La línea bajo el menú se desliza hasta la pestaña activa y queda centrada bajo la palabra.
