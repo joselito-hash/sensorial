@@ -9,6 +9,9 @@
   const CONFIG = {
     marca: "Sensorial Boutique",
     whatsapp: "",
+    /* Perfumes de "Más vendidos" (inicio y búsqueda), en orden. Usa el id de cada perfume
+       de la lista PERFUMES. Los de ahora son de ejemplo: pon los que más vendes. */
+    masVendidos: ["sauvage", "bleu-de-chanel", "oud-for-glory", "eros", "acqua-di-gio", "libre", "1-million", "la-vie-est-belle"],
   };
 
   /* ------------------------------------------------------------------
@@ -144,6 +147,7 @@
   const CLAVE_LISTA = "sb-lista";
   const porId = new Map(PERFUMES.map((p) => [p.id, p]));
   const familiaPorId = new Map(FAMILIAS.map((f) => [f.id, f]));
+  const MAS_VENDIDOS = CONFIG.masVendidos.filter((id) => porId.has(id));
   const nombreCompleto = (p) => `${p.casa} ${p.nombre}`;
   const sinAcentos = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const mayuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -318,6 +322,7 @@
     const antes = conteo.textContent;
     conteo.hidden = n === 0;
     conteo.textContent = n ? String(n) : "";
+    moverIndicador();
     if (n && antes !== conteo.textContent && !menosMovimiento.matches) {
       conteo.classList.remove("pulso");
       void conteo.offsetWidth;
@@ -496,6 +501,9 @@
     if (nombre === "pedido") return { vista: "pedido" };
     if (nombre !== "catalogo") return null;
     const q = new URLSearchParams(consulta);
+    /* Las preguntas (origen y familia) solo se hacen una vez por visita: después, "Catálogo"
+       lleva directo a los perfumes */
+    if (!consulta && recorridoHecho()) return { vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" };
     const origen = ORIGEN_DE_URL[q.get("origen")] || "todos";
     const familia = familiaPorId.has(q.get("familia")) ? q.get("familia") : (q.get("familia") === "todas" ? "todas" : null);
     if (q.has("todo") || (origen !== "todos" && familia)) {
@@ -505,6 +513,14 @@
     return { vista: "catalogo", paso: "origen", origen: "todos", familia: "todas" };
   }
   const leerRuta = () => rutaDeHash(location.hash);
+
+  const CLAVE_RECORRIDO = "sb-recorrido";
+  function recorridoHecho() {
+    try { return sessionStorage.getItem(CLAVE_RECORRIDO) === "1"; } catch { return false; }
+  }
+  function marcarRecorrido() {
+    try { sessionStorage.setItem(CLAVE_RECORRIDO, "1"); } catch { /* sin almacenamiento: se vuelve a preguntar */ }
+  }
 
   function hashDe(ruta) {
     if (ruta.vista === "pedido") return "#pedido";
@@ -602,12 +618,15 @@
     window.setTimeout(() => { entrar(); salida.cancel(); }, 340);
   }
 
-  /* Línea bajo la pestaña activa: se desliza hasta el enlace nuevo (solo transform) */
+  /* Línea bajo la pestaña activa: mide solo la palabra (sin el contador del pedido) para
+     quedar centrada bajo ella, y se desliza hasta la nueva (solo transform) */
   function moverIndicador() {
     const indicador = $(".nav__indicador");
-    const activo = $(".nav__enlaces [aria-current='page']");
-    if (!indicador || !activo || !activo.offsetWidth) return;
-    indicador.style.transform = `translateX(${activo.offsetLeft}px) scaleX(${activo.offsetWidth})`;
+    const texto = $(".nav__enlaces [aria-current='page'] .nav__texto");
+    if (!indicador || !texto || !texto.offsetWidth) return;
+    const base = indicador.parentElement.getBoundingClientRect();
+    const caja = texto.getBoundingClientRect();
+    indicador.style.transform = `translateX(${(caja.left - base.left).toFixed(1)}px) scaleX(${caja.width.toFixed(1)})`;
   }
 
   function marcarPestanas(id) {
@@ -701,6 +720,7 @@
       if (ruta.paso === "catalogo") {
         estado.filtros = { familia: ruta.familia, origen: ruta.origen };
         aplicarFiltros();
+        marcarRecorrido();
       }
       mostrarPaso(ruta.paso, !cambiaVista);
       recordarCatalogo(ruta);
@@ -750,16 +770,17 @@
     };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(activar, activar);
     else activar();
+    /* El menú cambia de ancho al aparecer el contador del pedido o al cambiar la ventana */
+    if ("ResizeObserver" in window) new ResizeObserver(moverIndicador).observe($(".nav__enlaces"));
     window.addEventListener("resize", moverIndicador);
   }
 
-  /* ---------- Inicio: selección en una fila que se desliza ---------- */
+  /* ---------- Inicio: más vendidos en una fila que se desliza ---------- */
 
   function pintarRiel() {
     const riel = $("#riel");
     if (!riel) return;
-    const ids = [...new Set([...FAMILIAS.map((f) => f.destacado), ...PERFUMES.map((p) => p.id)])].slice(0, 8);
-    riel.innerHTML = ids.map((id, i) => {
+    riel.innerHTML = MAS_VENDIDOS.map((id, i) => {
       const p = porId.get(id);
       const f = familiaPorId.get(p.familia);
       const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [400, 700, 1000])}" sizes="(max-width: 40rem) 72vw, 20rem"` : "";
@@ -767,6 +788,7 @@
       <li class="riel__item" style="--campo: var(--c-${f.id}); --i: ${i}">
         <button class="riel__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
           <img src="${url(p.foto, 700)}"${juego} alt="" loading="lazy">
+          <span class="riel__puesto" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
         </button>
         <div class="riel__texto">
           <div>
@@ -796,6 +818,37 @@
     const paso = riel.querySelector(".riel__item");
     const ancho = paso ? paso.getBoundingClientRect().width + 16 : riel.clientWidth * 0.8;
     riel.scrollBy({ left: sentido * ancho * 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+  }
+
+  /* ---------- Inicio: ¿para cuándo lo buscas? ----------
+     Los cuatro perfumes mejor votados para el momento elegido. Usa el campo "uso" de cada
+     perfume (votos de Fragrantica: invierno, primavera, verano, otoño, día, noche). */
+
+  const NOMBRES_USO = ["invierno", "primavera", "verano", "otoño", "el día", "la noche"];
+
+  function pintarOcasion(indice) {
+    const lista = $("#ocasion-lista");
+    if (!lista) return;
+    $$("[data-ocasion]").forEach((btn) => btn.setAttribute("aria-pressed", String(Number(btn.dataset.ocasion) === indice)));
+    const mejores = PERFUMES.filter((p) => p.uso).sort((a, b) => b.uso[indice] - a.uso[indice]).slice(0, 4);
+    lista.innerHTML = mejores.map((p, i) => {
+      const f = familiaPorId.get(p.familia);
+      const nivel = p.uso[indice];
+      return `
+      <li class="ocasion__item" style="--campo: var(--c-${f.id}); --nivel: ${nivel}%; --i: ${i}">
+        <span class="ocasion__puesto" aria-hidden="true">${i + 1}</span>
+        <button class="ocasion__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${p.lamina || url(p.foto, 240)}" alt="" width="120" height="120" loading="lazy">
+        </button>
+        <div class="ocasion__info">
+          <h3><button type="button" data-ficha="${p.id}">${p.nombre}</button></h3>
+          <p>${p.casa} · ${f.nombre}</p>
+          <span class="ocasion__barra" role="img" aria-label="Para ${NOMBRES_USO[indice]}: ${nivel} de 100"><span></span></span>
+        </div>
+        <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+      </li>`;
+    }).join("");
+    pintarBotones();
   }
 
   /* ---------- Catálogo ---------- */
@@ -910,23 +963,87 @@
     document.body.classList.remove("buscando");
   }
 
+  /* Resalta la parte del nombre que coincide con lo escrito (sin distinguir acentos) */
+  function resaltar(texto, consulta) {
+    const limpio = sinAcentos(texto);
+    const i = limpio.indexOf(consulta);
+    if (!consulta || i < 0 || limpio.length !== texto.length) return texto;
+    return `${texto.slice(0, i)}<mark>${texto.slice(i, i + consulta.length)}</mark>${texto.slice(i + consulta.length)}`;
+  }
+
+  function filaSugerencia(p, consulta) {
+    const f = familiaPorId.get(p.familia);
+    return `
+      <button class="buscar__sugerencia" type="button" data-sugerencia="${p.id}" style="--campo: var(--c-${f.id})">
+        <img src="${p.lamina || url(p.foto, 160)}" alt="" width="56" height="56" loading="lazy">
+        <span class="buscar__sugerencia-texto">
+          <strong>${resaltar(p.nombre, consulta)}</strong>
+          <small>${resaltar(p.casa, consulta)}${p.version ? ` · ${p.version}` : ""}</small>
+        </span>
+        <span class="buscar__familia">${f.nombre}</span>
+        <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+      </button>`;
+  }
+
+  /* Vista previa a la derecha: el perfume que la persona tiene bajo el puntero o el foco */
+  function pintarVistaPrevia(id) {
+    const caja = $("#busqueda-vista");
+    const p = porId.get(id);
+    if (!caja || !p) return;
+    $$(".buscar__sugerencia", panelSugerencias).forEach((fila) => fila.classList.toggle("es-activa", fila.dataset.sugerencia === id));
+    if (caja.dataset.perfume === id) return;
+    const f = familiaPorId.get(p.familia);
+    caja.dataset.perfume = id;
+    caja.style.setProperty("--campo", `var(--c-${f.id})`);
+    caja.style.setProperty("--tono", `var(--t-${f.id})`);
+    caja.innerHTML = `
+      <img class="busqueda__foto" src="${p.lamina || url(p.foto, 700)}" alt="">
+      <div class="busqueda__info">
+        <p class="busqueda__meta"><span>${f.nombre}</span>${p.casa} · ${p.origen}</p>
+        <h3>${p.nombre}</h3>
+        <p class="busqueda__huele">Huele a ${resumenNotas(p)}.</p>
+        <ul class="busqueda__notas">
+          ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
+        </ul>
+        <div class="busqueda__acciones">
+          <button class="btn btn--claro" type="button" data-sugerencia="${p.id}">Ver ficha<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+        </div>
+      </div>`;
+    caja.classList.remove("cambia");
+    void caja.offsetWidth;
+    caja.classList.add("cambia");
+    pintarBotones();
+  }
+
+  /* Sin texto muestra los más vendidos; con texto, hasta seis coincidencias. A la izquierda
+     van los resultados en filas y a la derecha la vista previa del que está activo. */
   function pintarSugerencias() {
     const consulta = sinAcentos(campoBusqueda.value.trim());
-    if (!consulta) {
-      panelSugerencias.hidden = true;
-      campoBusqueda.setAttribute("aria-expanded", "false");
-      return;
+    const resultados = consulta
+      ? PERFUMES.filter((p) => sinAcentos(`${p.casa} ${p.nombre} ${p.version || ""} ${p.origen}`).includes(consulta)).slice(0, 6)
+      : MAS_VENDIDOS.slice(0, 5).map((id) => porId.get(id));
+    const titulo = !consulta ? "Más vendidos"
+      : resultados.length ? `${textoPerfumes(resultados.length)} para "${campoBusqueda.value.trim()}"` : "";
+
+    if (resultados.length) {
+      panelSugerencias.innerHTML = `
+        <div class="busqueda__lista">
+          <p class="busqueda__titulo"></p>
+          ${resultados.map((p) => filaSugerencia(p, consulta)).join("")}
+        </div>
+        <div class="busqueda__vista" id="busqueda-vista" aria-live="polite"></div>`;
+      $(".busqueda__titulo", panelSugerencias).textContent = titulo;
+      pintarVistaPrevia(resultados[0].id);
+    } else {
+      panelSugerencias.innerHTML = `
+        <div class="busqueda__lista busqueda__lista--sola">
+          <p class="buscar__sin-resultados"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span></span>Prueba con el nombre o la casa, por ejemplo Dior o Lattafa.</p>
+          <p class="busqueda__titulo">Quizá te interese</p>
+          ${MAS_VENDIDOS.slice(0, 3).map((id) => filaSugerencia(porId.get(id), "")).join("")}
+        </div>`;
+      $(".buscar__sin-resultados span", panelSugerencias).textContent = `No encontramos "${campoBusqueda.value.trim()}".`;
     }
-    const resultados = PERFUMES.filter((p) =>
-      sinAcentos(`${p.casa} ${p.nombre} ${p.version || ""} ${p.origen}`).includes(consulta)
-    ).slice(0, 5);
-    panelSugerencias.innerHTML = resultados.length
-      ? resultados.map((p) => `
-        <button class="buscar__sugerencia" type="button" data-sugerencia="${p.id}">
-          <img src="${p.lamina || url(p.foto, 160)}" alt="" width="52" height="52" loading="lazy">
-          <span><strong>${p.nombre}</strong><small>${p.casa} · ${p.version || p.origen}</small></span>
-        </button>`).join("")
-      : `<p class="buscar__sin-resultados">No encontramos perfumes con ese nombre.</p>`;
     panelSugerencias.hidden = false;
     campoBusqueda.setAttribute("aria-expanded", "true");
   }
@@ -1357,6 +1474,8 @@
       else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
         irA({ vista: "catalogo", paso: "familia", origen: rutaActual.origen, familia: "todas" });
       }
+    } else if (boton.dataset.ocasion) {
+      pintarOcasion(Number(boton.dataset.ocasion));
     } else if (boton.dataset.riel) {
       moverRiel(Number(boton.dataset.riel));
     } else if (boton.dataset.sugerencia) {
@@ -1374,8 +1493,8 @@
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       if (boton.closest(".barra")) cerrarPanelLista();
-      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto", tarjeta) : null);
+      const tarjeta = boton.closest(".ficha, .riel__item, .pedido__item, .ocasion__item");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .riel__foto, .pedido__foto, .ocasion__foto", tarjeta) : null);
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
     } else if (boton.classList.contains("ficha__mas")) {
@@ -1462,8 +1581,13 @@
   document.addEventListener("pointerdown", (evento) => {
     if (!$("#buscar").contains(evento.target)) cerrarSugerencias();
   });
+  ["pointerover", "focusin"].forEach((tipo) => panelSugerencias.addEventListener(tipo, (evento) => {
+    const fila = evento.target.closest(".buscar__sugerencia");
+    if (fila) pintarVistaPrevia(fila.dataset.sugerencia);
+  }));
   $("#buscar").addEventListener("submit", (evento) => {
     evento.preventDefault();
+    if (!campoBusqueda.value.trim()) return;
     const primera = $(".buscar__sugerencia", panelSugerencias);
     if (primera) primera.click();
   });
@@ -1473,6 +1597,7 @@
   iniciarIntro();
   pintarHero();
   pintarRiel();
+  pintarOcasion(2);
   pintarCatalogo();
   aplicarFiltros();
   iniciarPestanas();
