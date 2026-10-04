@@ -67,25 +67,25 @@ Para revocar el acceso de un usuario, borra **solo su fila** de `private.sensori
 
 Para pruebas locales, puedes añadir `http://localhost:5500` a `SITE_ORIGIN` (separado por coma) y permitir `localhost` en un widget Turnstile de prueba. La revisión visual local requiere un servidor HTTP; abrir `index.html` como archivo no equivale al origen configurado.
 
-## Traer perfumes de Fragrantica desde el panel (PerfumAPI)
+## Traer perfumes de Fragrantica desde el panel
 
-En el editor de cada perfume hay una sección **Traer de Fragrantica**: escribes el nombre, eliges el resultado y el formulario se llena con nombre, casa (la elige si ya existe o la deja lista como casa nueva), año, público, las tres fases de notas (traducidas al español; las que no están en el diccionario se quedan en inglés y el panel dice cuáles), la foto que publica Fragrantica y la fuente. Nada se guarda hasta pulsar **Guardar perfume**. Si la ficha ya tiene datos, el panel pregunta si reemplazarlos o solo llenar lo vacío.
+En el editor de cada perfume hay una sección **Traer de Fragrantica**: escribes el nombre (o pegas el enlace de su página en Fragrantica), eliges el resultado y el formulario se llena con nombre, casa (la elige si ya existe o la deja lista como casa nueva), año, público, las tres fases de notas, los acordes con su intensidad, la foto que publica Fragrantica y la fuente. Nada se guarda hasta pulsar **Guardar perfume**. Si la ficha ya tiene datos, el panel pregunta si reemplazarlos o solo llenar lo vacío.
 
 Cómo funciona y sus límites:
 
-- Usa la búsqueda pública de [PerfumAPI](https://github.com/seccaz/PerfumAPI) (`perfumapidatabase.onrender.com`), que **no necesita clave**. PerfumAPI es un proyecto de un tercero que guarda perfumes leídos de Fragrantica; no es una API oficial y hoy tiene alrededor de 250 perfumes. Si un perfume no está, el panel lo dice y se llena a mano.
-- PerfumAPI **no trae acordes ni "cuándo usarlo"**: esos se completan a mano. A veces trae datos mal leídos (por ejemplo, años imposibles); el panel descarta los años fuera de rango, pero revisa todo antes de guardar.
-- PerfumAPI solo acepta peticiones del navegador desde su propia página, así que la búsqueda pasa por la función de Supabase `fragrantica-buscar`. La función solo responde a cuentas de `private.sensorial_admins` y además **copia la foto de Fragrantica al bucket `sensorial-perfumes`**, para que la tienda no dependa de su servidor. Si la copia falla, usa el enlace original.
-- Buscar perfumes nuevos que PerfumAPI todavía no tiene requiere ser administrador de una instalación propia de PerfumAPI (su `POST /scrape/url` está protegido). Fragrantica bloquea las peticiones directas (responde 403), así que no se lee su página desde aquí.
-- La autorización de Fragrantica que registraste en `perfume_sources.license_reference` debe cubrir también el uso de sus fotos.
+- **Fuente principal: Fragrantica al día, vía Apify.** La función de Supabase `fragrantica-buscar` usa el extractor [`parsebird/fragrantica-scraper`](https://apify.com/parsebird/fragrantica-scraper), que lee la edición en español de Fragrantica en el momento. Necesita el secreto `APIFY_TOKEN`. Cada búsqueda trae como máximo 5 perfumes (centavos de dólar). Tarda entre 20 segundos y un minuto porque lee Fragrantica en ese momento. Es un extractor de un tercero, no una API oficial: puede fallar si Fragrantica cambia su página.
+- **Respaldo: PerfumAPI.** Si falta el token, Apify falla o no encuentra el perfume, la función busca en [PerfumAPI](https://github.com/seccaz/PerfumAPI), que no necesita clave pero tiene pocos perfumes (unos 250), no trae acordes y a veces trae datos mal leídos. Sus notas llegan en inglés y el panel las traduce; las que no reconoce las deja en inglés y lo avisa. El panel indica de qué fuente salió cada búsqueda.
+- **No viene "cuándo usarlo"** (estaciones, día y noche): se completa a mano.
+- **Colores de los acordes:** Fragrantica no los entrega. Se usa el color que ese acorde ya tenga en tu base de datos; si es nuevo, uno parecido al de Fragrantica; si no se conoce, gris. Puedes cambiarlo en la ficha.
+- **Fotos:** la función copia la foto de Fragrantica al bucket `sensorial-perfumes`, para que la tienda no dependa de su servidor. Si la copia falla, usa el enlace original.
+- La función solo responde a cuentas de `private.sensorial_admins`. La autorización de Fragrantica registrada en `perfume_sources.license_reference` debe cubrir esta extracción y el uso de sus fotos.
 
-Para activarla, una sola vez (usa el `SITE_ORIGIN` que ya configuraste para `submit-review`):
+Para activarla (usa el `SITE_ORIGIN` que ya configuraste para `submit-review`):
 
-```powershell
-supabase functions deploy fragrantica-buscar
-```
+1. Crea el secreto `APIFY_TOKEN` en **Edge Functions → Secrets** con tu token de Apify (Settings → API & Integrations en apify.com).
+2. Publica la función: desde el dashboard (**Edge Functions → Deploy a new function → Via Editor**, nombre `fragrantica-buscar`, pegar `supabase/functions/fragrantica-buscar/index.js`) y apaga **Enforce JWT Verification** en sus ajustes; o con la CLI: `supabase functions deploy fragrantica-buscar`.
 
-Si algún día instalas tu propia copia de PerfumAPI, apunta la función a ella con `supabase secrets set PERFUMAPI_URL=https://tu-perfumapi.onrender.com`.
+Opcional: `APIFY_ACTOR` cambia el extractor de Apify (por defecto `parsebird~fragrantica-scraper`) y `PERFUMAPI_URL` apunta el respaldo a una copia propia de PerfumAPI.
 
 ## Recordar la sesión del panel
 

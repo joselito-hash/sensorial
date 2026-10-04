@@ -526,7 +526,49 @@
 
   const notaES = (nota) => NOTAS_ES[nota.trim().toLowerCase()] || nota.trim();
   const sinTraducir = (nota) => !NOTAS_ES[nota.trim().toLowerCase()];
-  const PUBLICO = { men: "hombre", women: "mujer", unisex: "unisex", "men and women": "unisex", "women and men": "unisex" };
+
+  /* Fragrantica no da el color de cada acorde. Se usa el que ya tenga ese acorde en tu base
+     de datos; si es nuevo, uno parecido al de Fragrantica; si no se conoce, gris. Los nombres
+     en inglés (si llegan así) se pasan a español. */
+  const ACORDES_ES = {
+    citrus: "cítrico", woody: "amaderado", sweet: "dulce", fruity: "afrutado", floral: "floral", "white floral": "floral blanco",
+    rose: "rosas", aromatic: "aromático", "fresh spicy": "especiado fresco", "warm spicy": "especiado cálido", powdery: "atalcado",
+    vanilla: "avainillado", amber: "ámbar", musky: "almizclado", leather: "cuero", earthy: "terroso", smoky: "ahumado",
+    fresh: "fresco", aquatic: "acuático", marine: "marino", green: "verde", balsamic: "balsámico", tobacco: "tabaco",
+    oud: "oud", patchouli: "pachulí", lavender: "lavanda", iris: "iris", animalic: "animal", ozonic: "ozónico",
+    tropical: "tropical", honey: "miel", caramel: "caramelo", coffee: "café", cacao: "cacao", almond: "almendra",
+    "soft spicy": "especiado suave", herbal: "herbal", lactonic: "lactónico", metallic: "metálico", salty: "salado",
+    "yellow floral": "floral amarillo", violet: "violeta", tuberose: "nardo", cinnamon: "canela", mossy: "musgoso",
+  };
+  const COLOR_ACORDE = {
+    "cítrico": "249,255,82", "amaderado": "119,68,20", "dulce": "238,54,59", "afrutado": "252,75,41", "floral": "255,95,141",
+    "floral blanco": "237,242,251", "rosas": "254,1,107", "aromático": "55,169,137", "especiado fresco": "131,198,50",
+    "especiado cálido": "204,51,0", "especiado suave": "222,120,60", "atalcado": "238,221,204", "avainillado": "255,254,192",
+    "ámbar": "188,77,16", "almizclado": "226,207,238", "cuero": "116,76,59", "terroso": "84,72,56", "ahumado": "140,135,129",
+    "fresco": "155,229,237", "acuático": "108,215,255", "marino": "0,166,213", "verde": "14,164,0", "balsámico": "160,116,50",
+    "tabaco": "157,98,48", "oud": "61,37,20", "pachulí": "99,101,46", "lavanda": "154,124,200", "iris": "191,180,227",
+    "animal": "140,96,74", "ozónico": "160,215,250", "tropical": "255,193,7", "miel": "247,181,61", "caramelo": "196,128,58",
+    "café": "101,67,33", "cacao": "123,63,0", "almendra": "239,222,205", "herbal": "106,168,79", "lactónico": "250,244,232",
+    "metálico": "170,170,180", "salado": "180,220,230", "floral amarillo": "255,216,0", "violeta": "143,94,182",
+    "nardo": "245,240,230", "canela": "180,90,40", "musgoso": "88,110,60",
+  };
+  function acordeES(nombre) {
+    const limpio = nonempty(nombre).toLocaleLowerCase("es");
+    return ACORDES_ES[limpio] || limpio;
+  }
+  function colorAcorde(nombre) {
+    const guardado = state.data.accordNames.find((a) => nonempty(a.name).toLocaleLowerCase("es") === nombre)?.color_rgb;
+    return guardado || COLOR_ACORDE[nombre] || "150,150,150";
+  }
+
+  /* "for men", "for women and men", "para Hombres y Mujeres"... */
+  function publicoDe(genero) {
+    const g = nonempty(genero).toLowerCase();
+    const mujer = /\b(women|mujer(es)?)\b/.test(g);
+    const hombre = /\b(men|hombres?)\b/.test(g);
+    if (/unisex/.test(g) || (mujer && hombre)) return "unisex";
+    return mujer ? "mujer" : hombre ? "hombre" : "";
+  }
   let resultadosFragrantica = [];
 
   async function buscarFragrantica() {
@@ -537,28 +579,32 @@
     const boton = $("#importar-buscar");
     boton.disabled = true;
     estado.className = "importar__estado";
-    estado.textContent = "Buscando…";
+    estado.textContent = "Buscando en Fragrantica…";
     lista.innerHTML = "";
-    /* El servicio duerme cuando nadie lo usa y tarda en despertar la primera vez */
-    const aviso = setTimeout(() => { estado.textContent = "Despertando el servicio de PerfumAPI; la primera búsqueda puede tardar hasta un minuto…"; }, 4000);
+    /* Fragrantica se lee en el momento: suele tardar entre 20 segundos y un minuto */
+    const aviso = setTimeout(() => { estado.textContent = "Leyendo Fragrantica; puede tardar hasta un minuto…"; }, 5000);
     const control = new AbortController();
-    const limite = setTimeout(() => control.abort(), 90000);
+    const limite = setTimeout(() => control.abort(), 160000);
     try {
       const datos = await funcionFragrantica({ accion: "buscar", consulta }, control.signal);
       resultadosFragrantica = Array.isArray(datos.resultados) ? datos.resultados.slice(0, 8) : [];
+      const desde = datos.fuente === "perfumapi" ? " (de PerfumAPI)" : " (de Fragrantica)";
+      const notaFuente = datos.aviso ? ` ${datos.aviso}` : "";
       if (!resultadosFragrantica.length) {
-        estado.textContent = "PerfumAPI todavía no tiene ese perfume. Prueba con otro nombre o llena la ficha a mano.";
+        estado.textContent = `No encontramos ese perfume. Prueba con otro nombre, pega el enlace de su página en Fragrantica o llena la ficha a mano.${notaFuente}`;
         return;
       }
-      estado.textContent = resultadosFragrantica.length === 1 ? "1 resultado." : `${resultadosFragrantica.length} resultados.`;
+      estado.textContent = (resultadosFragrantica.length === 1 ? "1 resultado" : `${resultadosFragrantica.length} resultados`) + desde + "." + notaFuente;
       lista.innerHTML = resultadosFragrantica.map((r, i) => {
         const foto = imageURL(r.image_url);
         const notas = [r.notes_top, r.notes_middle, r.notes_base].reduce((n, fase) => n + (Array.isArray(fase) ? fase.length : 0), 0);
-        return `<div class="importar__resultado">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : "<span></span>"}<div><strong>${escapeHTML(nombreSinCasa(r))}</strong><small>${escapeHTML(r.brand || "")}${r.gender ? ` · ${escapeHTML(r.gender)}` : ""} · ${notas} notas</small></div><button class="button button--primary" type="button" data-importar="${i}">Usar</button></div>`;
+        const acordes = Array.isArray(r.accords) ? r.accords.length : 0;
+        const detalle = [r.brand, r.release_year, r.gender, `${notas} notas`, acordes ? `${acordes} acordes` : ""].filter(Boolean).map(escapeHTML).join(" · ");
+        return `<div class="importar__resultado">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : "<span></span>"}<div><strong>${escapeHTML(nombreSinCasa(r))}</strong><small>${detalle}</small></div><button class="button button--primary" type="button" data-importar="${i}">Usar</button></div>`;
       }).join("");
     } catch (error) {
       estado.classList.add("error");
-      estado.textContent = error.name === "AbortError" ? "PerfumAPI no respondió a tiempo. Inténtalo de nuevo en un momento." : `No se pudo buscar: ${error.message}`;
+      estado.textContent = error.name === "AbortError" ? "Fragrantica no respondió a tiempo. Inténtalo de nuevo en un momento." : `No se pudo buscar: ${error.message}`;
     } finally {
       clearTimeout(aviso);
       clearTimeout(limite);
@@ -579,7 +625,7 @@
     $$("[data-importar]").forEach((boton) => { boton.disabled = true; });
     const nombre = nombreSinCasa(r);
     const fases = { salida: r.notes_top, corazon: r.notes_middle, fondo: r.notes_base };
-    const yaTieneDatos = ["name", "notes_salida", "notes_corazon", "notes_fondo", "release_year", "primary_image"].some((campo) => nonempty(fields[campo].value));
+    const yaTieneDatos = ["name", "notes_salida", "notes_corazon", "notes_fondo", "accords", "release_year", "primary_image"].some((campo) => nonempty(fields[campo].value));
     const reemplazar = !yaTieneDatos || window.confirm("Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
     const poner = (campo, valor) => {
       if (valor === undefined || valor === null || valor === "") return false;
@@ -606,17 +652,27 @@
     /* El año solo si es creíble (PerfumAPI a veces trae años mal leídos) */
     const anio = Number(r.release_year);
     if (Number.isInteger(anio) && anio >= 1900 && anio <= new Date().getFullYear() + 1 && poner("release_year", anio)) llenados.push("año");
-    const publico = PUBLICO[nonempty(r.gender).toLowerCase()];
+    const publico = publicoDe(r.gender);
     if (publico && poner("audience", publico)) llenados.push("público");
 
+    /* Las notas de Fragrantica llegan ya en español; las de PerfumAPI se traducen */
+    const enEspanol = r.idioma && r.idioma !== "en";
     let notasPuestas = 0;
     for (const [fase, lista] of Object.entries(fases)) {
       if (!Array.isArray(lista) || !lista.length) continue;
-      const unicas = [...new Set(lista.map(notaES))];
-      lista.filter(sinTraducir).forEach((nota) => enIngles.add(nota));
+      const unicas = [...new Set(enEspanol ? lista.map((n) => n.trim()) : lista.map(notaES))];
+      if (!enEspanol) lista.filter(sinTraducir).forEach((nota) => enIngles.add(nota));
       if (poner(`notes_${fase}`, unicas.join(", "))) notasPuestas += unicas.length;
     }
     if (notasPuestas) llenados.push(`${notasPuestas} notas`);
+
+    /* Acordes con su intensidad (0 a 100) y un color por acorde */
+    const acordes = (Array.isArray(r.accords) ? r.accords : []).slice(0, 8)
+      .map((a) => ({ nombre: acordeES(a.name), fuerza: Math.max(0, Math.min(100, Math.round(Number(a.strength)))) }))
+      .filter((a) => a.nombre && Number.isFinite(a.fuerza));
+    if (acordes.length && poner("accords", acordes.map((a) => `${a.nombre} | ${a.fuerza} | ${colorAcorde(a.nombre)}`).join("\n"))) {
+      llenados.push(`${acordes.length} acordes`);
+    }
 
     /* La foto de Fragrantica se copia al bucket (así la tienda no depende de su servidor).
        Va como principal si no hay una; si ya hay, se suma al carrusel. Si la copia falla,
@@ -644,9 +700,9 @@
       updateImagePreview();
     }
 
-    const fuente = /^https:\/\/www\.fragrantica\./i.test(nonempty(r.perfume_url)) ? r.perfume_url : "";
+    const fuente = /^https:\/\/(www\.)?fragrantica\./i.test(nonempty(r.perfume_url)) ? r.perfume_url : "";
     if (fuente && (reemplazar || !nonempty(fields.source_url.value))) {
-      fields.source_publisher.value = "Fragrantica (vía PerfumAPI)";
+      fields.source_publisher.value = enEspanol ? "Fragrantica" : "Fragrantica (vía PerfumAPI)";
       fields.source_url.value = fuente;
       fields.source_checked_at.value = new Date().toISOString().slice(0, 10);
       llenados.push("fuente");
@@ -654,7 +710,8 @@
 
     const estado = $("#importar-estado");
     estado.className = "importar__estado ok";
-    estado.textContent = `Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}. PerfumAPI no incluye acordes ni «cuándo usarlo»: complétalos a mano.`
+    const faltan = acordes.length ? "No viene «cuándo usarlo»: complétalo a mano." : "No vienen los acordes ni «cuándo usarlo»: complétalos a mano.";
+    estado.textContent = `Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}. ${faltan}`
       + (enIngles.size ? ` Quedaron en inglés: ${[...enIngles].join(", ")}.` : "")
       + avisoFoto
       + " Revisa todo antes de guardar.";
