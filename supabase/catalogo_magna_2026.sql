@@ -11,16 +11,16 @@ begin;
 
 -- Familias nuevas (las cuatro originales no se modifican, solo su orden)
 insert into public.families (id, name, short_description, long_description, hero_image, hero_alt, hero_position, ingredient_image, ingredient_alt, display_order)
-values ('acuaticos', 'Acuáticos', 'Marinos, ozónicos y limpios.', 'Marinos, ozónicos y limpios. Huelen a brisa y a agua fresca, ideales para el calor.', null, '', '50% 50%', null, '', 2)
+values ('acuaticos', 'Acuáticos', 'Marinos, ozónicos y limpios.', 'Marinos, ozónicos y limpios. Huelen a brisa y a agua fresca, ideales para el calor.', 'img/familias/acuaticos-hero.webp', 'Acantilados y mar turquesa vistos desde lo alto', '50% 60%', 'img/familias/acuaticos-ingrediente.webp', 'Ola que llega a la orilla de arena', 2)
 on conflict (id) do nothing;
 insert into public.families (id, name, short_description, long_description, hero_image, hero_alt, hero_position, ingredient_image, ingredient_alt, display_order)
-values ('aromaticos', 'Aromáticos', 'Lavanda, hierbas y fougère.', 'Lavanda, hierbas y fougère. Clásicos, limpios y con carácter, para el día a día.', null, '', '50% 50%', null, '', 3)
+values ('aromaticos', 'Aromáticos', 'Lavanda, hierbas y fougère.', 'Lavanda, hierbas y fougère. Clásicos, limpios y con carácter, para el día a día.', 'img/familias/aromaticos-hero.webp', 'Campo de lavanda en flor', '50% 60%', 'img/familias/aromaticos-ingrediente.webp', 'Rama de romero con flores azules', 3)
 on conflict (id) do nothing;
 insert into public.families (id, name, short_description, long_description, hero_image, hero_alt, hero_position, ingredient_image, ingredient_alt, display_order)
-values ('florales', 'Florales', 'Rosa, jazmín y flores blancas.', 'Rosa, jazmín y flores blancas. Femeninos, luminosos y románticos.', null, '', '50% 50%', null, '', 4)
+values ('florales', 'Florales', 'Rosa, jazmín y flores blancas.', 'Rosa, jazmín y flores blancas. Femeninos, luminosos y románticos.', 'img/familias/florales-hero.webp', 'Peonía rosa abierta en el jardín', '50% 50%', 'img/familias/florales-ingrediente.webp', 'Ramo de rosas rosas y blancas', 4)
 on conflict (id) do nothing;
 insert into public.families (id, name, short_description, long_description, hero_image, hero_alt, hero_position, ingredient_image, ingredient_alt, display_order)
-values ('frutales', 'Frutales', 'Frutos rojos, pera y tropicales.', 'Frutos rojos, pera y frutas tropicales. Alegres, jugosos y fáciles de llevar.', null, '', '50% 50%', null, '', 5)
+values ('frutales', 'Frutales', 'Frutos rojos, pera y tropicales.', 'Frutos rojos, pera y frutas tropicales. Alegres, jugosos y fáciles de llevar.', 'img/familias/frutales-hero.webp', 'Frambuesas, zarzamoras y arándanos en una copa', '70% 50%', 'img/familias/frutales-ingrediente.webp', 'Taza llena de frambuesas', 5)
 on conflict (id) do nothing;
 update public.families set display_order = case id when 'frescos' then 1 when 'acuaticos' then 2 when 'aromaticos' then 3 when 'florales' then 4 when 'frutales' then 5 when 'dulces' then 6 when 'amaderados' then 7 when 'orientales' then 8 else display_order end;
 

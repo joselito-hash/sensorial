@@ -524,6 +524,12 @@
     document.body.dataset.familia = familia;
     $$(".hero__capa").forEach((capa) => capa.classList.toggle("es-activa", capa.dataset.familia === familia));
     $$(".selector__btn").forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.familia === familia)));
+    /* En el teléfono el selector se desliza de lado: se centra en la familia activa */
+    const selector = $("#selector");
+    const activo = $(".selector__btn[aria-pressed=\"true\"]");
+    if (selector && activo && selector.scrollWidth > selector.clientWidth) {
+      selector.scrollTo({ left: activo.offsetLeft - (selector.clientWidth - activo.offsetWidth) / 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    }
     pintarDestacado();
     actualizarPedido();
     ponerVideoHero();
