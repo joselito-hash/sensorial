@@ -87,6 +87,18 @@ Para activarla (usa el `SITE_ORIGIN` que ya configuraste para `submit-review`):
 
 Opcional: `APIFY_ACTOR` cambia el extractor de Apify (por defecto `parsebird~fragrantica-scraper`) y `PERFUMAPI_URL` apunta el respaldo a una copia propia de PerfumAPI.
 
+## Catálogo Magna 2026 (borradores)
+
+`supabase/catalogo_magna_2026.sql` carga los 705 productos del "Catálogo Digital Magna 2026" (perfumes, body mist, body lotion y colonias). Ejecútalo completo en **SQL Editor**, después de las migraciones `001` y `002`. Se puede ejecutar más de una vez: no sobrescribe filas existentes.
+
+- **Borradores:** los 696 productos nuevos entran con `is_published = false`, así que no aparecen en la tienda hasta que los publiques desde el panel.
+- **Ya publicados:** nueve productos del catálogo ya estaban en la tienda (Sauvage EDP, Acqua di Giò, Light Blue, Dylan Blue, Libre, La Vie Est Belle, Eros EDP, Boss Bottled y 1 Million). No se modifican; solo reciben sus presentaciones.
+- **Qué trae cada ficha:** casa, nombre, concentración, edición (por ejemplo "Recarga", "Para ella" o "Para él" cuando el catálogo repite el nombre para dama y caballero), público, origen (Diseñador o Árabe), la descripción del catálogo ("Fragancia floral, frutal") y sus presentaciones en `perfume_variants`, con el código Magna como SKU (`MAGNA-0001-100`).
+- **Qué falta:** notas, acordes y "cuándo usarlo". Abre cada borrador en el panel, usa **Traer de Fragrantica**, revisa y guarda.
+- **Familia:** sale de la descripción del catálogo (el primer rasgo pesa más). Los siete productos de Victoria's Secret no traen descripción y su familia se asignó por el nombre. Revísala al completar cada ficha.
+- **Familias nuevas:** el archivo agrega Acuáticos, Aromáticos, Florales y Frutales, y ordena las ocho familias. Una familia aparece en la portada cuando tiene foto grande y al menos un perfume publicado.
+- **Fotos provisionales:** `img/perfumes/` tiene la foto de cada producto recortada del PDF (400 × 400 px). Sirven para reconocer el producto en el panel, pero son de baja resolución: reemplázalas por la foto de Fragrantica o una propia antes de publicar.
+
 ## Recordar la sesión del panel
 
 En el inicio de sesión, **Recordarme en este dispositivo** guarda la sesión en el navegador (sigue abierta al cerrarlo) y deja el correo escrito para la próxima vez. Sin marcarla, la sesión termina al cerrar la pestaña. Úsala solo en tus propios dispositivos. **Cerrar sesión** siempre termina la sesión; el correo recordado se mantiene hasta que entres sin marcar la casilla.
