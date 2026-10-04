@@ -39,7 +39,57 @@ Vercel sirve esta página estática desde el repositorio. Sus variables de entor
 5. Completa `supabase-config.js` con la URL, publishable key y site key. Configura `SITE_ORIGIN=https://sensorial-azure.vercel.app` y registra `sensorial-azure.vercel.app` como hostname permitido en Turnstile (sin `https://`).
 6. En Supabase Table Editor revisa `reviews`. Cambia `status` a `published` para mostrar una reseña; marca `is_featured` si también debe aparecer en la portada. El disparador completa `published_at`. Cambia el estado a `rejected` para ocultarla.
 
+## Panel privado de administración
+
+El panel está en `admin.html` (después de publicarlo: `https://sensorial-azure.vercel.app/admin.html`). No aparece en la navegación de la tienda. El HTML de inicio de sesión es accesible si alguien conoce la URL; **los datos y las operaciones están protegidos en Supabase**, mediante Auth y la lista privada `private.sensorial_admins`. `robots` evita la indexación normal, pero no es una medida de seguridad.
+
+Para activarlo:
+
+1. En **Supabase → SQL Editor**, ejecuta `supabase/migrations/20261003_002_admin_panel.sql` una sola vez. Requiere que la migración `001` ya exista.
+2. En **Storage**, crea un bucket llamado exactamente `sensorial-perfumes`, márcalo como **Public** y limita las subidas a imágenes JPG, PNG, WebP o AVIF de hasta 5 MB. Las políticas de la migración solo dejan subir archivos a la cuenta administradora. Esto permite usar el botón de subir fotos sin modificar GitHub cada vez.
+3. En **Authentication → Users**, crea un usuario con tu correo y una contraseña fuerte mediante **Add user**. Si ya tienes un usuario de Auth, úsalo; tu cuenta de acceso al *dashboard* de Supabase no es automáticamente una cuenta de Auth de este proyecto. Copia el **User UID** del usuario.
+4. En **SQL Editor**, ejecuta esta consulta sustituyendo el UUID por el de tu usuario. No guardes tu contraseña ni el UUID en `admin.js` o `supabase-config.js`:
+
+   ```sql
+   insert into private.sensorial_admins (user_id)
+   values ('TU-USER-UID')
+   on conflict (user_id) do nothing;
+   ```
+
+5. Después de crear tu usuario, en **Authentication → General configuration** puedes apagar **Allow new users to sign up**: así solo podrán iniciar sesión las cuentas ya existentes. La lista privada seguirá decidiendo quién administra la tienda.
+6. Sube `admin.html`, `admin.css`, `admin.js` y la nueva migración al repositorio que despliega Vercel. Abre `/admin.html` e inicia sesión con el usuario de **Authentication → Users**.
+
+En **Resumen** aparecen los perfumes publicados, borradores y reseñas pendientes. **Perfumes** permite crear y modificar casas, ficha, fotos del carrusel, notas, acordes, uso, tamaños y fuente principal; los cambios de una ficha se guardan juntos. Puedes subir fotos al bucket o pegar sus URL. **Reseñas** permite publicar, rechazar, destacar en la portada, marcar una compra verificada y eliminar. «Ocultar de la tienda» conserva la ficha como borrador. Las reseñas nuevas siempre llegan como `pending`.
+
+Si reemplazas una foto subida, el archivo anterior permanece en Storage. Puedes borrarlo manualmente del bucket después de comprobar que ninguna ficha lo utiliza. Si una ficha falla después de subir fotos, conserva las URL que el formulario agregó y vuelve a guardar; las fotos ya subidas no se pierden.
+
+Para revocar el acceso de un usuario, borra **solo su fila** de `private.sensorial_admins` desde SQL Editor. El panel vuelve a comprobar el permiso en cada operación, por lo que una sesión iniciada no concede acceso después de revocarlo.
+
 Para pruebas locales, puedes añadir `http://localhost:5500` a `SITE_ORIGIN` (separado por coma) y permitir `localhost` en un widget Turnstile de prueba. La revisión visual local requiere un servidor HTTP; abrir `index.html` como archivo no equivale al origen configurado.
+
+## Traer perfumes de Fragrantica desde el panel (PerfumAPI)
+
+En el editor de cada perfume hay una sección **Traer de Fragrantica**: escribes el nombre, eliges el resultado y el formulario se llena con nombre, casa (la elige si ya existe o la deja lista como casa nueva), año, público, las tres fases de notas (traducidas al español; las que no están en el diccionario se quedan en inglés y el panel dice cuáles), la foto que publica Fragrantica y la fuente. Nada se guarda hasta pulsar **Guardar perfume**. Si la ficha ya tiene datos, el panel pregunta si reemplazarlos o solo llenar lo vacío.
+
+Cómo funciona y sus límites:
+
+- Usa la búsqueda pública de [PerfumAPI](https://github.com/seccaz/PerfumAPI) (`perfumapidatabase.onrender.com`), que **no necesita clave**. PerfumAPI es un proyecto de un tercero que guarda perfumes leídos de Fragrantica; no es una API oficial y hoy tiene alrededor de 250 perfumes. Si un perfume no está, el panel lo dice y se llena a mano.
+- PerfumAPI **no trae acordes ni "cuándo usarlo"**: esos se completan a mano. A veces trae datos mal leídos (por ejemplo, años imposibles); el panel descarta los años fuera de rango, pero revisa todo antes de guardar.
+- PerfumAPI solo acepta peticiones del navegador desde su propia página, así que la búsqueda pasa por la función de Supabase `fragrantica-buscar`. La función solo responde a cuentas de `private.sensorial_admins` y además **copia la foto de Fragrantica al bucket `sensorial-perfumes`**, para que la tienda no dependa de su servidor. Si la copia falla, usa el enlace original.
+- Buscar perfumes nuevos que PerfumAPI todavía no tiene requiere ser administrador de una instalación propia de PerfumAPI (su `POST /scrape/url` está protegido). Fragrantica bloquea las peticiones directas (responde 403), así que no se lee su página desde aquí.
+- La autorización de Fragrantica que registraste en `perfume_sources.license_reference` debe cubrir también el uso de sus fotos.
+
+Para activarla, una sola vez (usa el `SITE_ORIGIN` que ya configuraste para `submit-review`):
+
+```powershell
+supabase functions deploy fragrantica-buscar
+```
+
+Si algún día instalas tu propia copia de PerfumAPI, apunta la función a ella con `supabase secrets set PERFUMAPI_URL=https://tu-perfumapi.onrender.com`.
+
+## Recordar la sesión del panel
+
+En el inicio de sesión, **Recordarme en este dispositivo** guarda la sesión en el navegador (sigue abierta al cerrarlo) y deja el correo escrito para la próxima vez. Sin marcarla, la sesión termina al cerrar la pestaña. Úsala solo en tus propios dispositivos. **Cerrar sesión** siempre termina la sesión; el correo recordado se mantiene hasta que entres sin marcar la casilla.
 
 ## Datos de Fragrantica mediante Apify
 
@@ -74,4 +124,4 @@ node supabase/fetch-apify-export.mjs --run-id ID_DE_EJECUCION --output supabase/
 - Tras aprobar una reseña y marcarla destacada, aparece en ambos lugares al recargar la página.
 - La lista del pedido sigue en `localStorage` del navegador: no necesita cuenta ni expone datos privados en Supabase.
 
-La instalación remota y el envío real de reseñas quedan pendientes hasta aplicar el SQL, configurar Turnstile y desplegar `submit-review` en el proyecto Supabase existente.
+El panel privado requiere una segunda migración y un usuario autorizado; subir solo los archivos de la web no activa los permisos de administración.

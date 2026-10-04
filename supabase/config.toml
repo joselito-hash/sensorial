@@ -3,3 +3,9 @@ project_id = "sensorial"
 [functions.submit-review]
 verify_jwt = false
 entrypoint = "./functions/submit-review/index.js"
+
+# El token del panel se valida dentro de la función (sensorial_admin_access); así el
+# navegador puede hacer la consulta previa de CORS, que no lleva token.
+[functions.fragrantica-buscar]
+verify_jwt = false
+entrypoint = "./functions/fragrantica-buscar/index.js"

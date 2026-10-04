@@ -14,6 +14,11 @@
   };
   const fields = $("#perfume-form").elements;
   const storeKey = "sensorial-admin-session";
+  const emailKey = "sensorial-admin-email";
+  /* "Recordarme en este dispositivo": la sesión va a localStorage (sigue abierta al cerrar el
+     navegador) y el correo queda escrito para la próxima vez. Sin marcar, la sesión vive en
+     sessionStorage y termina al cerrar la pestaña. */
+  let remember = false;
   let noticeTimer;
   let previewObjectURL = "";
   const uploadedGallery = new WeakMap();
@@ -40,9 +45,19 @@
   function saveSession(value) {
     state.session = value;
     try {
-      if (value) sessionStorage.setItem(storeKey, JSON.stringify(value));
-      else sessionStorage.removeItem(storeKey);
-    } catch { /* La sesión sigue en memoria si el navegador bloquea sessionStorage. */ }
+      const store = remember ? localStorage : sessionStorage;
+      const other = remember ? sessionStorage : localStorage;
+      if (value) store.setItem(storeKey, JSON.stringify(value));
+      else store.removeItem(storeKey);
+      other.removeItem(storeKey);
+    } catch { /* La sesión sigue en memoria si el navegador bloquea el almacenamiento. */ }
+  }
+
+  function rememberEmail(email) {
+    try {
+      if (remember && email) localStorage.setItem(emailKey, email);
+      else localStorage.removeItem(emailKey);
+    } catch { /* Sin almacenamiento: no se recuerda el correo. */ }
   }
 
   async function tokenRequest(grantType, body) {
@@ -256,6 +271,10 @@
     $("#new-brand-wrap").hidden = true;
     fields.new_brand.required = false;
     $("#archive-perfume").hidden = true;
+    $("#importar-estado").className = "importar__estado";
+    $("#importar-estado").textContent = "";
+    $("#importar-resultados").innerHTML = "";
+    $("#importar-consulta").value = "";
     $("#editor-title").textContent = id ? "Editar perfume" : "Nuevo perfume";
     fields.id.readOnly = Boolean(id);
     if (id) {
@@ -434,6 +453,214 @@
     fields.upload_gallery.value = "";
   }
 
+  /* ---------- Traer de Fragrantica (vía PerfumAPI) ----------
+     PerfumAPI (github.com/seccaz/PerfumAPI) guarda perfumes leídos de Fragrantica y deja
+     buscarlos sin clave. No es una API oficial de Fragrantica ni incluye acordes o "cuándo
+     usarlo". Como PerfumAPI no acepta peticiones de otras páginas, la búsqueda pasa por la
+     función de Supabase "fragrantica-buscar", que además copia la foto al bucket. Elegir un
+     resultado llena el formulario para revisarlo; nada se guarda hasta pulsar "Guardar". */
+  async function funcionFragrantica(cuerpo, signal) {
+    if (state.session.expires_at < Date.now() + 60000) await refreshSession();
+    const respuesta = await fetch(new URL("/functions/v1/fragrantica-buscar", apiBase), {
+      method: "POST",
+      headers: { apikey: config.publishableKey, Authorization: `Bearer ${state.session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo),
+      signal,
+      cache: "no-store",
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (respuesta.status === 404) throw new Error("Falta publicar la función fragrantica-buscar en Supabase (ver SUPABASE.md).");
+    if (!respuesta.ok) throw new Error(datos.error || `La función respondió ${respuesta.status}.`);
+    return datos;
+  }
+
+  /* Las notas llegan en inglés; estas son las más comunes en español (como las usa la tienda).
+     Las que no estén aquí se quedan en inglés y el panel avisa cuáles son. */
+  const NOTAS_ES = {
+    "bergamot": "bergamota", "calabrian bergamot": "bergamota de Calabria", "lemon": "limón", "lime": "lima", "orange": "naranja", "bitter orange": "naranja amarga",
+    "blood orange": "naranja sanguina", "mandarin orange": "mandarina", "mandarin": "mandarina", "tangerine": "mandarina",
+    "grapefruit": "toronja", "pink grapefruit": "toronja rosada", "yuzu": "yuzu", "citron": "cidra", "citruses": "cítricos",
+    "petitgrain": "petit grain", "neroli": "neroli", "orange blossom": "azahar", "lemon verbena": "verbena de limón",
+    "apple": "manzana", "green apple": "manzana verde", "pear": "pera", "peach": "durazno", "apricot": "chabacano",
+    "plum": "ciruela", "cherry": "cereza", "black currant": "grosella negra", "blackcurrant": "grosella negra",
+    "raspberry": "frambuesa", "strawberry": "fresa", "blackberry": "zarzamora", "pineapple": "piña", "coconut": "coco",
+    "melon": "melón", "watermelon": "sandía", "fig": "higo", "fig leaf": "hoja de higuera", "litchi": "lichi",
+    "passionfruit": "maracuyá", "mango": "mango", "red berries": "frutos rojos", "fruity notes": "notas frutales",
+    "rose": "rosa", "damask rose": "rosa de damasco", "turkish rose": "rosa turca", "bulgarian rose": "rosa búlgara",
+    "jasmine": "jazmín", "jasmine sambac": "jazmín sambac", "tuberose": "nardo", "iris": "iris", "orris root": "raíz de lirio",
+    "violet": "violeta", "violet leaf": "hoja de violeta", "lily-of-the-valley": "lirio de los valles", "lily of the valley": "lirio de los valles",
+    "lily": "lirio", "magnolia": "magnolia", "peony": "peonía", "freesia": "fresia", "gardenia": "gardenia",
+    "ylang-ylang": "ylang-ylang", "geranium": "geranio", "heliotrope": "heliotropo", "lavender": "lavanda",
+    "orchid": "orquídea", "carnation": "clavel", "hyacinth": "jacinto", "hiacynth": "jacinto", "cyclamen": "ciclamen",
+    "mimosa": "mimosa", "osmanthus": "osmanto", "honeysuckle": "madreselva", "lotus": "loto", "water lily": "nenúfar",
+    "white flowers": "flores blancas", "floral notes": "notas florales", "mignonette": "reseda", "chamomile": "manzanilla",
+    "pink pepper": "pimienta rosa", "black pepper": "pimienta negra", "pepper": "pimienta", "sichuan pepper": "pimienta de Sichuan",
+    "cardamom": "cardamomo", "cinnamon": "canela", "nutmeg": "nuez moscada", "clove": "clavo", "cloves": "clavo",
+    "ginger": "jengibre", "saffron": "azafrán", "cumin": "comino", "coriander": "cilantro", "star anise": "anís estrellado",
+    "anise": "anís", "spices": "especias", "spicy notes": "notas especiadas", "elemi": "elemí",
+    "mint": "menta", "peppermint": "menta piperita", "basil": "albahaca", "rosemary": "romero", "sage": "salvia",
+    "clary sage": "salvia esclarea", "thyme": "tomillo", "artemisia": "artemisa", "tarragon": "estragón",
+    "green notes": "notas verdes", "grass": "césped", "bamboo": "bambú", "tea": "té", "green tea": "té verde",
+    "black tea": "té negro", "mate": "mate", "tobacco": "tabaco", "tobacco leaf": "hoja de tabaco", "hay": "heno",
+    "cedar": "cedro", "virginia cedar": "cedro de Virginia", "atlas cedar": "cedro del Atlas", "sandalwood": "sándalo",
+    "vetiver": "vetiver", "patchouli": "pachulí", "oud": "oud", "agarwood (oud)": "oud", "agarwood": "oud",
+    "guaiac wood": "madera de guayaco", "birch": "abedul", "oakmoss": "musgo de roble", "moss": "musgo", "cypress": "ciprés",
+    "pine": "pino", "fir": "abeto", "woody notes": "notas amaderadas", "woodsy notes": "notas amaderadas",
+    "cashmere wood": "madera de cachemira", "cashmeran": "cashmeran", "papyrus": "papiro", "driftwood": "madera flotante",
+    "amber": "ámbar", "ambergris": "ámbar gris", "ambroxan": "ambroxan", "ambrette (musk mallow)": "ambreta",
+    "musk": "almizcle", "white musk": "almizcle blanco", "musks": "almizcles", "labdanum": "ládano", "benzoin": "benjuí",
+    "incense": "incienso", "olibanum": "olíbano", "myrrh": "mirra", "opoponax": "opopónaco", "tolu balsam": "bálsamo de tolú",
+    "peru balsam": "bálsamo de Perú", "styrax": "estoraque", "resins": "resinas",
+    "vanilla": "vainilla", "madagascar vanilla": "vainilla de Madagascar", "bourbon vanilla": "vainilla bourbon",
+    "tonka bean": "haba tonka", "caramel": "caramelo", "honey": "miel", "praline": "praliné", "chocolate": "chocolate",
+    "cacao": "cacao", "cocoa": "cacao", "coffee": "café", "almond": "almendra", "bitter almond": "almendra amarga",
+    "hazelnut": "avellana", "pistachio": "pistache", "sugar": "azúcar", "brown sugar": "azúcar morena",
+    "marshmallow": "malvavisco", "milk": "leche", "cream": "crema", "rum": "ron", "cognac": "coñac", "whiskey": "whisky",
+    "wine": "vino", "champagne": "champaña", "dates": "dátiles", "licorice": "regaliz",
+    "leather": "cuero", "suede": "gamuza", "sea notes": "notas marinas", "marine notes": "notas marinas",
+    "water notes": "notas acuáticas", "aquatic notes": "notas acuáticas", "calone": "calone", "salt": "sal",
+    "sea salt": "sal marina", "ozonic notes": "notas ozónicas", "aldehydes": "aldehídos", "metallic notes": "notas metálicas",
+    "mineral notes": "notas minerales", "smoke": "humo", "earthy notes": "notas terrosas", "powdery notes": "notas atalcadas",
+    "violet accord": "acorde de violeta", "iso e super": "Iso E Super", "ambrettolide": "ambretólida", "sweet notes": "notas dulces",
+  };
+
+  const notaES = (nota) => NOTAS_ES[nota.trim().toLowerCase()] || nota.trim();
+  const sinTraducir = (nota) => !NOTAS_ES[nota.trim().toLowerCase()];
+  const PUBLICO = { men: "hombre", women: "mujer", unisex: "unisex", "men and women": "unisex", "women and men": "unisex" };
+  let resultadosFragrantica = [];
+
+  async function buscarFragrantica() {
+    const consulta = nonempty($("#importar-consulta").value);
+    const estado = $("#importar-estado");
+    const lista = $("#importar-resultados");
+    if (consulta.length < 2) { estado.textContent = "Escribe al menos dos letras."; return; }
+    const boton = $("#importar-buscar");
+    boton.disabled = true;
+    estado.className = "importar__estado";
+    estado.textContent = "Buscando…";
+    lista.innerHTML = "";
+    /* El servicio duerme cuando nadie lo usa y tarda en despertar la primera vez */
+    const aviso = setTimeout(() => { estado.textContent = "Despertando el servicio de PerfumAPI; la primera búsqueda puede tardar hasta un minuto…"; }, 4000);
+    const control = new AbortController();
+    const limite = setTimeout(() => control.abort(), 90000);
+    try {
+      const datos = await funcionFragrantica({ accion: "buscar", consulta }, control.signal);
+      resultadosFragrantica = Array.isArray(datos.resultados) ? datos.resultados.slice(0, 8) : [];
+      if (!resultadosFragrantica.length) {
+        estado.textContent = "PerfumAPI todavía no tiene ese perfume. Prueba con otro nombre o llena la ficha a mano.";
+        return;
+      }
+      estado.textContent = resultadosFragrantica.length === 1 ? "1 resultado." : `${resultadosFragrantica.length} resultados.`;
+      lista.innerHTML = resultadosFragrantica.map((r, i) => {
+        const foto = imageURL(r.image_url);
+        const notas = [r.notes_top, r.notes_middle, r.notes_base].reduce((n, fase) => n + (Array.isArray(fase) ? fase.length : 0), 0);
+        return `<div class="importar__resultado">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : "<span></span>"}<div><strong>${escapeHTML(nombreSinCasa(r))}</strong><small>${escapeHTML(r.brand || "")}${r.gender ? ` · ${escapeHTML(r.gender)}` : ""} · ${notas} notas</small></div><button class="button button--primary" type="button" data-importar="${i}">Usar</button></div>`;
+      }).join("");
+    } catch (error) {
+      estado.classList.add("error");
+      estado.textContent = error.name === "AbortError" ? "PerfumAPI no respondió a tiempo. Inténtalo de nuevo en un momento." : `No se pudo buscar: ${error.message}`;
+    } finally {
+      clearTimeout(aviso);
+      clearTimeout(limite);
+      boton.disabled = false;
+    }
+  }
+
+  /* PerfumAPI guarda el nombre con la casa al final ("Sauvage Dior") */
+  function nombreSinCasa(r) {
+    const nombre = nonempty(r.name);
+    const casa = nonempty(r.brand);
+    return casa && nombre.toLowerCase().endsWith(` ${casa.toLowerCase()}`) ? nombre.slice(0, -casa.length - 1).trim() : nombre;
+  }
+
+  async function usarFragrantica(indice) {
+    const r = resultadosFragrantica[indice];
+    if (!r) return;
+    $$("[data-importar]").forEach((boton) => { boton.disabled = true; });
+    const nombre = nombreSinCasa(r);
+    const fases = { salida: r.notes_top, corazon: r.notes_middle, fondo: r.notes_base };
+    const yaTieneDatos = ["name", "notes_salida", "notes_corazon", "notes_fondo", "release_year", "primary_image"].some((campo) => nonempty(fields[campo].value));
+    const reemplazar = !yaTieneDatos || window.confirm("Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
+    const poner = (campo, valor) => {
+      if (valor === undefined || valor === null || valor === "") return false;
+      if (!reemplazar && nonempty(fields[campo].value)) return false;
+      fields[campo].value = valor;
+      return true;
+    };
+    const llenados = [];
+    const enIngles = new Set();
+
+    if (poner("name", nombre)) {
+      llenados.push("nombre");
+      if (!state.editorId && !state.idEdited) fields.id.value = slug(nombre);
+    }
+    /* La casa: si ya existe se elige; si no, queda lista como casa nueva */
+    if (r.brand && (reemplazar || !fields.brand_choice.value)) {
+      const existente = state.data.brands.find((b) => slug(b.name) === slug(r.brand));
+      fields.brand_choice.value = existente ? existente.id : "__new";
+      if (!existente) fields.new_brand.value = r.brand;
+      $("#new-brand-wrap").hidden = Boolean(existente);
+      fields.new_brand.required = !existente;
+      llenados.push(existente ? "casa" : "casa nueva");
+    }
+    /* El año solo si es creíble (PerfumAPI a veces trae años mal leídos) */
+    const anio = Number(r.release_year);
+    if (Number.isInteger(anio) && anio >= 1900 && anio <= new Date().getFullYear() + 1 && poner("release_year", anio)) llenados.push("año");
+    const publico = PUBLICO[nonempty(r.gender).toLowerCase()];
+    if (publico && poner("audience", publico)) llenados.push("público");
+
+    let notasPuestas = 0;
+    for (const [fase, lista] of Object.entries(fases)) {
+      if (!Array.isArray(lista) || !lista.length) continue;
+      const unicas = [...new Set(lista.map(notaES))];
+      lista.filter(sinTraducir).forEach((nota) => enIngles.add(nota));
+      if (poner(`notes_${fase}`, unicas.join(", "))) notasPuestas += unicas.length;
+    }
+    if (notasPuestas) llenados.push(`${notasPuestas} notas`);
+
+    /* La foto de Fragrantica se copia al bucket (así la tienda no depende de su servidor).
+       Va como principal si no hay una; si ya hay, se suma al carrusel. Si la copia falla,
+       se usa el enlace original de Fragrantica. */
+    let foto = imageURL(r.image_url);
+    let avisoFoto = "";
+    if (foto) {
+      const estadoFoto = $("#importar-estado");
+      estadoFoto.className = "importar__estado";
+      estadoFoto.textContent = "Copiando la foto de Fragrantica…";
+      try {
+        const id = slug(fields.id.value || nombre) || "perfume";
+        const copia = await funcionFragrantica({ accion: "foto", url: foto, perfumeId: id });
+        if (imageURL(copia.url)) foto = copia.url;
+      } catch (error) {
+        avisoFoto = ` No se pudo copiar la foto (${error.message}); se usa el enlace de Fragrantica.`;
+      }
+      if (poner("primary_image", foto)) {
+        fields.upload_primary.value = "";
+        llenados.push("foto principal");
+      } else if (!fields.images.value.includes(foto)) {
+        fields.images.value = [fields.images.value.trim(), `${foto} | ${nombre} en Fragrantica`].filter(Boolean).join("\n");
+        llenados.push("foto en el carrusel");
+      }
+      updateImagePreview();
+    }
+
+    const fuente = /^https:\/\/www\.fragrantica\./i.test(nonempty(r.perfume_url)) ? r.perfume_url : "";
+    if (fuente && (reemplazar || !nonempty(fields.source_url.value))) {
+      fields.source_publisher.value = "Fragrantica (vía PerfumAPI)";
+      fields.source_url.value = fuente;
+      fields.source_checked_at.value = new Date().toISOString().slice(0, 10);
+      llenados.push("fuente");
+    }
+
+    const estado = $("#importar-estado");
+    estado.className = "importar__estado ok";
+    estado.textContent = `Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}. PerfumAPI no incluye acordes ni «cuándo usarlo»: complétalos a mano.`
+      + (enIngles.size ? ` Quedaron en inglés: ${[...enIngles].join(", ")}.` : "")
+      + avisoFoto
+      + " Revisa todo antes de guardar.";
+    $("#importar-resultados").innerHTML = "";
+  }
+
   async function savePerfume(event) {
     event.preventDefault();
     const button = $("#save-perfume");
@@ -476,6 +703,17 @@
     $("#dashboard").hidden = true;
     $("#login-view").hidden = false;
     $("#login-form").reset();
+    prefillLogin();
+  }
+
+  /* Si el correo quedó recordado, el formulario aparece listo: correo escrito y la casilla
+     marcada; solo falta la contraseña */
+  function prefillLogin() {
+    let saved = "";
+    try { saved = localStorage.getItem(emailKey) || ""; } catch { /* sin almacenamiento */ }
+    if (!saved) return;
+    $("#login-form [name=email]").value = saved;
+    $("#login-form [name=remember]").checked = true;
   }
 
   $("#login-form").addEventListener("submit", async (event) => {
@@ -485,10 +723,10 @@
     button.disabled = true;
     message.textContent = "";
     try {
-      await tokenRequest("password", {
-        email: nonempty($("#login-form [name=email]").value),
-        password: $("#login-form [name=password]").value,
-      });
+      remember = $("#login-form [name=remember]").checked;
+      const email = nonempty($("#login-form [name=email]").value);
+      await tokenRequest("password", { email, password: $("#login-form [name=password]").value });
+      rememberEmail(email);
       await authorize();
       $("#login-form [name=password]").value = "";
     } catch (error) {
@@ -511,6 +749,15 @@
   fields.primary_image.addEventListener("input", updateImagePreview);
   fields.upload_primary.addEventListener("change", updateImagePreview);
   $("#perfume-form").addEventListener("submit", savePerfume);
+  $("#importar-buscar").addEventListener("click", buscarFragrantica);
+  /* Enter en el buscador busca en Fragrantica en vez de guardar la ficha */
+  $("#importar-consulta").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); buscarFragrantica(); }
+  });
+  $("#importar-resultados").addEventListener("click", (event) => {
+    const boton = event.target.closest("[data-importar]");
+    if (boton) usarFragrantica(Number(boton.dataset.importar));
+  });
   $("#archive-perfume").addEventListener("click", archivePerfume);
   $("#close-editor").addEventListener("click", () => $("#editor-dialog").close());
   $("#cancel-editor").addEventListener("click", () => $("#editor-dialog").close());
@@ -540,8 +787,14 @@
       $("#login-form button").disabled = true;
       return;
     }
+    prefillLogin();
     try {
-      const stored = JSON.parse(sessionStorage.getItem(storeKey) || "null");
+      let stored = null;
+      try {
+        stored = JSON.parse(localStorage.getItem(storeKey) || "null");
+        remember = Boolean(stored);
+        if (!stored) stored = JSON.parse(sessionStorage.getItem(storeKey) || "null");
+      } catch { stored = null; }
       if (stored?.refresh_token) {
         saveSession(stored);
         await refreshSession();
