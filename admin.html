@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#221c20">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://hlhyvalmeditlasovmtd.supabase.co; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Panel privado | Sensorial Boutique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="admin.css">
+  <script src="supabase-config.js" defer></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <main>
+    <section id="login-view" class="login-shell" aria-labelledby="login-title">
+      <div class="login-brand"><img src="img/sensorial-logo.svg" alt="Sensorial Boutique"></div>
+      <div class="login-card">
+        <p class="eyebrow">Área privada</p>
+        <h1 id="login-title">Tu boutique, bajo control.</h1>
+        <p class="muted">Entra con el usuario administrador de Sensorial para cuidar el catálogo y revisar las opiniones.</p>
+        <form id="login-form">
+          <label>Correo electrónico <input type="email" name="email" autocomplete="username" required></label>
+          <label>Contraseña <input type="password" name="password" autocomplete="current-password" required></label>
+          <button class="button button--primary" type="submit">Entrar al panel <span aria-hidden="true">→</span></button>
+        </form>
+        <p id="login-message" class="form-message" role="alert"></p>
+      </div>
+      <p class="login-foot">Acceso reservado · <a href="index.html">Volver a la tienda</a></p>
+    </section>
+
+    <section id="dashboard" class="dashboard" hidden aria-label="Administración Sensorial">
+      <aside class="sidebar">
+        <a class="sidebar-brand" href="index.html" aria-label="Ir a la tienda Sensorial"><img src="img/sensorial-logo.svg" alt=""><small>ESTUDIO / ADMIN</small></a>
+        <p class="nav-label">ESPACIO DE TRABAJO</p>
+        <nav class="admin-nav" aria-label="Secciones del panel">
+          <button type="button" data-tab="overview" class="active"><span aria-hidden="true">◫</span> Resumen</button>
+          <button type="button" data-tab="perfumes"><span aria-hidden="true">◈</span> Perfumes <span id="nav-perfume-count" class="nav-count">0</span></button>
+          <button type="button" data-tab="reviews"><span aria-hidden="true">✎</span> Reseñas <span id="nav-review-count" class="nav-count">0</span></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <a href="index.html" target="_blank" rel="noopener">Ver tienda <span aria-hidden="true">↗</span></a>
+          <button id="signout" type="button">Cerrar sesión <span aria-hidden="true">↗</span></button>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar"><div><span class="topbar-dot"></span> Panel privado</div><span id="admin-email" class="admin-email"></span></header>
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+        <section id="view-overview" class="view" aria-labelledby="overview-title">
+          <div class="page-heading"><div><p class="eyebrow">VISTA GENERAL</p><h1 id="overview-title">Buenos aromas, mejores decisiones.</h1><p class="muted">El estado de la boutique, de un vistazo.</p></div><button class="button button--primary" type="button" data-new-perfume>+ Nuevo perfume</button></div>
+          <div class="stat-grid">
+            <article class="stat"><span>Perfumes publicados</span><strong id="stat-live">—</strong><small>Visibles en la tienda</small></article>
+            <article class="stat"><span>Borradores</span><strong id="stat-drafts">—</strong><small>Guardados sin publicar</small></article>
+            <article class="stat stat--accent"><span>Reseñas pendientes</span><strong id="stat-pending">—</strong><small>Esperan tu revisión</small></article>
+          </div>
+          <div class="overview-grid"><article class="panel"><div class="panel-title"><h2>Por revisar</h2><button class="text-button" type="button" data-go="reviews">Ver todas →</button></div><div id="pending-preview" class="preview-list"></div></article><article class="panel editorial"><span class="editorial-kicker">TU CATÁLOGO</span><h2>Cada perfume cuenta una historia.</h2><p>Mantén fotos, notas y acordes al día. Puedes guardar una ficha como borrador y publicarla cuando esté lista.</p><button class="button button--light" type="button" data-go="perfumes">Gestionar perfumes →</button></article></div>
+        </section>
+
+        <section id="view-perfumes" class="view" hidden aria-labelledby="perfumes-title">
+          <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h1 id="perfumes-title">Perfumes</h1><p class="muted">Edita una ficha completa o prepara un nuevo lanzamiento.</p></div><button class="button button--primary" type="button" data-new-perfume>+ Nuevo perfume</button></div>
+          <div class="catalog-toolbar"><label class="search-label"><span aria-hidden="true">⌕</span><input id="perfume-search" type="search" placeholder="Buscar por perfume, casa o familia" aria-label="Buscar perfumes"></label><select id="perfume-filter" aria-label="Filtrar por publicación"><option value="all">Todos</option><option value="published">Publicados</option><option value="draft">Borradores</option></select></div>
+          <div id="perfume-list" class="perfume-grid"></div>
+          <p id="perfume-empty" class="empty" hidden>No hay perfumes con ese filtro.</p>
+        </section>
+
+        <section id="view-reviews" class="view" hidden aria-labelledby="reviews-title">
+          <div class="page-heading"><div><p class="eyebrow">COMUNIDAD</p><h1 id="reviews-title">Reseñas</h1><p class="muted">Lee cada comentario antes de publicarlo. Los destacados aparecen en el inicio.</p></div></div>
+          <div class="review-tabs" role="group" aria-label="Filtrar reseñas"><button type="button" data-review-filter="pending" class="active">Pendientes <span id="pending-count">0</span></button><button type="button" data-review-filter="published">Publicadas</button><button type="button" data-review-filter="rejected">Rechazadas</button><button type="button" data-review-filter="all">Todas</button></div>
+          <div id="review-list" class="review-list"></div>
+          <p id="review-empty" class="empty" hidden>No hay reseñas en esta sección.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
+    <form id="perfume-form" class="editor-form">
+      <header class="editor-header"><div><p class="eyebrow">FICHA DE PERFUME</p><h2 id="editor-title">Nuevo perfume</h2></div><button type="button" id="close-editor" class="icon-button" aria-label="Cerrar editor">×</button></header>
+      <div class="editor-body">
+        <div class="editor-cover"><div id="image-preview" class="image-preview"><span>Vista previa de la foto principal</span></div><div><span class="eyebrow">ANTES DE PUBLICAR</span><p>Guarda un borrador para completar fotos, notas o datos más tarde. La tienda solo mostrará las fichas publicadas.</p></div></div>
+        <div class="editor-fields">
+          <fieldset><legend>Identidad</legend><div class="field-grid"><label>Nombre del perfume <input name="name" required maxlength="160" placeholder="Bleu de Chanel"></label><label>Casa <select name="brand_choice" id="brand-choice" required></select></label><label id="new-brand-wrap" hidden>Nueva casa <input name="new_brand" placeholder="Nombre de la casa"></label><label>ID de la ficha <input name="id" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="bleu-de-chanel"><small>No se puede cambiar después de crearla.</small></label><label>Familia <select name="family_id" id="family-choice" required></select></label><label>Origen <select name="origin" required><option value="Diseñador">Diseñador</option><option value="Árabe">Árabe</option></select></label><label>Concentración <input name="concentration" placeholder="Eau de Parfum"></label><label>Edición <input name="edition" placeholder="Edición limitada (opcional)"></label><label>Público <select name="audience"><option value="">Sin especificar</option><option value="unisex">Unisex</option><option value="hombre">Hombre</option><option value="mujer">Mujer</option></select></label><label>Año <input name="release_year" type="number" min="1800" max="2200" placeholder="2010"></label></div><label>Descripción <textarea name="description" rows="3" placeholder="Cómo huele y para quién es"></textarea></label></fieldset>
+          <fieldset><legend>Imágenes</legend><label>Foto principal (URL o ruta img/...) <input name="primary_image" placeholder="https://... o img/perfume.webp"></label><label>O sube la foto principal <input name="upload_primary" type="file" accept="image/jpeg,image/png,image/webp,image/avif"></label><label>Lámina / collage (opcional) <input name="collage_image" placeholder="https://..."></label><label>O sube una lámina <input name="upload_collage" type="file" accept="image/jpeg,image/png,image/webp,image/avif"></label><label>Fotos del carrusel <textarea name="images" rows="4" placeholder="Una por línea: URL | texto alternativo"></textarea><label>Añadir fotos al carrusel <input name="upload_gallery" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple></label><small>Hasta 20 fotos en el carrusel. Cada archivo puede pesar hasta 5 MB. También puedes pegar una URL por línea y añadir una descripción después de |.</small></fieldset>
+          <fieldset><legend>Pirámide olfativa</legend><div class="field-grid"><label>Salida <textarea name="notes_salida" rows="3" placeholder="Toronja, Limón, Menta"></textarea></label><label>Corazón <textarea name="notes_corazon" rows="3" placeholder="Jengibre, Jazmín"></textarea></label><label>Fondo <textarea name="notes_fondo" rows="3" placeholder="Cedro, Sándalo, Incienso"></textarea></label></div><small>Separa cada nota con una coma. Conservaremos el orden.</small></fieldset>
+          <fieldset><legend>Acordes</legend><label>Nombre | intensidad | color RGB <textarea name="accords" rows="4" placeholder="amaderado | 90 | 125,94,72&#10;cítrico | 70 | 241,187,80"></textarea></label><small>Un acorde por línea. Intensidad de 0 a 100; color como rojo,verde,azul.</small></fieldset>
+          <fieldset><legend>Cuándo usarlo</legend><div class="field-grid field-grid--three"><label>Invierno <input name="winter" type="number" min="0" max="100" value="50"></label><label>Primavera <input name="spring" type="number" min="0" max="100" value="50"></label><label>Verano <input name="summer" type="number" min="0" max="100" value="50"></label><label>Otoño <input name="autumn" type="number" min="0" max="100" value="50"></label><label>Día <input name="day_score" type="number" min="0" max="100" value="50"></label><label>Noche <input name="night_score" type="number" min="0" max="100" value="50"></label></div><small>Valores relativos de 0 a 100 para la ficha.</small></fieldset>
+          <fieldset><legend>Tamaños y disponibilidad</legend><label>Tamaño ml | SKU | precio MXN | existencias | activo <textarea name="variants" rows="3" placeholder="100 | BLEU-EDP-100 | 3200 | 5 | sí"></textarea></label><small>Una presentación por línea. Puedes omitir precio, SKU o existencias. Usa «no» en la última columna para desactivar una presentación. La web actualmente toma pedidos por WhatsApp.</small></fieldset>
+          <fieldset><legend>Fuente principal</legend><div class="field-grid"><label>Publicador <input name="source_publisher" placeholder="Fabricante o Fragrantica"></label><label>URL <input name="source_url" placeholder="https://..."></label><label>Base de derechos <select name="rights_basis"><option value="propio">Contenido propio</option><option value="fabricante">Fabricante</option><option value="licencia">Licencia</option><option value="manual">Carga manual</option></select></label><label>Referencia de licencia <input name="license_reference" placeholder="Folio privado, si aplica"></label><label>Revisada el <input name="source_checked_at" type="date"></label></div><small>Solo la cuenta administradora puede consultar la referencia de licencia.</small></fieldset>
+          <fieldset><legend>Publicación</legend><div class="field-grid"><label>Orden en más vendidos <input name="best_seller_rank" type="number" min="1" max="100" placeholder="Opcional"></label><label>Orden en novedades <input name="new_arrival_rank" type="number" min="1" max="100" placeholder="Opcional"></label></div><label class="check"><input name="is_published" type="checkbox"> Publicar ahora en la tienda</label></fieldset>
+        </div>
+      </div>
+      <footer class="editor-footer"><button type="button" id="archive-perfume" class="button button--subtle" hidden>Ocultar de la tienda</button><span class="editor-spacer"></span><button type="button" id="cancel-editor" class="button button--subtle">Cancelar</button><button type="submit" id="save-perfume" class="button button--primary">Guardar perfume</button></footer>
+    </form>
+  </dialog>
+</body>
+</html>
