@@ -266,10 +266,8 @@
             <div class="filtros__grupo" role="group" aria-labelledby="filtro-familia">
               <span class="filtros__titulo" id="filtro-familia">Familia</span>
               <button class="chip" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true">Todas</button>
-              <button class="chip" type="button" data-grupo="familia" data-valor="frescos" aria-pressed="false">Frescos</button>
-              <button class="chip" type="button" data-grupo="familia" data-valor="dulces" aria-pressed="false">Dulces</button>
-              <button class="chip" type="button" data-grupo="familia" data-valor="amaderados" aria-pressed="false">Amaderados</button>
-              <button class="chip" type="button" data-grupo="familia" data-valor="orientales" aria-pressed="false">Orientales</button>
+              <!-- Un botón por familia: app.js los crea a partir de FAMILIAS -->
+              <span class="chips-familia" id="chips-familia" style="display: contents"></span>
             </div>
             <div class="filtros__grupo" role="group" aria-labelledby="filtro-origen">
               <span class="filtros__titulo" id="filtro-origen">Origen</span>

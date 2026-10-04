@@ -1361,9 +1361,18 @@
       </li>`;
   }
 
+  /* Filtros: un botón por familia, en el mismo orden que FAMILIAS */
+  function pintarChipsFamilia() {
+    const caja = $("#chips-familia");
+    if (!caja) return;
+    caja.innerHTML = FAMILIAS.map((f) =>
+      `<button class="chip" type="button" data-grupo="familia" data-valor="${f.id}" aria-pressed="false">${f.nombre}</button>`).join("");
+  }
+
   /* Un capítulo de color por familia, con sus perfumes dentro */
   function pintarCatalogo() {
     if (!$("#capitulos")) return;
+    pintarChipsFamilia();
     $("#capitulos").innerHTML = FAMILIAS.map((f) => {
       const perfumes = PERFUMES.filter((p) => p.familia === f.id);
       return `
