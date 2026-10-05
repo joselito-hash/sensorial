@@ -64,6 +64,23 @@
 
         <section id="view-perfumes" class="view" hidden aria-labelledby="perfumes-title">
           <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h1 id="perfumes-title">Perfumes</h1><p class="muted">Edita una ficha completa o prepara un nuevo lanzamiento.</p></div><button class="button button--primary" type="button" data-new-perfume>+ Nuevo perfume</button></div>
+          <section class="lote" id="lote" aria-labelledby="lote-titulo">
+            <div class="lote__cabeza">
+              <div>
+                <p class="eyebrow">AUTOMÁTICO</p>
+                <h2 id="lote-titulo">Completar borradores con Fragrantica</h2>
+                <p class="lote__texto">Busca cada borrador sin notas en Fragrantica y llena sus notas, acordes, «cuándo usarlo», año y foto. Todo queda como borrador para que lo revises antes de publicar.</p>
+                <p class="lote__resumen" id="lote-resumen"></p>
+              </div>
+              <div class="lote__acciones">
+                <label class="lote__cuantos">Cuántos <select id="lote-cantidad"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="0">Todos</option></select></label>
+                <button class="button button--primary" type="button" id="lote-iniciar">Completar</button>
+                <button class="button button--subtle" type="button" id="lote-detener" hidden>Detener</button>
+              </div>
+            </div>
+            <div class="lote__progreso" id="lote-progreso" hidden><div class="lote__barra" aria-hidden="true"><span id="lote-barra"></span></div><p id="lote-estado" class="lote__estado" role="status" aria-live="polite"></p></div>
+            <ol class="lote__lista" id="lote-lista"></ol>
+          </section>
           <div class="catalog-toolbar"><label class="search-label"><span aria-hidden="true">⌕</span><input id="perfume-search" type="search" placeholder="Buscar por perfume, casa o familia" aria-label="Buscar perfumes"></label><select id="perfume-filter" aria-label="Filtrar por publicación"><option value="all">Todos</option><option value="published">Publicados</option><option value="draft">Borradores</option></select></div>
           <div id="perfume-list" class="perfume-grid"></div>
           <p id="perfume-empty" class="empty" hidden>No hay perfumes con ese filtro.</p>
@@ -86,9 +103,11 @@
         <div class="editor-cover"><div id="image-preview" class="image-preview"><span>Vista previa de la foto principal</span></div><div><span class="eyebrow">ANTES DE PUBLICAR</span><p>Guarda un borrador para completar fotos, notas o datos más tarde. La tienda solo mostrará las fichas publicadas.</p></div></div>
         <div class="editor-fields">
           <fieldset class="importar"><legend>Traer de Fragrantica</legend>
-            <p class="importar__ayuda">Escribe el nombre o pega el enlace de su página en Fragrantica y elige el resultado: llenamos el nombre, la casa, el año, el público, las notas, los acordes y la foto. Revisa todo antes de guardar.</p>
-            <div class="importar__barra"><input id="importar-consulta" type="search" placeholder="Ej. Khamrah Lattafa, o https://www.fragrantica.es/perfume/..." aria-label="Buscar perfume en Fragrantica"><button class="button button--subtle" type="button" id="importar-buscar">Buscar</button></div>
+            <p class="importar__ayuda">Escribe el nombre o pega el enlace de su página en Fragrantica y elige el resultado: llenamos el nombre, la casa, el año, el público, las notas, los acordes, «cuándo usarlo» y la foto. También puedes usar el <a href="herramientas/marcador.html" target="_blank" rel="noopener">marcador de Sensorial</a> en la página del perfume y pulsar «Pegar de Fragrantica». Revisa todo antes de guardar.</p>
+            <div class="importar__barra"><input id="importar-consulta" type="search" placeholder="Ej. Khamrah Lattafa, o https://www.fragrantica.es/perfume/..." aria-label="Buscar perfume en Fragrantica"><button class="button button--subtle" type="button" id="importar-buscar">Buscar</button><button class="button button--subtle" type="button" id="importar-pegar">Pegar de Fragrantica</button></div>
+            <div id="importar-pegado" class="importar__pegado" hidden><label>Pega aquí lo que copiaste con el marcador <textarea id="importar-texto" rows="3" placeholder="{&quot;formato&quot;:&quot;sensorial-fragrantica&quot;, ...}"></textarea></label><button class="button button--primary" type="button" id="importar-usar-texto">Usar</button></div>
             <p id="importar-estado" class="importar__estado" role="status" aria-live="polite"></p>
+            <p id="importar-uso" class="importar__estado" role="status" aria-live="polite" hidden></p>
             <div id="importar-resultados" class="importar__resultados"></div>
           </fieldset>
           <fieldset><legend>Identidad</legend><div class="field-grid"><label>Nombre del perfume <input name="name" required maxlength="160" placeholder="Bleu de Chanel"></label><label>Casa <select name="brand_choice" id="brand-choice" required></select></label><label id="new-brand-wrap" hidden>Nueva casa <input name="new_brand" placeholder="Nombre de la casa"></label><label>ID de la ficha <input name="id" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="bleu-de-chanel"><small>No se puede cambiar después de crearla.</small></label><label>Familia <select name="family_id" id="family-choice" required></select></label><label>Origen <select name="origin" required><option value="Diseñador">Diseñador</option><option value="Árabe">Árabe</option></select></label><label>Concentración <input name="concentration" placeholder="Eau de Parfum"></label><label>Edición <input name="edition" placeholder="Edición limitada (opcional)"></label><label>Público <select name="audience"><option value="">Sin especificar</option><option value="unisex">Unisex</option><option value="hombre">Hombre</option><option value="mujer">Mujer</option></select></label><label>Año <input name="release_year" type="number" min="1800" max="2200" placeholder="2010"></label></div><label>Descripción <textarea name="description" rows="3" placeholder="Cómo huele y para quién es"></textarea></label></fieldset>

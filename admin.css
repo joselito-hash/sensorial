@@ -34,8 +34,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* Traer de Fragrantica: buscador, resultados con foto y resumen de lo que se llenó */
 .importar{background:#2a2328}
 .importar__ayuda{margin:0;color:#a99da4;font-size:13px;line-height:1.5}
-.importar__barra{display:flex;gap:10px}
-.importar__barra input{flex:1}
+.importar__barra{display:flex;flex-wrap:wrap;gap:10px}
+.importar__barra input{flex:1;min-width:12rem}
+.importar__ayuda a{color:#f4aabe}
+.importar__pegado{display:grid;gap:8px;justify-items:start}
+.importar__pegado label{width:100%}
+.importar__pegado textarea{font:12px ui-monospace,monospace}
 .importar__estado{margin:0;min-height:18px;color:#cfc2c9;font-size:13px;line-height:1.5}
 .importar__estado.error{color:#efb4b4}
 .importar__estado.ok{color:#b5d6c4}
@@ -90,6 +94,31 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .editorial h2{max-width:340px;margin:20px 0;font-size:34px;line-height:1.1}
 .editorial p{max-width:400px;line-height:1.5;color:#d1dfd4}
 .editorial button{margin-top:auto}
+/* Completar borradores con Fragrantica: acciones, barra de avance y bitácora por perfume */
+.lote{margin-bottom:28px;padding:24px;border:1px solid #4d6e5a;border-radius:23px;background:#28322c}
+.lote__cabeza{display:flex;justify-content:space-between;align-items:end;gap:20px}
+.lote__cabeza h2{margin:0 0 8px;font-size:24px;letter-spacing:-.03em}
+.lote__texto{max-width:62ch;margin:0;color:#c9d8cd;line-height:1.5;font-size:14px}
+.lote__resumen{margin:10px 0 0;color:#a9cbb8;font-size:13px;font-weight:700;line-height:1.5}
+.lote__resumen button{padding:0;margin-left:6px;border:0;background:none;color:#f4aabe;font-weight:700}
+.lote__acciones{display:flex;align-items:end;gap:10px;flex-shrink:0}
+.lote__cuantos{display:grid;gap:6px;color:#c9d8cd;font-size:12px;font-weight:700}
+.lote__cuantos select{padding:12px 14px;border:1px solid #4d6e5a;border-radius:12px;background:#1f2823;color:#f8f4f5}
+.lote__progreso{display:grid;gap:8px;margin-top:20px}
+.lote__barra{height:6px;border-radius:99px;background:#1f2823;overflow:hidden}
+.lote__barra span{display:block;width:0;height:100%;border-radius:inherit;background:#add4bd;transition:width .4s}
+.lote__estado{margin:0;color:#c9d8cd;font-size:13px}
+.lote__lista{display:grid;gap:6px;max-height:340px;margin:16px 0 0;padding:0;overflow:auto;list-style:none}
+.lote__lista:empty{display:none}
+.lote__item{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;background:#1f2823}
+.lote__icono{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#3b3238;font-size:13px;font-weight:800}
+.lote__item--ok .lote__icono{background:#add4bd;color:#193729}
+.lote__item--revisar .lote__icono{background:#f3d29b;color:#4a3412}
+.lote__item--nada .lote__icono,.lote__item--error .lote__icono{background:#efc2c2;color:#572525}
+.lote__item strong{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lote__item small{display:block;color:#a99da4;font-size:12px}
+.lote__item button{border:1px solid #5b7a66;border-radius:9px;background:none;color:#e6f0e9;padding:6px 10px;font-size:12px;font-weight:800}
+@media(max-width:720px){.lote{padding:18px}.lote__cabeza{flex-direction:column;align-items:stretch}.lote__acciones{flex-wrap:wrap}.lote__acciones .button{flex:1}}
 .catalog-toolbar{display:flex;gap:12px;margin-bottom:25px}
 .search-label{position:relative;flex:1}
 .search-label span{position:absolute;left:16px;top:8px;font-size:25px;color:#a99ba3}

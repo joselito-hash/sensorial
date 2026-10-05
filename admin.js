@@ -20,6 +20,9 @@
      sessionStorage y termina al cerrar la pestaña. */
   let remember = false;
   let noticeTimer;
+  /* Cambia cada vez que se abre una ficha: una lectura de "cuándo usarlo" que termina tarde
+     no escribe en otra ficha */
+  let lecturaUso = 0;
   let previewObjectURL = "";
   const uploadedGallery = new WeakMap();
 
@@ -189,6 +192,7 @@
       <div class="preview-row"><div><strong>${escapeHTML(r.author_name)}</strong><small>${escapeHTML(perfumeName(r.perfume_id))}</small></div><button type="button" data-go="reviews" aria-label="Revisar reseña de ${escapeHTML(r.author_name)}">→</button></div>`).join("") : '<p class="muted">Todo al día. No hay reseñas pendientes.</p>';
     renderPerfumes();
     renderReviews();
+    pintarLote();
   }
 
   function renderPerfumes() {
@@ -275,6 +279,8 @@
     $("#importar-estado").textContent = "";
     $("#importar-resultados").innerHTML = "";
     $("#importar-consulta").value = "";
+    $("#importar-uso").hidden = true;
+    lecturaUso += 1;
     $("#editor-title").textContent = id ? "Editar perfume" : "Nuevo perfume";
     fields.id.readOnly = Boolean(id);
     if (id) {
@@ -556,9 +562,9 @@
     const limpio = nonempty(nombre).toLocaleLowerCase("es");
     return ACORDES_ES[limpio] || limpio;
   }
-  function colorAcorde(nombre) {
+  function colorAcorde(nombre, deFragrantica = "") {
     const guardado = state.data.accordNames.find((a) => nonempty(a.name).toLocaleLowerCase("es") === nombre)?.color_rgb;
-    return guardado || COLOR_ACORDE[nombre] || "150,150,150";
+    return guardado || deFragrantica || COLOR_ACORDE[nombre] || "150,150,150";
   }
 
   /* "for men", "for women and men", "para Hombres y Mujeres"... */
@@ -595,13 +601,7 @@
         return;
       }
       estado.textContent = (resultadosFragrantica.length === 1 ? "1 resultado" : `${resultadosFragrantica.length} resultados`) + desde + "." + notaFuente;
-      lista.innerHTML = resultadosFragrantica.map((r, i) => {
-        const foto = imageURL(r.image_url);
-        const notas = [r.notes_top, r.notes_middle, r.notes_base].reduce((n, fase) => n + (Array.isArray(fase) ? fase.length : 0), 0);
-        const acordes = Array.isArray(r.accords) ? r.accords.length : 0;
-        const detalle = [r.brand, r.release_year, r.gender, `${notas} notas`, acordes ? `${acordes} acordes` : ""].filter(Boolean).map(escapeHTML).join(" · ");
-        return `<div class="importar__resultado">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : "<span></span>"}<div><strong>${escapeHTML(nombreSinCasa(r))}</strong><small>${detalle}</small></div><button class="button button--primary" type="button" data-importar="${i}">Usar</button></div>`;
-      }).join("");
+      pintarResultados();
     } catch (error) {
       estado.classList.add("error");
       estado.textContent = error.name === "AbortError" ? "Fragrantica no respondió a tiempo. Inténtalo de nuevo en un momento." : `No se pudo buscar: ${error.message}`;
@@ -610,6 +610,16 @@
       clearTimeout(limite);
       boton.disabled = false;
     }
+  }
+
+  function pintarResultados() {
+    $("#importar-resultados").innerHTML = resultadosFragrantica.map((r, i) => {
+      const foto = imageURL(r.image_url);
+      const notas = [r.notes_top, r.notes_middle, r.notes_base].reduce((n, fase) => n + (Array.isArray(fase) ? fase.length : 0), 0);
+      const acordes = Array.isArray(r.accords) ? r.accords.length : 0;
+      const detalle = [r.brand, r.release_year, r.gender, `${notas} notas`, acordes ? `${acordes} acordes` : ""].filter(Boolean).map(escapeHTML).join(" · ");
+      return `<div class="importar__resultado">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : "<span></span>"}<div><strong>${escapeHTML(nombreSinCasa(r))}</strong><small>${detalle}</small></div><button class="button button--primary" type="button" data-importar="${i}">Usar</button></div>`;
+    }).join("");
   }
 
   /* PerfumAPI guarda el nombre con la casa al final ("Sauvage Dior") */
@@ -623,10 +633,21 @@
     const r = resultadosFragrantica[indice];
     if (!r) return;
     $$("[data-importar]").forEach((boton) => { boton.disabled = true; });
+    await aplicarFragrantica(r);
+  }
+
+  /* Llena la ficha con un perfume de Fragrantica: un resultado de la búsqueda o lo que
+     copió el marcador (herramientas/fragrantica.js), que además trae colores y "cuándo usarlo". */
+  async function aplicarFragrantica(r) {
     const nombre = nombreSinCasa(r);
     const fases = { salida: r.notes_top, corazon: r.notes_middle, fondo: r.notes_base };
     const yaTieneDatos = ["name", "notes_salida", "notes_corazon", "notes_fondo", "accords", "release_year", "primary_image"].some((campo) => nonempty(fields[campo].value));
-    const reemplazar = !yaTieneDatos || window.confirm("Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
+    /* En una ficha ya guardada (por ejemplo, un borrador del catálogo) el nombre y la casa se
+       conservan: Fragrantica puede nombrarlos distinto y crearía una casa duplicada */
+    const conservarIdentidad = Boolean(state.editorId);
+    const reemplazar = !yaTieneDatos || window.confirm(conservarIdentidad
+      ? "Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza notas, acordes, «cuándo usarlo», año, público y foto (el nombre y la casa se conservan). Cancelar: solo llena lo que está vacío."
+      : "Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
     const poner = (campo, valor) => {
       if (valor === undefined || valor === null || valor === "") return false;
       if (!reemplazar && nonempty(fields[campo].value)) return false;
@@ -636,12 +657,12 @@
     const llenados = [];
     const enIngles = new Set();
 
-    if (poner("name", nombre)) {
+    if ((!conservarIdentidad || !nonempty(fields.name.value)) && poner("name", nombre)) {
       llenados.push("nombre");
       if (!state.editorId && !state.idEdited) fields.id.value = slug(nombre);
     }
     /* La casa: si ya existe se elige; si no, queda lista como casa nueva */
-    if (r.brand && (reemplazar || !fields.brand_choice.value)) {
+    if (r.brand && (conservarIdentidad ? !fields.brand_choice.value : (reemplazar || !fields.brand_choice.value))) {
       const existente = state.data.brands.find((b) => slug(b.name) === slug(r.brand));
       fields.brand_choice.value = existente ? existente.id : "__new";
       if (!existente) fields.new_brand.value = r.brand;
@@ -668,9 +689,9 @@
 
     /* Acordes con su intensidad (0 a 100) y un color por acorde */
     const acordes = (Array.isArray(r.accords) ? r.accords : []).slice(0, 8)
-      .map((a) => ({ nombre: acordeES(a.name), fuerza: Math.max(0, Math.min(100, Math.round(Number(a.strength)))) }))
+      .map((a) => ({ nombre: acordeES(a.name), fuerza: Math.max(0, Math.min(100, Math.round(Number(a.strength)))), color: /^\d{1,3},\d{1,3},\d{1,3}$/.test(nonempty(a.color)) ? a.color : "" }))
       .filter((a) => a.nombre && Number.isFinite(a.fuerza));
-    if (acordes.length && poner("accords", acordes.map((a) => `${a.nombre} | ${a.fuerza} | ${colorAcorde(a.nombre)}`).join("\n"))) {
+    if (acordes.length && poner("accords", acordes.map((a) => `${a.nombre} | ${a.fuerza} | ${colorAcorde(a.nombre, a.color)}`).join("\n"))) {
       llenados.push(`${acordes.length} acordes`);
     }
 
@@ -700,6 +721,14 @@
       updateImagePreview();
     }
 
+    /* "Cuándo usarlo" (solo lo trae el marcador): seis valores de 0 a 100 */
+    const USO = { winter: "winter", spring: "spring", summer: "summer", autumn: "autumn", day: "day_score", night: "night_score" };
+    const uso = r.usage && Object.keys(USO).every((k) => Number.isFinite(Number(r.usage[k]))) ? r.usage : null;
+    if (uso && (reemplazar || Object.values(USO).every((campo) => Number(fields[campo].value) === 50))) {
+      for (const [k, campo] of Object.entries(USO)) fields[campo].value = Math.max(0, Math.min(100, Math.round(Number(uso[k]))));
+      llenados.push("cuándo usarlo");
+    }
+
     const fuente = /^https:\/\/(www\.)?fragrantica\./i.test(nonempty(r.perfume_url)) ? r.perfume_url : "";
     if (fuente && (reemplazar || !nonempty(fields.source_url.value))) {
       fields.source_publisher.value = enEspanol ? "Fragrantica" : "Fragrantica (vía PerfumAPI)";
@@ -708,14 +737,466 @@
       llenados.push("fuente");
     }
 
+    /* Si no vino "cuándo usarlo", se lee aparte de la página exacta del perfume (tarda un poco
+       más; mientras tanto la ficha se puede seguir revisando) */
+    const leerUso = !uso && Boolean(fuente);
+    if (leerUso) leerUsoEnFicha(fuente, reemplazar);
+
     const estado = $("#importar-estado");
     estado.className = "importar__estado ok";
-    const faltan = acordes.length ? "No viene «cuándo usarlo»: complétalo a mano." : "No vienen los acordes ni «cuándo usarlo»: complétalos a mano.";
-    estado.textContent = `Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}. ${faltan}`
-      + (enIngles.size ? ` Quedaron en inglés: ${[...enIngles].join(", ")}.` : "")
-      + avisoFoto
-      + " Revisa todo antes de guardar.";
+    const faltan = [!acordes.length && !leerUso && "los acordes", !uso && !leerUso && "«cuándo usarlo»"].filter(Boolean);
+    const avisoFaltan = faltan.length ? `No vienen ${faltan.join(" ni ")}: complétalo a mano.` : "";
+    estado.textContent = [`Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}.`, avisoFaltan,
+      enIngles.size ? `Quedaron en inglés: ${[...enIngles].join(", ")}.` : "", avisoFoto.trim(), "Revisa todo antes de guardar."]
+      .filter(Boolean).join(" ");
     $("#importar-resultados").innerHTML = "";
+  }
+
+  /* ---------- Detalles de Fragrantica: "cuándo usarlo" y colores de acordes ----------
+     La función de Supabase inicia la lectura en Apify y aquí se pregunta cada pocos segundos
+     hasta que termina. Devuelve un Map: número de Fragrantica -> detalles. */
+  const esperar = (ms) => new Promise((listo) => { setTimeout(listo, ms); });
+  const idFragrantica = (url) => String(url || "").match(/-(\d+)\.html(?:$|[?#])/)?.[1] || "";
+  const USO_CAMPOS = { winter: "winter", spring: "spring", summer: "summer", autumn: "autumn", day: "day_score", night: "night_score" };
+
+  async function leerDetalles(urls, alEsperar) {
+    const { runId } = await funcionFragrantica({ accion: "detalles", urls });
+    const inicio = Date.now();
+    let fallos = 0;
+    while (Date.now() - inicio < 15 * 60000) {
+      await esperar(8000);
+      let datos;
+      try {
+        datos = await funcionFragrantica({ accion: "detalles-estado", runId });
+        fallos = 0;
+      } catch (error) {
+        /* Un corte de red momentáneo no detiene la lectura, que sigue en Apify */
+        if (++fallos >= 4) throw error;
+        continue;
+      }
+      if (datos.estado !== "leyendo") return new Map((datos.resultados || []).map((d) => [String(d.fragrantica_id), d]));
+      alEsperar?.(Math.round((Date.now() - inicio) / 1000));
+    }
+    throw new Error("La lectura en Fragrantica tardó más de 15 minutos");
+  }
+
+  /* Acorde en la forma de la ficha: nombre en español, intensidad 0-100 y color. El color guardado
+     en tu base gana; si el acorde es nuevo, el de Fragrantica; si no hay, uno parecido o gris. */
+  function acordeDeFragrantica(a, colores = new Map(), deDetalles = [], posicion = -1) {
+    const nombre = acordeES(a.name);
+    /* Fragrantica muestra los acordes en el mismo orden en todos sus idiomas: si el nombre en
+       español no coincide con la traducción del inglés, se toma el color del mismo lugar */
+    const mismoLugar = deDetalles[posicion];
+    const porLugar = mismoLugar && Math.abs(Number(mismoLugar.strength) - Number(a.strength)) <= 2 ? mismoLugar.color : "";
+    const color = /^\d{1,3},\d{1,3},\d{1,3}$/.test(nonempty(a.color)) ? a.color : (colores.get(nombre) || porLugar || "");
+    return { name: nombre, intensity: Math.max(0, Math.min(100, Math.round(Number(a.strength)))), color_rgb: colorAcorde(nombre, color) };
+  }
+
+  async function leerUsoEnFicha(url, reemplazar) {
+    const lectura = ++lecturaUso;
+    const aviso = $("#importar-uso");
+    aviso.hidden = false;
+    aviso.className = "importar__estado";
+    aviso.textContent = "Leyendo «cuándo usarlo» en Fragrantica (1 o 2 minutos). Puedes seguir revisando la ficha.";
+    try {
+      const detalles = await leerDetalles([url]);
+      if (lectura !== lecturaUso || !$("#editor-dialog").open) return;
+      const d = detalles.get(idFragrantica(url)) || [...detalles.values()][0];
+      if (!d) throw new Error("Fragrantica no devolvió ese perfume");
+      const hecho = [];
+      if (d.usage && (reemplazar || Object.values(USO_CAMPOS).every((campo) => Number(fields[campo].value) === 50))) {
+        for (const [clave, campo] of Object.entries(USO_CAMPOS)) fields[campo].value = d.usage[clave];
+        hecho.push("«cuándo usarlo»");
+      }
+      const colores = new Map(d.accords.map((a) => [acordeES(a.name), a.color]));
+      if (!nonempty(fields.accords.value) && d.accords.length) {
+        fields.accords.value = d.accords.slice(0, 8).map((a) => acordeDeFragrantica(a))
+          .map((a) => `${a.name} | ${a.intensity} | ${a.color_rgb}`).join("\n");
+        hecho.push("acordes");
+      } else if (colores.size) {
+        /* Solo cambia el color de los acordes que aún no existen en tu base */
+        const enBase = new Set(state.data.accordNames.map((a) => nonempty(a.name).toLocaleLowerCase("es")));
+        const antes = fields.accords.value;
+        fields.accords.value = antes.split(/\r?\n/).map((linea, i) => {
+          const [nombre, fuerza] = linea.split("|").map((parte) => parte.trim());
+          const clave = nonempty(nombre).toLocaleLowerCase("es");
+          const mismoLugar = d.accords[i] && Math.abs(Number(d.accords[i].strength) - Number(fuerza)) <= 2 ? d.accords[i].color : "";
+          const color = colores.get(clave) || mismoLugar;
+          return clave && fuerza && color && !enBase.has(clave) ? `${nombre} | ${fuerza} | ${color}` : linea;
+        }).join("\n");
+        if (fields.accords.value !== antes) hecho.push("colores de los acordes");
+      }
+      aviso.className = "importar__estado ok";
+      aviso.textContent = hecho.length ? `También listo: ${hecho.join(" y ")}. Revísalo antes de guardar.`
+        : d.usage ? "«Cuándo usarlo» ya tenía valores; no se cambiaron." : "Fragrantica no tiene votos de «cuándo usarlo» para este perfume: complétalo a mano.";
+    } catch (error) {
+      if (lectura !== lecturaUso) return;
+      aviso.className = "importar__estado error";
+      aviso.textContent = `No se pudo leer «cuándo usarlo» (${error.message}). Complétalo a mano.`;
+    }
+  }
+
+  /* ---------- Completar borradores en lote ----------
+     1. Busca cada borrador sin notas en Fragrantica (casa + nombre).
+     2. Elige el resultado solo si coinciden casa, nombre y concentración; si hay duda, lo deja
+        "por elegir" con sus opciones guardadas en este navegador.
+     3. Lee "cuándo usarlo" de los elegidos (una lectura por tanda) y guarda cada ficha, que
+        sigue como borrador. */
+  const loteKey = "sensorial-admin-lote";
+  const TANDA = 25;
+  const BUSQUEDAS_A_LA_VEZ = 3;
+  const COSTO_PERFUME_USD = 0.015;
+  const lote = { corriendo: false, detener: false, hechos: 0, total: 0, bitacora: [], ...leerLoteGuardado() };
+
+  function leerLoteGuardado() {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(loteKey) || "{}");
+      return {
+        revisar: guardado.revisar && typeof guardado.revisar === "object" ? guardado.revisar : {},
+        sinResultado: Array.isArray(guardado.sinResultado) ? guardado.sinResultado : [],
+      };
+    } catch { return { revisar: {}, sinResultado: [] }; }
+  }
+  function guardarLote() {
+    try { localStorage.setItem(loteKey, JSON.stringify({ revisar: lote.revisar, sinResultado: lote.sinResultado })); }
+    catch { /* Sin almacenamiento: las opciones por elegir solo duran mientras la pestaña esté abierta. */ }
+  }
+
+  const casaDe = (p) => state.data.brands.find((b) => b.id === p.brand_id)?.name || "";
+  function idsConNotas() { return new Set(state.data.notes.map((n) => n.perfume_id)); }
+  function pendientesLote() {
+    const conNotas = idsConNotas();
+    return state.data.perfumes
+      .filter((p) => !p.is_published && !conNotas.has(p.id) && !lote.revisar[p.id] && !lote.sinResultado.includes(p.id))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  /* ---- Comparar un borrador con los resultados de Fragrantica ---- */
+  const CONCENTRACIONES = [
+    [/\bextrait(?: de parfum)?\b/g, "extrait"],
+    [/\beau de parfum\b|\bedp\b/g, "edp"],
+    [/\beau de toilette\b|\bedt\b/g, "edt"],
+    [/\beau de cologne\b|\bcologne\b|\bedc\b|\bcolonia\b/g, "edc"],
+    [/\bbody mist\b|\bbrume\b|\bmist\b/g, "mist"],
+    [/\bbody lotion\b|\blotion\b/g, "lotion"],
+    [/\bparfum\b/g, "parfum"],
+  ];
+  const normalizar = (texto) => String(texto ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/&/g, " and ").replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  function separarNombre(texto) {
+    let limpio = normalizar(texto)
+      .replace(/\b(for|para) (women and men|men and women|mujeres y hombres|hombres y mujeres|women|men|mujeres|hombres)\b/g, " ");
+    let codigo = "";
+    for (const [patron, valor] of CONCENTRACIONES) {
+      if (patron.test(limpio)) { codigo = codigo || valor; limpio = limpio.replace(patron, " "); }
+      patron.lastIndex = 0;
+    }
+    return { palabras: limpio.split(" ").filter((p) => p && p !== "by"), codigo };
+  }
+  function distanciaCorta(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return 2;
+    const fila = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let previo = fila[0];
+      fila[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const actual = fila[j];
+        fila[j] = Math.min(fila[j] + 1, fila[j - 1] + 1, previo + (a[i - 1] === b[j - 1] ? 0 : 1));
+        previo = actual;
+      }
+    }
+    return fila[b.length];
+  }
+  const mismaPalabra = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && distanciaCorta(a, b) <= 1);
+  function mismaCasa(a, b) {
+    const x = normalizar(a);
+    const y = normalizar(b);
+    if (!x || !y) return false;
+    return x === y || y.startsWith(`${x} `) || x.startsWith(`${y} `) || (x.split(" ")[0] === y.split(" ")[0] && x.split(" ")[0].length >= 4);
+  }
+  function publicoDelBorrador(p) {
+    const edicion = normalizar(p.edition);
+    if (/\bpara ella\b/.test(edicion)) return "mujer";
+    if (/\bpara el\b/.test(edicion)) return "hombre";
+    return p.audience || "";
+  }
+
+  function puntuar(p, r) {
+    if (!mismaCasa(casaDe(p), r.brand)) return null;
+    const borrador = separarNombre(p.name);
+    const resultado = separarNombre(nombreSinCasa(r));
+    const concentracion = /\//.test(p.concentration || "") ? "" : separarNombre(p.concentration).codigo;
+    const faltan = borrador.palabras.filter((a) => !resultado.palabras.some((b) => mismaPalabra(a, b))).length;
+    const sobran = resultado.palabras.filter((b) => !borrador.palabras.some((a) => mismaPalabra(a, b))).length;
+    let puntos = faltan ? 50 - 20 * faltan - 10 * sobran : 100 - 20 * sobran;
+    if (concentracion && resultado.codigo) puntos += concentracion === resultado.codigo ? 10 : -40;
+    /* Un body mist o una crema solo se completa sola con la ficha de ese mismo producto */
+    if (["mist", "lotion"].includes(concentracion) && resultado.codigo !== concentracion) puntos -= 40;
+    const quien = publicoDelBorrador(p);
+    const deResultado = publicoDe(r.gender);
+    if (quien && deResultado && quien !== "unisex" && deResultado !== "unisex" && quien !== deResultado) puntos -= 40;
+    return puntos;
+  }
+
+  /* { elegido } si hay un resultado claramente correcto; si no, { opciones } para elegir a mano */
+  function elegirResultado(p, resultados) {
+    const vistos = new Set();
+    const puntuados = resultados
+      .filter((r) => r.perfume_url && !vistos.has(r.perfume_url) && vistos.add(r.perfume_url))
+      .map((r) => ({ r, puntos: puntuar(p, r) }))
+      .filter((x) => x.puntos !== null)
+      .sort((a, b) => b.puntos - a.puntos);
+    const [mejor, segundo] = puntuados;
+    if (mejor && mejor.puntos >= 95 && (!segundo || mejor.puntos - segundo.puntos >= 10)) return { elegido: mejor.r };
+    return { opciones: (puntuados.length ? puntuados.map((x) => x.r) : resultados).slice(0, 5) };
+  }
+
+  async function buscarParaLote(p) {
+    const consulta = `${p.name} ${casaDe(p)}`.trim();
+    for (let intento = 0; ; intento++) {
+      try {
+        const datos = await funcionFragrantica({ accion: "buscar", consulta, soloFragrantica: true });
+        return Array.isArray(datos.resultados) ? datos.resultados : [];
+      } catch (error) {
+        /* Sin token, sin saldo o sin la función publicada no tiene caso seguir con el lote */
+        if (/APIFY_TOKEN|saldo|token|Falta publicar|permiso|sesión/i.test(error.message)) { error.fatal = true; throw error; }
+        if (intento >= 1) throw error;
+        await esperar(10000);
+      }
+    }
+  }
+
+  /* La ficha tal como está guardada, en la forma que espera sensorial_admin_save_perfume */
+  function fichaGuardada(id) {
+    const p = state.data.perfumes.find((item) => item.id === id);
+    const porPosicion = (a, b) => a.position - b.position;
+    const deFase = (fase) => state.data.notes.filter((n) => n.perfume_id === id && n.phase === fase).sort(porPosicion).map((n) => n.note_name);
+    const uso = state.data.usage.find((u) => u.perfume_id === id);
+    const fuente = state.data.sources.find((s) => s.perfume_id === id && s.is_primary);
+    return {
+      id, brand_id: p.brand_id, brand_name: casaDe(p), family_id: p.family_id, name: p.name,
+      concentration: p.concentration || "", edition: p.edition || "", origin: p.origin, description: p.description || "",
+      release_year: p.release_year ?? null, audience: p.audience || "", primary_image: p.primary_image || "", collage_image: p.collage_image || "",
+      best_seller_rank: p.best_seller_rank ?? null, new_arrival_rank: p.new_arrival_rank ?? null, is_published: Boolean(p.is_published),
+      images: state.data.images.filter((i) => i.perfume_id === id).sort(porPosicion).map((i) => ({ image_url: i.image_url, alt_text: i.alt_text || "" })),
+      notes: { salida: deFase("salida"), corazon: deFase("corazon"), fondo: deFase("fondo") },
+      accords: state.data.accords.filter((a) => a.perfume_id === id).sort(porPosicion).map((a) => ({
+        name: a.accord_name, intensity: a.intensity,
+        color_rgb: state.data.accordNames.find((x) => x.name === a.accord_name)?.color_rgb || "150,150,150",
+      })),
+      usage: uso ? { winter: uso.winter, spring: uso.spring, summer: uso.summer, autumn: uso.autumn, day_score: uso.day_score, night_score: uso.night_score } : null,
+      variants: state.data.variants.filter((v) => v.perfume_id === id).map((v) => ({
+        size_ml: Number(v.size_ml), sku: v.sku || null, price_mxn: v.price_mxn ?? null, stock_quantity: v.stock_quantity ?? null, is_active: v.is_active !== false,
+      })),
+      primary_source: fuente ? { publisher: fuente.publisher, source_url: fuente.source_url || "", rights_basis: fuente.rights_basis,
+        license_reference: fuente.license_reference || "", checked_at: fuente.checked_at || "" } : null,
+    };
+  }
+
+  /* Guarda un borrador con lo que trajo la búsqueda (r) y la lectura de detalles (d) */
+  async function guardarDesdeFragrantica(p, r, d) {
+    const ficha = fichaGuardada(p.id);
+    const fases = [["salida", "notes_top"], ["corazon", "notes_middle"], ["fondo", "notes_base"]];
+    /* Notas: las de la búsqueda llegan en español; las de los detalles, en inglés y se traducen */
+    const enEspanol = r.idioma && r.idioma !== "en";
+    const conNotas = fases.some(([, k]) => r[k]?.length) ? r : d;
+    if (conNotas) {
+      for (const [fase, k] of fases) {
+        const traducir = conNotas === d || !enEspanol;
+        ficha.notes[fase] = [...new Set((conNotas[k] || []).map((n) => (traducir ? notaES(n) : nonempty(n))))].filter((n) => n.length >= 2);
+      }
+    }
+    const totalNotas = ficha.notes.salida.length + ficha.notes.corazon.length + ficha.notes.fondo.length;
+    if (!totalNotas) throw new Error("Fragrantica no tiene notas de este perfume");
+    const colores = new Map((d?.accords || []).map((a) => [acordeES(a.name), a.color]));
+    const acordes = (r.accords?.length ? r.accords : d?.accords || []).slice(0, 8).map((a, i) => acordeDeFragrantica(a, colores, d?.accords, i))
+      .filter((a) => a.name.length >= 2 && Number.isFinite(a.intensity));
+    if (acordes.length) ficha.accords = acordes;
+    if (d?.usage) {
+      ficha.usage = Object.fromEntries(Object.entries(USO_CAMPOS).map(([clave, campo]) => [campo, d.usage[clave]]));
+    }
+    const anio = Number(r.release_year);
+    if (!ficha.release_year && Number.isInteger(anio) && anio >= 1900 && anio <= new Date().getFullYear() + 1) ficha.release_year = anio;
+    if (!ficha.audience) ficha.audience = publicoDe(r.gender || d?.gender);
+    /* La foto de Fragrantica reemplaza la provisional del catálogo; si no se puede copiar,
+       se queda la que había */
+    let fotoNueva = false;
+    const foto = imageURL(r.image_url || d?.image_url);
+    if (foto) {
+      try {
+        const copia = await funcionFragrantica({ accion: "foto", url: foto, perfumeId: p.id });
+        if (imageURL(copia.url)) { ficha.primary_image = copia.url; fotoNueva = true; }
+      } catch { /* sigue con la foto anterior */ }
+    }
+    const anterior = ficha.primary_source;
+    ficha.primary_source = {
+      publisher: "Fragrantica", source_url: r.perfume_url,
+      rights_basis: anterior?.rights_basis || "manual", license_reference: anterior?.license_reference || "",
+      checked_at: new Date().toISOString().slice(0, 10),
+    };
+    await request("rpc/sensorial_admin_save_perfume", { method: "POST", body: { p: ficha } });
+    return [`${totalNotas} notas`, acordes.length && `${acordes.length} acordes`, d?.usage ? "cuándo usarlo" : "sin «cuándo usarlo»", fotoNueva && "foto"]
+      .filter(Boolean).join(", ");
+  }
+
+  function anotar(p, tipo, detalle) {
+    lote.bitacora.unshift({ id: p.id, tipo, detalle });
+    lote.bitacora = lote.bitacora.slice(0, 300);
+    pintarLote();
+  }
+  function avance(mensaje) {
+    $("#lote-estado").textContent = mensaje;
+    $("#lote-barra").style.width = `${lote.total ? Math.round((lote.hechos / lote.total) * 100) : 0}%`;
+  }
+
+  /* Ejecuta trabajo(elemento) con varios a la vez; si uno lanza un error, ya no empieza otros */
+  async function enParalelo(elementos, cuantos, trabajo) {
+    let siguiente = 0;
+    let fallo = null;
+    const obrero = async () => {
+      while (!fallo && !lote.detener && siguiente < elementos.length) {
+        const elemento = elementos[siguiente++];
+        try { await trabajo(elemento); } catch (error) { fallo = fallo || error; }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(cuantos, elementos.length) }, obrero));
+    if (fallo) throw fallo;
+  }
+
+  async function completarBorradores() {
+    if (lote.corriendo) return;
+    const cantidad = Number($("#lote-cantidad").value);
+    const todos = pendientesLote();
+    const lista = cantidad > 0 ? todos.slice(0, cantidad) : todos;
+    if (!lista.length) { notify("No hay borradores sin notas por completar."); return; }
+    const costo = (lista.length * COSTO_PERFUME_USD).toFixed(2);
+    if (!window.confirm(`Se buscarán ${lista.length} perfumes en Fragrantica.\n\nCosto aproximado en Apify: US$${costo}.\nTarda unos 2 o 3 minutos por cada 10 perfumes; deja esta pestaña abierta hasta que termine.\n\n¿Continuar?`)) return;
+    Object.assign(lote, { corriendo: true, detener: false, hechos: 0, total: lista.length });
+    $("#lote-iniciar").disabled = true;
+    $("#lote-detener").hidden = false;
+    $("#lote-detener").disabled = false;
+    $("#lote-progreso").hidden = false;
+    let completados = 0;
+    try {
+      for (let i = 0; i < lista.length && !lote.detener; i += TANDA) {
+        const tanda = lista.slice(i, i + TANDA);
+        const elegidos = [];
+        await enParalelo(tanda, BUSQUEDAS_A_LA_VEZ, async (p) => {
+          avance(`Buscando en Fragrantica: ${casaDe(p)} ${p.name}…`);
+          let resultados;
+          try {
+            resultados = await buscarParaLote(p);
+          } catch (error) {
+            if (error.fatal) throw error;
+            /* Queda pendiente: se vuelve a buscar la próxima vez */
+            lote.hechos++;
+            anotar(p, "error", `No se pudo buscar (${error.message}); se intentará la próxima vez`);
+            return;
+          }
+          const { elegido, opciones } = elegirResultado(p, resultados);
+          if (elegido) {
+            elegidos.push({ p, r: elegido });
+            return;
+          }
+          lote.hechos++;
+          if (opciones.length) {
+            lote.revisar[p.id] = opciones;
+            anotar(p, "revisar", `Hay ${opciones.length === 1 ? "1 opción parecida" : `${opciones.length} opciones`}: elige la correcta`);
+          } else {
+            lote.sinResultado.push(p.id);
+            anotar(p, "nada", "No apareció en Fragrantica");
+          }
+          guardarLote();
+        });
+        if (!elegidos.length) continue;
+        /* Aunque se pida detener, los ya encontrados de esta tanda se terminan de guardar.
+           Si la lectura de "cuándo usarlo" falla, el lote se detiene sin guardar esta tanda
+           (sus perfumes quedan pendientes) para no dejar fichas a medias. */
+        avance(`Leyendo «cuándo usarlo» de ${elegidos.length} perfumes…`);
+        let detalles;
+        try {
+          detalles = await leerDetalles(elegidos.map((e) => e.r.perfume_url),
+            (segundos) => avance(`Leyendo «cuándo usarlo» de ${elegidos.length} perfumes… (${segundos} s)`));
+        } catch (error) {
+          throw new Error(`No se pudo leer «cuándo usarlo» en Fragrantica: ${error.message}`);
+        }
+        for (const { p, r } of elegidos) {
+          avance(`Guardando ${casaDe(p)} ${p.name}…`);
+          try {
+            const resumen = await guardarDesdeFragrantica(p, r, detalles.get(idFragrantica(r.perfume_url)));
+            anotar(p, "ok", resumen);
+            completados++;
+          } catch (error) {
+            lote.revisar[p.id] = [r];
+            guardarLote();
+            anotar(p, "error", `No se guardó: ${error.message}`);
+          }
+          lote.hechos++;
+        }
+        await loadData();
+      }
+      avance(lote.detener ? `Detenido. ${completados} completados.` : `Terminado. ${completados} de ${lista.length} completados.`);
+      notify(`${completados} borradores completados con Fragrantica. Revísalos antes de publicar.`);
+    } catch (error) {
+      avance(`Se detuvo: ${error.message}`);
+      notify(error.message, true);
+      await loadData().catch(() => {});
+    } finally {
+      lote.corriendo = false;
+      $("#lote-iniciar").disabled = false;
+      $("#lote-detener").hidden = true;
+      pintarLote();
+    }
+  }
+
+  function pintarLote() {
+    if (!$("#lote")) return;
+    const conNotas = idsConNotas();
+    const existe = (id) => state.data.perfumes.some((p) => p.id === id && !conNotas.has(id));
+    /* Lo que ya se completó por otro camino deja de estar pendiente */
+    let cambio = false;
+    for (const id of Object.keys(lote.revisar)) if (!existe(id)) { delete lote.revisar[id]; cambio = true; }
+    const sinResultado = lote.sinResultado.filter(existe);
+    if (sinResultado.length !== lote.sinResultado.length) { lote.sinResultado = sinResultado; cambio = true; }
+    if (cambio) guardarLote();
+
+    const pendientes = pendientesLote().length;
+    const porElegir = Object.keys(lote.revisar).length;
+    const partes = [`${pendientes} ${pendientes === 1 ? "borrador sin notas" : "borradores sin notas"}`];
+    if (porElegir) partes.push(`${porElegir} por elegir`);
+    if (lote.sinResultado.length) partes.push(`${lote.sinResultado.length} sin resultado`);
+    $("#lote-resumen").innerHTML = escapeHTML(partes.join(" · "))
+      + (pendientes ? escapeHTML(` · cerca de US$${(pendientes * COSTO_PERFUME_USD).toFixed(2)} para todos`) : "")
+      + (lote.sinResultado.length && !lote.corriendo ? '<button type="button" id="lote-reintentar">Volver a buscar los que no aparecieron</button>' : "");
+    if (!lote.corriendo) $("#lote-iniciar").disabled = !pendientes;
+
+    const nombre = (id) => { const p = state.data.perfumes.find((x) => x.id === id); return p ? `${casaDe(p)} ${p.name}${p.concentration ? ` · ${p.concentration}` : ""}` : id; };
+    const iconos = { ok: "✓", revisar: "?", nada: "×", error: "!" };
+    const enBitacora = new Set(lote.bitacora.map((e) => e.id));
+    const filas = [
+      ...lote.bitacora.filter((e) => e.tipo === "ok" || existe(e.id)),
+      ...Object.keys(lote.revisar).filter((id) => !enBitacora.has(id)).map((id) => ({ id, tipo: "revisar", detalle: "Hay varias opciones: elige la correcta" })),
+      ...lote.sinResultado.filter((id) => !enBitacora.has(id)).map((id) => ({ id, tipo: "nada", detalle: "No apareció en Fragrantica" })),
+    ];
+    $("#lote-lista").innerHTML = filas.map((e) => {
+      const boton = e.tipo === "ok" ? `<button type="button" data-edit="${escapeHTML(e.id)}">Ver</button>`
+        : lote.revisar[e.id] ? `<button type="button" data-lote-elegir="${escapeHTML(e.id)}">Elegir</button>`
+          : `<button type="button" data-edit="${escapeHTML(e.id)}">Abrir</button>`;
+      return `<li class="lote__item lote__item--${e.tipo}"><span class="lote__icono" aria-hidden="true">${iconos[e.tipo]}</span><div><strong>${escapeHTML(nombre(e.id))}</strong><small>${escapeHTML(e.detalle)}</small></div>${boton}</li>`;
+    }).join("");
+  }
+
+  /* Abre la ficha con las opciones que encontró el lote, listas para elegir con "Usar" */
+  function elegirDelLote(id) {
+    const opciones = lote.revisar[id];
+    openEditor(id);
+    if (!opciones?.length) return;
+    const p = state.data.perfumes.find((x) => x.id === id);
+    if (p) $("#importar-consulta").value = `${p.name} ${casaDe(p)}`.trim();
+    resultadosFragrantica = opciones;
+    $("#importar-estado").className = "importar__estado";
+    $("#importar-estado").textContent = `${opciones.length === 1 ? "La opción" : `Las ${opciones.length} opciones`} que encontró el llenado automático. Elige la correcta o busca otra.`;
+    pintarResultados();
   }
 
   async function savePerfume(event) {
@@ -807,6 +1288,46 @@
   fields.upload_primary.addEventListener("change", updateImagePreview);
   $("#perfume-form").addEventListener("submit", savePerfume);
   $("#importar-buscar").addEventListener("click", buscarFragrantica);
+  $("#lote-iniciar").addEventListener("click", completarBorradores);
+  $("#lote-detener").addEventListener("click", () => {
+    lote.detener = true;
+    $("#lote-detener").disabled = true;
+    avance("Deteniendo: se terminan de guardar los que ya se encontraron…");
+  });
+  /* Cerrar o recargar la página a medio lote corta el trabajo: se pide confirmación */
+  window.addEventListener("beforeunload", (event) => {
+    if (lote.corriendo) { event.preventDefault(); event.returnValue = ""; }
+  });
+
+  /* Pegar lo que copió el marcador "Sensorial · Fragrantica" (ver herramientas/marcador.html).
+     Primero se intenta leer el portapapeles; si el navegador no deja, aparece un cuadro para pegar. */
+  function datosDelMarcador(textoPegado) {
+    let datos;
+    try { datos = JSON.parse(nonempty(textoPegado)); } catch { return null; }
+    return datos && datos.formato === "sensorial-fragrantica" ? datos : null;
+  }
+  async function usarDatosPegados(textoPegado) {
+    const estado = $("#importar-estado");
+    const datos = datosDelMarcador(textoPegado);
+    if (!datos) {
+      estado.className = "importar__estado error";
+      estado.textContent = "Eso no es lo que copia el marcador de Sensorial. En Fragrantica, usa el marcador y pulsa «Copiar para Sensorial».";
+      return false;
+    }
+    $("#importar-pegado").hidden = true;
+    $("#importar-texto").value = "";
+    $("#importar-resultados").innerHTML = "";
+    await aplicarFragrantica({ ...datos, idioma: datos.idioma || "es" });
+    return true;
+  }
+  $("#importar-pegar").addEventListener("click", async () => {
+    let textoPegado = "";
+    try { textoPegado = await navigator.clipboard.readText(); } catch { /* sin permiso: se pega a mano */ }
+    if (textoPegado && datosDelMarcador(textoPegado)) { await usarDatosPegados(textoPegado); return; }
+    $("#importar-pegado").hidden = false;
+    $("#importar-texto").focus();
+  });
+  $("#importar-usar-texto").addEventListener("click", () => usarDatosPegados($("#importar-texto").value));
   /* Enter en el buscador busca en Fragrantica en vez de guardar la ficha */
   $("#importar-consulta").addEventListener("keydown", (event) => {
     if (event.key === "Enter") { event.preventDefault(); buscarFragrantica(); }
@@ -832,6 +1353,13 @@
     if (add) openEditor();
     const edit = event.target.closest("[data-edit]");
     if (edit) openEditor(edit.dataset.edit);
+    const elegir = event.target.closest("[data-lote-elegir]");
+    if (elegir) elegirDelLote(elegir.dataset.loteElegir);
+    if (event.target.closest("#lote-reintentar")) {
+      lote.sinResultado = [];
+      guardarLote();
+      pintarLote();
+    }
     const reviewFilter = event.target.closest("[data-review-filter]");
     if (reviewFilter) { state.reviewFilter = reviewFilter.dataset.reviewFilter; renderReviews(); }
     const action = event.target.closest("[data-review-action]");
