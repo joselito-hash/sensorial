@@ -40,6 +40,14 @@
   --t-dulces: #49303c;
   --t-amaderados: #304039;
   --t-orientales: #493a31;
+  --c-acuaticos: #8edbcf;
+  --c-aromaticos: #c3d68f;
+  --c-florales: #d9b4ec;
+  --c-frutales: #f6b394;
+  --t-acuaticos: #263f3b;
+  --t-aromaticos: #3b4128;
+  --t-florales: #3f3249;
+  --t-frutales: #4a3229;
 
   /* Capas */
   --z-nav: 20;

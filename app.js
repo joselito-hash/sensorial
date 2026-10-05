@@ -75,7 +75,7 @@
 
   /* ------------------------------------------------------------------
      CATÁLOGO DE EJEMPLO: reemplázalo por tu inventario real.
-     familia: "frescos" | "dulces" | "amaderados" | "orientales"
+     familia: "frescos" | "acuaticos" | "aromaticos" | "florales" | "frutales" | "dulces" | "amaderados" | "orientales"
      origen:  "Diseñador" | "Árabe"
      version: opcional (ej. "Eau de Parfum").
      lamina:  opcional. Imagen cuadrada sobre fondo blanco con el frasco rodeado de
@@ -219,6 +219,8 @@
   const CLAVE_LISTA = "sb-lista";
   const porId = new Map(PERFUMES.map((p) => [p.id, p]));
   const familiaPorId = new Map(FAMILIAS.map((f) => [f.id, f]));
+  /* La portada solo pasa por las familias que tienen foto grande y algún perfume publicado */
+  const PORTADA = FAMILIAS.filter((f) => f.hero && PERFUMES.some((p) => p.familia === f.id));
   const MAS_VENDIDOS = CONFIG.masVendidos.filter((id) => porId.has(id));
   const NOVEDADES = CONFIG.novedades.filter((id) => porId.has(id));
   const nombreCompleto = (p) => `${p.casa} ${p.nombre}`;
@@ -240,6 +242,9 @@
     const notas = notasPrincipales(p);
     return notas.length > 1 ? `${notas.slice(0, -1).join(", ")} y ${notas[notas.length - 1]}` : notas.join("");
   }
+
+  /* "Huele a bergamota, lavanda y ambroxan." (vacío si el perfume aún no tiene notas) */
+  const hueleA = (p) => (notasPrincipales(p).length ? `Huele a ${resumenNotas(p)}.` : "");
 
   /* Icono (Phosphor) según el tipo de nota. El orden importa: gana el primer patrón que coincide.
      Los patrones van sin acentos porque la nota se compara ya normalizada. */
@@ -385,7 +390,7 @@
         <div class="pedido__info">
           <p class="pedido__meta"><span class="pedido__familia">${f.nombre}</span>${p.casa}${p.version ? ` · ${p.version}` : ""}</p>
           <h2 class="pedido__nombre"><button type="button" data-ficha="${p.id}">${p.nombre}</button></h2>
-          <p class="pedido__notas">Huele a ${resumenNotas(p)}.</p>
+          <p class="pedido__notas">${hueleA(p)}</p>
         </div>
         <button class="pedido__quitar" type="button" data-quitar-lista="${p.id}" aria-label="Quitar ${nombreCompleto(p)} de la lista"><i class="ph ph-x" aria-hidden="true"></i><span>Quitar</span></button>
       </li>`;
@@ -478,7 +483,7 @@
   function pintarHero() {
     const capas = $("#capas");
     if (!capas) return;
-    FAMILIAS.slice(1).forEach((f) => {
+    PORTADA.slice(1).forEach((f) => {
       capas.insertAdjacentHTML("beforeend", `
         <div class="hero__capa" data-familia="${f.id}">
           <img class="hero__foto" data-parallax="0.09" data-profundidad="-10" alt="${f.heroAlt}"
@@ -487,7 +492,7 @@
         </div>`);
     });
 
-    $("#selector").innerHTML = FAMILIAS.map((f) => `
+    $("#selector").innerHTML = PORTADA.map((f) => `
       <button class="selector__btn" type="button" data-familia="${f.id}" aria-pressed="${f.id === estado.familia}">${f.nombre}</button>`).join("");
   }
 
@@ -504,7 +509,7 @@
       </button>
       <div class="destacado__texto">
         <h2 class="destacado__nombre"><button type="button" data-ficha="${p.id}">${nombreCompleto(p)}</button></h2>
-        <p class="destacado__notas">Huele a ${resumenNotas(p)}.</p>
+        <p class="destacado__notas">${hueleA(p)}</p>
         <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
       </div>`;
     caja.classList.remove("cambia");
@@ -519,6 +524,12 @@
     document.body.dataset.familia = familia;
     $$(".hero__capa").forEach((capa) => capa.classList.toggle("es-activa", capa.dataset.familia === familia));
     $$(".selector__btn").forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.familia === familia)));
+    /* En el teléfono el selector se desliza de lado: se centra en la familia activa */
+    const selector = $("#selector");
+    const activo = $(".selector__btn[aria-pressed=\"true\"]");
+    if (selector && activo && selector.scrollWidth > selector.clientWidth) {
+      selector.scrollTo({ left: activo.offsetLeft - (selector.clientWidth - activo.offsetWidth) / 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    }
     pintarDestacado();
     actualizarPedido();
     ponerVideoHero();
@@ -616,9 +627,9 @@
       const dy = evento.clientY - inicio.y;
       inicio = null;
       if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-      const i = FAMILIAS.findIndex((f) => f.id === estado.familia);
-      const siguiente = (i + (dx < 0 ? 1 : -1) + FAMILIAS.length) % FAMILIAS.length;
-      activarFamilia(FAMILIAS[siguiente].id, true);
+      const i = PORTADA.findIndex((f) => f.id === estado.familia);
+      const siguiente = (i + (dx < 0 ? 1 : -1) + PORTADA.length) % PORTADA.length;
+      activarFamilia(PORTADA[siguiente].id, true);
     };
     marco.addEventListener("pointerup", soltar);
     marco.addEventListener("pointercancel", () => { inicio = null; });
@@ -643,8 +654,8 @@
     const reloj = window.setInterval(() => {
       if (detenido) { window.clearInterval(reloj); return; }
       if (!enVista || encima || document.hidden) return;
-      const i = FAMILIAS.findIndex((f) => f.id === estado.familia);
-      activarFamilia(FAMILIAS[(i + 1) % FAMILIAS.length].id, false);
+      const i = PORTADA.findIndex((f) => f.id === estado.familia);
+      activarFamilia(PORTADA[(i + 1) % PORTADA.length].id, false);
     }, conVideos() ? 14000 : 6500);
   }
 
@@ -996,7 +1007,7 @@
         <div class="vendidos__tarjeta-texto">
           <p class="vendidos__meta"><span>${f.nombre}</span>${p.casa}</p>
           <p class="vendidos__nombre">${p.nombre}</p>
-          <p class="vendidos__huele">Huele a ${resumenNotas(p)}.</p>
+          <p class="vendidos__huele">${hueleA(p)}</p>
         </div>
       </li>`;
     }).join("");
@@ -1085,7 +1096,7 @@
     rotulo.innerHTML = `
       <p class="vendidos__meta"><span>${f.nombre}</span>${p.casa}</p>
       <p class="vendidos__nombre">${p.nombre}</p>
-      <p class="vendidos__huele">Huele a ${resumenNotas(p)}.</p>`;
+      <p class="vendidos__huele">${hueleA(p)}</p>`;
     if (!inicial) {
       rotulo.classList.remove("cambia");
       void rotulo.offsetWidth;
@@ -1111,7 +1122,7 @@
       <div class="${clase}" data-indice="${i}" style="--campo: var(--c-${f.id})">
         <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
         <h3 class="novedad__nombre">${p.nombre}</h3>
-        <p class="novedad__desc">Huele a ${resumenNotas(p)}. ${f.larga}</p>
+        <p class="novedad__desc">${hueleA(p)} ${f.larga}</p>
         <ul class="novedad__notas" aria-label="Notas principales">
           ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
         </ul>
@@ -1361,9 +1372,18 @@
       </li>`;
   }
 
+  /* Filtros: un botón por familia, en el mismo orden que FAMILIAS */
+  function pintarChipsFamilia() {
+    const caja = $("#chips-familia");
+    if (!caja) return;
+    caja.innerHTML = FAMILIAS.map((f) =>
+      `<button class="chip" type="button" data-grupo="familia" data-valor="${f.id}" aria-pressed="false">${f.nombre}</button>`).join("");
+  }
+
   /* Un capítulo de color por familia, con sus perfumes dentro */
   function pintarCatalogo() {
     if (!$("#capitulos")) return;
+    pintarChipsFamilia();
     $("#capitulos").innerHTML = FAMILIAS.map((f) => {
       const perfumes = PERFUMES.filter((p) => p.familia === f.id);
       return `
@@ -1578,7 +1598,7 @@
       <div class="busqueda__info">
         <p class="busqueda__meta"><span>${f.nombre}</span>${p.casa} · ${p.origen}</p>
         <h3>${p.nombre}</h3>
-        <p class="busqueda__huele">Huele a ${resumenNotas(p)}.</p>
+        <p class="busqueda__huele">${hueleA(p)}</p>
         <ul class="busqueda__notas">
           ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
         </ul>
@@ -1862,9 +1882,9 @@
         <div class="detalle__info">
           <p class="detalle__meta" style="--i: 0"><span class="detalle__etiqueta">${f.nombre}</span><span>${p.casa} · ${p.origen}</span>${p.version ? `<span class="detalle__version">${p.version}</span>` : ""}</p>
           <h2 id="detalle-nombre" style="--i: 1">${p.nombre}</h2>
-          <p class="detalle__huele" style="--i: 2">Huele a ${resumenNotas(p)}.</p>
+          <p class="detalle__huele" style="--i: 2">${hueleA(p)}</p>
           <p class="detalle__familia" style="--i: 3"><strong>Familia ${f.nombre.toLowerCase()}.</strong> ${f.larga}</p>
-          <div class="detalle__momentos" style="--i: 4">
+          ${notasPrincipales(p).length ? `<div class="detalle__momentos" style="--i: 4">
             <div class="momento">
               <div><h3>Al inicio</h3><p>Lo primero que se siente</p></div>
               <ul>${chipsDeNotas(p.notas.salida)}</ul>
@@ -1877,7 +1897,7 @@
               <div><h3>Al final</h3><p>Lo que queda en la piel</p></div>
               <ul>${chipsDeNotas(p.notas.fondo)}</ul>
             </div>
-          </div>
+          </div>` : ""}
           <div class="detalle__acciones" style="--i: 5">
             <button class="agregar" type="button" data-id="${p.id}" data-largo aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar a mi lista</span></button>
             <a class="btn" href="${enlace}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp</a>
