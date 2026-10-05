@@ -94,10 +94,23 @@ Opcional: `APIFY_ACTOR` cambia el extractor de Apify (por defecto `parsebird~fra
 - **Borradores:** los 696 productos nuevos entran con `is_published = false`, así que no aparecen en la tienda hasta que los publiques desde el panel.
 - **Ya publicados:** nueve productos del catálogo ya estaban en la tienda (Sauvage EDP, Acqua di Giò, Light Blue, Dylan Blue, Libre, La Vie Est Belle, Eros EDP, Boss Bottled y 1 Million). No se modifican; solo reciben sus presentaciones.
 - **Qué trae cada ficha:** casa, nombre, concentración, edición (por ejemplo "Recarga", "Para ella" o "Para él" cuando el catálogo repite el nombre para dama y caballero), público, origen (Diseñador o Árabe), la descripción del catálogo ("Fragancia floral, frutal") y sus presentaciones en `perfume_variants`, con SKU propio de Sensorial: `SEN-` + el número del producto en el catálogo + los mililitros (`SEN-0001-100`).
-- **Qué falta:** notas, acordes y "cuándo usarlo". Abre cada borrador en el panel, usa **Traer de Fragrantica**, revisa y guarda.
+- **Qué falta:** notas, acordes y "cuándo usarlo". Abre cada borrador en el panel y usa **Pegar de Fragrantica** con el marcador (ver la sección siguiente) o **Buscar**; revisa y guarda.
 - **Familia:** sale de la descripción del catálogo (el primer rasgo pesa más). Los siete productos de Victoria's Secret no traen descripción y su familia se asignó por el nombre. Revísala al completar cada ficha.
 - **Familias nuevas:** el archivo agrega Acuáticos, Aromáticos, Florales y Frutales, y ordena las ocho familias. Una familia aparece en la portada cuando tiene foto grande y al menos un perfume publicado. Elige su perfume destacado en `families.featured_perfume_id` cuando publiques alguno. Sus fotos están en `img/familias/` y son de dominio público (CC0): la lavanda viene de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Lavender_field_in_bloom.jpg) y las demás del [directorio de fotos de WordPress.org](https://wordpress.org/photos/).
 - **Fotos provisionales:** `img/perfumes/` tiene la foto de cada producto recortada del PDF (400 × 400 px). Sirven para reconocer el producto en el panel, pero son de baja resolución: reemplázalas por la foto de Fragrantica o una propia antes de publicar.
+
+## Marcador de Fragrantica (notas y «cuándo usarlo»)
+
+`herramientas/marcador.html` (después de publicarlo: `https://sensorial-azure.vercel.app/herramientas/marcador.html`) explica cómo instalar el marcador **Sensorial · Fragrantica** en la computadora o en el teléfono. Se usa así:
+
+1. Abre el perfume en Fragrantica en tu navegador y toca el marcador.
+2. Aparece un recuadro con el nombre, la casa, las notas, los acordes y «cuándo usarlo». Si «cuándo usarlo» no se pudo leer de la página, escribe ahí los valores que ves en la gráfica (de 0 a 100).
+3. Toca **Copiar para Sensorial**.
+4. En el panel, abre la ficha y pulsa **Pegar de Fragrantica** (junto a «Buscar»). Si el navegador no deja leer lo copiado, aparece un cuadro para pegarlo a mano.
+
+El panel llena notas, acordes (con el color de Fragrantica si ese acorde aún no existe en tu base), «cuándo usarlo», año, público, foto y fuente. En una ficha ya guardada, como los borradores del catálogo Magna, conserva el nombre y la casa. La foto se copia al bucket si la función `fragrantica-buscar` está publicada; si no, se usa el enlace de Fragrantica.
+
+El marcador solo lee la página que tienes abierta: no visita otras páginas ni descarga nada de Fragrantica por su cuenta. Su código está en `herramientas/fragrantica.js` y el marcador siempre carga la versión publicada, así que una corrección no requiere reinstalarlo. Si Fragrantica cambia su diseño y algo deja de leerse, ese es el archivo que hay que ajustar.
 
 ## Recordar la sesión del panel
 

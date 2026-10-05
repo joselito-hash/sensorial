@@ -34,8 +34,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* Traer de Fragrantica: buscador, resultados con foto y resumen de lo que se llenó */
 .importar{background:#2a2328}
 .importar__ayuda{margin:0;color:#a99da4;font-size:13px;line-height:1.5}
-.importar__barra{display:flex;gap:10px}
-.importar__barra input{flex:1}
+.importar__barra{display:flex;flex-wrap:wrap;gap:10px}
+.importar__barra input{flex:1;min-width:12rem}
+.importar__ayuda a{color:#f4aabe}
+.importar__pegado{display:grid;gap:8px;justify-items:start}
+.importar__pegado label{width:100%}
+.importar__pegado textarea{font:12px ui-monospace,monospace}
 .importar__estado{margin:0;min-height:18px;color:#cfc2c9;font-size:13px;line-height:1.5}
 .importar__estado.error{color:#efb4b4}
 .importar__estado.ok{color:#b5d6c4}

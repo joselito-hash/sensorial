@@ -556,9 +556,9 @@
     const limpio = nonempty(nombre).toLocaleLowerCase("es");
     return ACORDES_ES[limpio] || limpio;
   }
-  function colorAcorde(nombre) {
+  function colorAcorde(nombre, deFragrantica = "") {
     const guardado = state.data.accordNames.find((a) => nonempty(a.name).toLocaleLowerCase("es") === nombre)?.color_rgb;
-    return guardado || COLOR_ACORDE[nombre] || "150,150,150";
+    return guardado || deFragrantica || COLOR_ACORDE[nombre] || "150,150,150";
   }
 
   /* "for men", "for women and men", "para Hombres y Mujeres"... */
@@ -623,10 +623,21 @@
     const r = resultadosFragrantica[indice];
     if (!r) return;
     $$("[data-importar]").forEach((boton) => { boton.disabled = true; });
+    await aplicarFragrantica(r);
+  }
+
+  /* Llena la ficha con un perfume de Fragrantica: un resultado de la búsqueda o lo que
+     copió el marcador (herramientas/fragrantica.js), que además trae colores y "cuándo usarlo". */
+  async function aplicarFragrantica(r) {
     const nombre = nombreSinCasa(r);
     const fases = { salida: r.notes_top, corazon: r.notes_middle, fondo: r.notes_base };
     const yaTieneDatos = ["name", "notes_salida", "notes_corazon", "notes_fondo", "accords", "release_year", "primary_image"].some((campo) => nonempty(fields[campo].value));
-    const reemplazar = !yaTieneDatos || window.confirm("Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
+    /* En una ficha ya guardada (por ejemplo, un borrador del catálogo) el nombre y la casa se
+       conservan: Fragrantica puede nombrarlos distinto y crearía una casa duplicada */
+    const conservarIdentidad = Boolean(state.editorId);
+    const reemplazar = !yaTieneDatos || window.confirm(conservarIdentidad
+      ? "Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza notas, acordes, «cuándo usarlo», año, público y foto (el nombre y la casa se conservan). Cancelar: solo llena lo que está vacío."
+      : "Esta ficha ya tiene datos. ¿Reemplazarlos con los de Fragrantica?\n\nAceptar: reemplaza todo. Cancelar: solo llena lo que está vacío.");
     const poner = (campo, valor) => {
       if (valor === undefined || valor === null || valor === "") return false;
       if (!reemplazar && nonempty(fields[campo].value)) return false;
@@ -636,12 +647,12 @@
     const llenados = [];
     const enIngles = new Set();
 
-    if (poner("name", nombre)) {
+    if ((!conservarIdentidad || !nonempty(fields.name.value)) && poner("name", nombre)) {
       llenados.push("nombre");
       if (!state.editorId && !state.idEdited) fields.id.value = slug(nombre);
     }
     /* La casa: si ya existe se elige; si no, queda lista como casa nueva */
-    if (r.brand && (reemplazar || !fields.brand_choice.value)) {
+    if (r.brand && (conservarIdentidad ? !fields.brand_choice.value : (reemplazar || !fields.brand_choice.value))) {
       const existente = state.data.brands.find((b) => slug(b.name) === slug(r.brand));
       fields.brand_choice.value = existente ? existente.id : "__new";
       if (!existente) fields.new_brand.value = r.brand;
@@ -668,9 +679,9 @@
 
     /* Acordes con su intensidad (0 a 100) y un color por acorde */
     const acordes = (Array.isArray(r.accords) ? r.accords : []).slice(0, 8)
-      .map((a) => ({ nombre: acordeES(a.name), fuerza: Math.max(0, Math.min(100, Math.round(Number(a.strength)))) }))
+      .map((a) => ({ nombre: acordeES(a.name), fuerza: Math.max(0, Math.min(100, Math.round(Number(a.strength)))), color: /^\d{1,3},\d{1,3},\d{1,3}$/.test(nonempty(a.color)) ? a.color : "" }))
       .filter((a) => a.nombre && Number.isFinite(a.fuerza));
-    if (acordes.length && poner("accords", acordes.map((a) => `${a.nombre} | ${a.fuerza} | ${colorAcorde(a.nombre)}`).join("\n"))) {
+    if (acordes.length && poner("accords", acordes.map((a) => `${a.nombre} | ${a.fuerza} | ${colorAcorde(a.nombre, a.color)}`).join("\n"))) {
       llenados.push(`${acordes.length} acordes`);
     }
 
@@ -700,6 +711,14 @@
       updateImagePreview();
     }
 
+    /* "Cuándo usarlo" (solo lo trae el marcador): seis valores de 0 a 100 */
+    const USO = { winter: "winter", spring: "spring", summer: "summer", autumn: "autumn", day: "day_score", night: "night_score" };
+    const uso = r.usage && Object.keys(USO).every((k) => Number.isFinite(Number(r.usage[k]))) ? r.usage : null;
+    if (uso && (reemplazar || Object.values(USO).every((campo) => Number(fields[campo].value) === 50))) {
+      for (const [k, campo] of Object.entries(USO)) fields[campo].value = Math.max(0, Math.min(100, Math.round(Number(uso[k]))));
+      llenados.push("cuándo usarlo");
+    }
+
     const fuente = /^https:\/\/(www\.)?fragrantica\./i.test(nonempty(r.perfume_url)) ? r.perfume_url : "";
     if (fuente && (reemplazar || !nonempty(fields.source_url.value))) {
       fields.source_publisher.value = enEspanol ? "Fragrantica" : "Fragrantica (vía PerfumAPI)";
@@ -710,11 +729,11 @@
 
     const estado = $("#importar-estado");
     estado.className = "importar__estado ok";
-    const faltan = acordes.length ? "No viene «cuándo usarlo»: complétalo a mano." : "No vienen los acordes ni «cuándo usarlo»: complétalos a mano.";
-    estado.textContent = `Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}. ${faltan}`
-      + (enIngles.size ? ` Quedaron en inglés: ${[...enIngles].join(", ")}.` : "")
-      + avisoFoto
-      + " Revisa todo antes de guardar.";
+    const faltan = [!acordes.length && "los acordes", !uso && "«cuándo usarlo»"].filter(Boolean);
+    const avisoFaltan = faltan.length ? `No vienen ${faltan.join(" ni ")}: complétalo a mano.` : "";
+    estado.textContent = [`Listo: ${llenados.length ? llenados.join(", ") : "no había nada vacío que llenar"}.`, avisoFaltan,
+      enIngles.size ? `Quedaron en inglés: ${[...enIngles].join(", ")}.` : "", avisoFoto.trim(), "Revisa todo antes de guardar."]
+      .filter(Boolean).join(" ");
     $("#importar-resultados").innerHTML = "";
   }
 
@@ -807,6 +826,36 @@
   fields.upload_primary.addEventListener("change", updateImagePreview);
   $("#perfume-form").addEventListener("submit", savePerfume);
   $("#importar-buscar").addEventListener("click", buscarFragrantica);
+
+  /* Pegar lo que copió el marcador "Sensorial · Fragrantica" (ver herramientas/marcador.html).
+     Primero se intenta leer el portapapeles; si el navegador no deja, aparece un cuadro para pegar. */
+  function datosDelMarcador(textoPegado) {
+    let datos;
+    try { datos = JSON.parse(nonempty(textoPegado)); } catch { return null; }
+    return datos && datos.formato === "sensorial-fragrantica" ? datos : null;
+  }
+  async function usarDatosPegados(textoPegado) {
+    const estado = $("#importar-estado");
+    const datos = datosDelMarcador(textoPegado);
+    if (!datos) {
+      estado.className = "importar__estado error";
+      estado.textContent = "Eso no es lo que copia el marcador de Sensorial. En Fragrantica, usa el marcador y pulsa «Copiar para Sensorial».";
+      return false;
+    }
+    $("#importar-pegado").hidden = true;
+    $("#importar-texto").value = "";
+    $("#importar-resultados").innerHTML = "";
+    await aplicarFragrantica({ ...datos, idioma: datos.idioma || "es" });
+    return true;
+  }
+  $("#importar-pegar").addEventListener("click", async () => {
+    let textoPegado = "";
+    try { textoPegado = await navigator.clipboard.readText(); } catch { /* sin permiso: se pega a mano */ }
+    if (textoPegado && datosDelMarcador(textoPegado)) { await usarDatosPegados(textoPegado); return; }
+    $("#importar-pegado").hidden = false;
+    $("#importar-texto").focus();
+  });
+  $("#importar-usar-texto").addEventListener("click", () => usarDatosPegados($("#importar-texto").value));
   /* Enter en el buscador busca en Fragrantica en vez de guardar la ficha */
   $("#importar-consulta").addEventListener("keydown", (event) => {
     if (event.key === "Enter") { event.preventDefault(); buscarFragrantica(); }
