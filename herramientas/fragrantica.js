@@ -57,20 +57,56 @@
     return span || (document.title.match(/(para Hombres y Mujeres|para Mujeres|para Hombres|for women and men|for women|for men)/i) || [])[0] || "";
   }
 
-  /* Pirámide: <pyramid-level-new notes="top|middle|base"> con un enlace por nota */
+  /* Pirámide: cada nota es un enlace a su página (/notas/... o /notes/...) con su foto.
+     El momento sale del título que la precede ("Notas de salida", "Corazón", "Base"...).
+     Antes de que la página termine de cargar, los niveles vienen en <pyramid-level-new>. */
+  const ENLACE_NOTA = /\/(notas|notes|noten|note|notatki|notes-de-parfum)\/[^/?#]+-\d+\.html/i;
+  const FASE_TITULO = [
+    ["top", /^(notas de salida|salida|top notes|top)$/],
+    ["middle", /^(notas de corazon|corazon|middle notes|heart notes|heart|middle)$/],
+    ["base", /^(notas de fondo|fondo|base notes|base)$/],
+  ];
+
+  function nombreNota(a) {
+    return texto(a.querySelector(".pyramid-note-label")) || a.querySelector("img")?.alt?.trim() || texto(a);
+  }
+
   function notas() {
     const fases = { top: [], middle: [], base: [] };
+    const agregar = (fase, a) => {
+      const nombre = nombreNota(a);
+      if (nombre && !fases[fase].includes(nombre)) fases[fase].push(nombre);
+    };
+
     const niveles = document.querySelectorAll("pyramid-level-new");
-    niveles.forEach((nivel) => {
-      const fase = nivel.getAttribute("notes");
-      const lista = [];
-      nivel.querySelectorAll("a").forEach((a) => {
-        const nombre = texto(a.querySelector(".pyramid-note-label")) || texto(a) || a.querySelector("img")?.alt || "";
-        if (nombre && !lista.includes(nombre)) lista.push(nombre);
+    if (niveles.length) {
+      niveles.forEach((nivel) => {
+        const fase = fases[nivel.getAttribute("notes")] ? nivel.getAttribute("notes") : "middle";
+        nivel.querySelectorAll("a").forEach((a) => agregar(fase, a));
       });
-      if (fases[fase]) fases[fase].push(...lista);
-      else fases.middle.push(...lista); /* pirámide de un solo nivel: va al corazón */
-    });
+      return fases;
+    }
+
+    /* Página ya armada: se busca la tarjeta de la pirámide y se recorre en orden */
+    const titulo = [...document.querySelectorAll("h2, h3, h4, h5, span, div")]
+      .find((el) => el.children.length === 0 && /^(piramide del perfume|piramide olfativa|perfume pyramid|fragrance notes)$/.test(sinAcentos(texto(el))));
+    let tarjeta = titulo;
+    while (tarjeta && tarjeta !== document.body && !tarjeta.querySelector('a[href*="/nota"], a[href*="/note"]')) tarjeta = tarjeta.parentElement;
+    if (!tarjeta || tarjeta === document.body) tarjeta = document.querySelector(".pyramid-level-container")?.closest("div:not(.pyramid-level-container)") || document.body;
+
+    let fase = null;
+    const recorrido = document.createTreeWalker(tarjeta, NodeFilter.SHOW_ELEMENT);
+    for (let el = recorrido.currentNode; el; el = recorrido.nextNode()) {
+      if (el.tagName === "A" && ENLACE_NOTA.test(el.getAttribute("href") || "") && el.querySelector("img")) {
+        agregar(fase || "middle", el); /* pirámide sin niveles: todo va al corazón */
+        continue;
+      }
+      if (el.children.length === 0 || /^H[1-6]$/.test(el.tagName)) {
+        const t = sinAcentos(texto(el));
+        const encontrada = FASE_TITULO.find(([, patron]) => patron.test(t));
+        if (encontrada) fase = encontrada[0];
+      }
+    }
     return fases;
   }
 
