@@ -899,28 +899,19 @@
     return new File([blob], nombreArchivo(datos), { type: "image/png" });
   }
 
-  /* En el teléfono abre el menú de compartir (ahí está "Guardar imagen"); en la computadora,
-     o si el teléfono no lo permite, la descarga directo */
+  /* Descarga directa, en la computadora y en el teléfono (sin el menú de compartir). Si el
+     navegador no sabe descargar archivos, abre la imagen en otra pestaña para guardarla. */
   async function guardar(listo) {
     const png = await listo;
-    const telefono = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-      || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
-    if (telefono && navigator.canShare?.({ files: [png] })) {
-      try {
-        await navigator.share({ files: [png] });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
     const url = URL.createObjectURL(png);
     const enlace = document.createElement("a");
     enlace.href = url;
-    enlace.download = png.name;
+    if ("download" in enlace) enlace.download = png.name;
+    else enlace.target = "_blank";
     document.body.append(enlace);
     enlace.click();
     enlace.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   window.TablaPagos = {

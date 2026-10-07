@@ -1,8 +1,8 @@
 /* Página que ve el cliente: pagos.html#TOKEN.
-   Al abrirla, mientras lee su tabla de Supabase (solo esa, con su token), el logo se arma sobre
-   el telón; cuando todo está listo, el logo viaja a su lugar, el telón se abre y la tabla entra
-   sobre el fondo de hilos dorados. Lo de abajo se anima cuando el cliente llega a verlo.
-   Al recargar la página (o volver con el botón atrás), la tabla aparece lista, sin animación. */
+   La primera vez que la abre (y otra vez cada que hay un abono nuevo), el logo se arma sobre el
+   telón; cuando su tabla de Supabase está lista (solo esa, con su token), el logo viaja a su
+   lugar, el telón se abre y la tabla entra sobre el fondo de hilos dorados. Lo de abajo se anima
+   cuando el cliente llega a verlo. Si no hay abonos nuevos, la tabla aparece lista. */
 (() => {
   "use strict";
 
@@ -12,16 +12,28 @@
   const escena = document.querySelector("#tabla");
   const hilos = T.fondo(document.querySelector(".tp-fondo__hilos"));
   const token = leerToken();
-  /* La animación sale cada vez que se abre la tabla (desde el enlace, en otra pestaña o al
-     volver a entrar), pero no al recargar ni al regresar con el botón atrás */
-  const navegacion = performance.getEntriesByType?.("navigation")?.[0]?.type;
-  const conAnimacion = Boolean(token) && navegacion !== "reload" && navegacion !== "back_forward";
+  /* La animación sale la primera vez que se abre la tabla en este dispositivo y otra vez cada
+     que se registra un abono (incluido el que la liquida). Se guarda qué abonos se vieron: al
+     recargar o volver a abrirla sin abonos nuevos, la tabla aparece lista. */
+  const CLAVE = "sb-tablas-abonos";
+  const vistas = (() => {
+    try { return JSON.parse(localStorage.getItem(CLAVE) || "{}") || {}; } catch { return {}; }
+  })();
+  try { localStorage.removeItem("sb-tablas-vistas"); } catch { /* formato anterior */ }
+  const firmaDe = (datos) => {
+    const abonos = Array.isArray(datos.payments) ? datos.payments : [];
+    return `${abonos.length}:${Math.round(abonos.reduce((suma, a) => suma + Number(a.amount || 0), 0) * 100)}`;
+  };
   const telon = document.querySelector(".tp-telon");
-  const apertura = conAnimacion ? T.intro(telon) : null;
-  if (!apertura) telon.hidden = true;
+  /* Si nunca la ha visto, el logo empieza a armarse mientras carga; si ya la vio, se espera a
+     saber si hay abonos nuevos (mientras tanto, solo el fondo oscuro) */
+  let apertura = token && !vistas[token] ? T.intro(telon) : null;
   T.parallax(document.documentElement, { hilos });
-  /* La versión anterior recordaba aquí las tablas ya vistas; ya no hace falta */
-  try { localStorage.removeItem("sb-tablas-vistas"); } catch { /* sin almacenamiento */ }
+
+  function recordar(datos) {
+    vistas[token] = firmaDe(datos);
+    try { localStorage.setItem(CLAVE, JSON.stringify(vistas)); } catch { /* sin almacenamiento: se verá otra vez */ }
+  }
 
   function leerToken() {
     let crudo = location.hash.replace(/^#/, "") || new URLSearchParams(location.search).get("t") || "";
@@ -71,6 +83,7 @@
   function abrir(alAbrir) {
     escena.removeAttribute("aria-busy");
     if (!apertura) {
+      telon.hidden = true;
       hilos.empezar(0, { trazar: false });
       alAbrir?.();
       return;
@@ -120,8 +133,12 @@
     const tabla = escena.querySelector(".tp");
     document.body.dataset.tono = tabla.dataset.tono;
     document.title = `Tabla de pagos de ${datos.client_name} | Sensorial Boutique`;
-    /* Al abrir: apertura y entrada completas. Al recargar: la tabla ya lista. */
+    /* Primera vez o abono nuevo: apertura y entrada completas. Si no, la tabla ya lista. */
+    const conAnimacion = vistas[token] !== firmaDe(datos);
+    if (conAnimacion) apertura ??= T.intro(telon);
+    else if (apertura) { apertura.cancelar(); apertura = null; }
     abrir(() => T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion }));
+    recordar(datos);
     prepararDescarga(datos);
   }
 
