@@ -1,8 +1,8 @@
 /* Página que ve el cliente: pagos.html#TOKEN.
-   La primera vez, mientras lee su tabla de Supabase (solo esa, con su token), el logo se arma
-   sobre el telón; cuando todo está listo, el logo viaja a su lugar, el telón se abre y la tabla
-   entra sobre el fondo de hilos dorados. Lo de abajo se anima cuando el cliente llega a verlo.
-   Al volver a abrirla, la tabla aparece lista, sin animación de entrada. */
+   La primera vez que la abre (y otra vez cada que hay un abono nuevo), el logo se arma sobre el
+   telón; cuando su tabla de Supabase está lista (solo esa, con su token), el logo viaja a su
+   lugar, el telón se abre y la tabla entra sobre el fondo de hilos dorados. Lo de abajo se anima
+   cuando el cliente llega a verlo. Si no hay abonos nuevos, la tabla aparece lista. */
 (() => {
   "use strict";
 
@@ -12,21 +12,26 @@
   const escena = document.querySelector("#tabla");
   const hilos = T.fondo(document.querySelector(".tp-fondo__hilos"));
   const token = leerToken();
-  /* La animación sale una sola vez por tabla en este dispositivo. Se recuerda en qué estado se
-     vio: si después queda liquidada, la celebración del sello sí se ve, también una sola vez. */
-  const CLAVE = "sb-tablas-vistas";
+  /* La animación sale la primera vez que se abre la tabla en este dispositivo y otra vez cada
+     que se registra un abono (incluido el que la liquida). Se guarda qué abonos se vieron: al
+     recargar o volver a abrirla sin abonos nuevos, la tabla aparece lista. */
+  const CLAVE = "sb-tablas-abonos";
   const vistas = (() => {
     try { return JSON.parse(localStorage.getItem(CLAVE) || "{}") || {}; } catch { return {}; }
   })();
-  const primeraVez = Boolean(token) && !vistas[token];
+  try { localStorage.removeItem("sb-tablas-vistas"); } catch { /* formato anterior */ }
+  const firmaDe = (datos) => {
+    const abonos = Array.isArray(datos.payments) ? datos.payments : [];
+    return `${abonos.length}:${Math.round(abonos.reduce((suma, a) => suma + Number(a.amount || 0), 0) * 100)}`;
+  };
   const telon = document.querySelector(".tp-telon");
-  const apertura = primeraVez ? T.intro(telon) : null;
-  if (!apertura) telon.hidden = true;
+  /* Si nunca la ha visto, el logo empieza a armarse mientras carga; si ya la vio, se espera a
+     saber si hay abonos nuevos (mientras tanto, solo el fondo oscuro) */
+  let apertura = token && !vistas[token] ? T.intro(telon) : null;
   T.parallax(document.documentElement, { hilos });
 
-  function recordar(estado) {
-    if (!token) return;
-    vistas[token] = [...new Set([...(vistas[token] || []), estado])];
+  function recordar(datos) {
+    vistas[token] = firmaDe(datos);
     try { localStorage.setItem(CLAVE, JSON.stringify(vistas)); } catch { /* sin almacenamiento: se verá otra vez */ }
   }
 
@@ -78,6 +83,7 @@
   function abrir(alAbrir) {
     escena.removeAttribute("aria-busy");
     if (!apertura) {
+      telon.hidden = true;
       hilos.empezar(0, { trazar: false });
       alAbrir?.();
       return;
@@ -125,14 +131,14 @@
       siguiente: whatsapp(`Hola, soy ${datos.client_name}. Ya terminé de pagar mi ${perfume}. Me gustaría elegir mi siguiente perfume.`),
     });
     const tabla = escena.querySelector(".tp");
-    const estado = tabla.dataset.estado;
     document.body.dataset.tono = tabla.dataset.tono;
     document.title = `Tabla de pagos de ${datos.client_name} | Sensorial Boutique`;
-    /* Primera vez: apertura y entrada completas. Recién liquidada: solo la entrada (sello y
-       chispas). Visitas siguientes: la tabla ya lista. */
-    const entrada = primeraVez || !(vistas[token] || []).includes(estado);
-    abrir(() => T.montar(tabla, { entrada, inicio: apertura ? 450 : 100, recibe: Boolean(apertura) }));
-    recordar(estado);
+    /* Primera vez o abono nuevo: apertura y entrada completas. Si no, la tabla ya lista. */
+    const conAnimacion = vistas[token] !== firmaDe(datos);
+    if (conAnimacion) apertura ??= T.intro(telon);
+    else if (apertura) { apertura.cancelar(); apertura = null; }
+    abrir(() => T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion }));
+    recordar(datos);
     prepararDescarga(datos);
   }
 
