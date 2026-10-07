@@ -169,7 +169,9 @@
   /* ---------- Plantilla ----------
      opciones.foto / opciones.silueta reemplazan las URL guardadas (vista previa del panel);
      opciones.vacio es el texto del hueco cuando aún no hay foto; opciones.contacto, el enlace
-     de WhatsApp del botón final; opciones.descargar agrega el botón para guardar la imagen */
+     de WhatsApp del botón final; opciones.descargar agrega el botón para guardar la imagen;
+     opciones.siguiente, el enlace de WhatsApp para pedir otro perfume cuando la tabla queda
+     liquidada */
   function pintar(datos, opciones = {}) {
     const e = calcular(datos);
     const tono = TONOS.includes(datos?.tone) ? datos.tone : "rosa";
@@ -204,10 +206,13 @@
         <p class="tp-saldo__etiqueta">${etiqueta}</p>
         <p class="tp-saldo__monto"><span class="tp-raya" aria-hidden="true"></span><strong data-tp-monto="${valor}" aria-hidden="true">${dinero(valor)}</strong><span class="tp-oculto">${dinero(valor)}</span><span class="tp-raya" aria-hidden="true"></span></p>
       </div>`;
-    const botones = [
-      opciones.contacto ? `<a class="tp-contacto" href="${escapar(opciones.contacto)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>${e.liquidado ? "Coordinar mi entrega" : "Escríbenos por WhatsApp"}</a>` : "",
+    /* En curso: WhatsApp y Descargar. Liquidada: solo la invitación a pedir otro perfume */
+    const botones = (e.liquidado ? [
+      opciones.siguiente ? `<a class="tp-contacto" href="${escapar(opciones.siguiente)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Quiero otro perfume</a>` : "",
+    ] : [
+      opciones.contacto ? `<a class="tp-contacto" href="${escapar(opciones.contacto)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Escríbenos por WhatsApp</a>` : "",
       opciones.descargar ? '<button class="tp-descargar" type="button" data-tp-descargar><i class="ph ph-download-simple" aria-hidden="true"></i>Descargar</button>' : "",
-    ].join("");
+    ]).join("");
     const contacto = botones ? `<div class="tp-acciones">${botones}</div>` : "";
 
     if (e.liquidado) {
@@ -217,11 +222,15 @@
       return `<article class="tp tp--liquidado" data-tono="${tono}" data-estado="liquidado">
       <header class="tp-cabeza">
         ${logo()}
-        <h1 class="tp-titulo"><span class="tp-titulo__a">Ya es</span> <span class="tp-titulo__b">${letras("tuyo")}</span></h1>
+        <h1 class="tp-titulo"><span class="tp-titulo__a">Pago</span> <span class="tp-titulo__b">${letras("completo")}</span></h1>
       </header>
       ${visual}
       ${saldo("Total pagado:", e.total)}
-      <p class="tp-cierre"><strong>Gracias${cliente ? `, ${escapar(cliente)}` : ""}.</strong> Liquidaste tu perfume${detalle ? ` ${escapar(detalle)}` : ""}. Escríbenos para acordar cuándo te lo entregamos.</p>
+      <p class="tp-cierre"><strong>Gracias${cliente ? `, ${escapar(cliente)}` : ""}.</strong> Terminaste de pagar tu ${escapar(nombre === "Perfume" ? "perfume" : nombre)}${detalle ? ` ${escapar(detalle)}` : ""}.</p>
+      <div class="tp-siguiente">
+        <p class="tp-siguiente__titulo">¿Vamos por tu siguiente perfume?</p>
+        <p class="tp-siguiente__texto">Escríbenos y te ayudamos a elegirlo. También puedes pagarlo en abonos.</p>
+      </div>
       ${contacto}
     </article>`;
     }
@@ -356,7 +365,7 @@
       if (monto) limpiar.push(contar(monto, Number(monto.dataset.tpMonto), 120));
     }, "0%"));
     const tarjeta = tabla.querySelector(".tp-tarjeta");
-    const abajo = [".tp-resumen", ".tp-cierre", ".tp-acciones"].map((sel) => tabla.querySelector(sel)).filter(Boolean);
+    const abajo = [".tp-resumen", ".tp-cierre", ".tp-siguiente", ".tp-acciones"].map((sel) => tabla.querySelector(sel)).filter(Boolean);
     /* Lo último de la página se anima en cuanto se ve la mitad: ahí ya no se puede bajar más */
     const revelarAbajo = (desde) => abajo.forEach((el, i) => limpiar.push(alVer(el, desde + i * 150, 0.5, () => el.classList.add("is-vista"), "0%")));
     if (tarjeta) {
@@ -375,12 +384,15 @@
     } else {
       revelarAbajo(inicio + 1700);
     }
-    /* Cada chispa sale en su propia dirección, como un abanico alrededor del frasco */
+    /* Cada chispa sale en su propia dirección, como un abanico alrededor del frasco; el alcance
+       depende del tamaño del frasco para que ninguna se salga de la tabla */
+    const visual = tabla.querySelector(".tp-visual");
+    const alcance = visual ? Math.min(visual.offsetWidth, visual.offsetHeight, 560) * 0.42 : 120;
     tabla.querySelectorAll(".tp-chispa").forEach((chispa, i, todas) => {
       const angulo = (i / todas.length) * Math.PI * 2 + 0.4;
-      const radio = 0.32 + (i % 3) * 0.09;
-      chispa.style.setProperty("--x", `${(Math.cos(angulo) * radio * 100).toFixed(1)}cqi`);
-      chispa.style.setProperty("--y", `${(Math.sin(angulo) * radio * 100).toFixed(1)}cqi`);
+      const radio = alcance * (0.62 + (i % 3) * 0.19);
+      chispa.style.setProperty("--x", `${Math.round(Math.cos(angulo) * radio)}px`);
+      chispa.style.setProperty("--y", `${Math.round(Math.sin(angulo) * radio)}px`);
       chispa.style.setProperty("--g", `${(i % 2 ? 1 : -1) * (90 + i * 17)}deg`);
       chispa.style.setProperty("--e", (0.55 + (i % 4) * 0.15).toFixed(2));
       chispa.style.setProperty("--i", i);
@@ -594,7 +606,7 @@
   /* ---------- Imagen para descargar ----------
      La misma tabla en una imagen vertical de 1414 × 2000 px, como las que se hacían a mano:
      fondo con hilos, logo blanco, título, frasco con su texto o silueta detrás, nombre,
-     pendiente y tarjeta de pagos; o "Ya es tuyo" con el sello, si ya está liquidada. Si hay
+     pendiente y tarjeta de pagos; o "Pago completo" con el sello, si ya está liquidada. Si hay
      muchos pagos, la imagen crece hacia abajo. */
   const TINTAS = { rosa: "#ebc4c6", dorado: "#e6c891", celeste: "#a9d1e8", verde: "#b2d7c2", lila: "#d7bbea" };
   const ORO = "#e3c48c";
@@ -764,7 +776,7 @@
 
     /* Logo y título */
     dibujarLogo(ctx, W / 2, 78, 320);
-    const [arriba, abajo] = e.liquidado ? ["Ya es", "tuyo"] : ["Tabla de", "Pagos"];
+    const [arriba, abajo] = e.liquidado ? ["Pago", "completo"] : ["Tabla de", "Pagos"];
     escribir(ctx, arriba, W / 2 + 40, 345, { tam: 100 });
     escribir(ctx, abajo, W / 2 - 18, 452, { tam: 158 });
 
@@ -822,7 +834,8 @@
       const abonos = (datos.payments || []).length;
       const detalle = [e.ultimoAbono ? `el ${fecha(e.ultimoAbono)}` : "", abonos ? `en ${abonos} ${abonos === 1 ? "abono" : "abonos"}` : ""].filter(Boolean).join(", ");
       ctx.font = fuente(500, 38);
-      renglones(ctx, `Liquidaste tu perfume${detalle ? ` ${detalle}` : ""}.`, W * 0.66)
+      const nombre = [casa, perfume].filter(Boolean).join(" ") || "perfume";
+      renglones(ctx, `Terminaste de pagar tu ${nombre}${detalle ? ` ${detalle}` : ""}.`, W * 0.66)
         .forEach((linea, i) => escribir(ctx, linea, W / 2, 1735 + i * 52, { tam: 38, peso: 500, color: TINTA_2 }));
     } else {
       escribir(ctx, "Pendiente:", W / 2, 1446, { tam: 46, peso: 500 });

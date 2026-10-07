@@ -118,10 +118,12 @@
 
   function mostrarTabla(datos) {
     const perfume = [datos.brand, datos.product_name].filter(Boolean).join(" ");
-    const mensaje = T.calcular(datos).liquidado
-      ? `Hola, soy ${datos.client_name}. Ya liquidé mi ${perfume}. ¿Cuándo me lo pueden entregar?`
-      : `Hola, soy ${datos.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${perfume}.`;
-    escena.innerHTML = T.pintar(datos, { contacto: whatsapp(mensaje), descargar: true });
+    /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume */
+    escena.innerHTML = T.pintar(datos, {
+      contacto: whatsapp(`Hola, soy ${datos.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${perfume}.`),
+      descargar: true,
+      siguiente: whatsapp(`Hola, soy ${datos.client_name}. Ya terminé de pagar mi ${perfume}. Me gustaría elegir mi siguiente perfume.`),
+    });
     const tabla = escena.querySelector(".tp");
     const estado = tabla.dataset.estado;
     document.body.dataset.tono = tabla.dataset.tono;

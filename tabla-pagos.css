@@ -40,6 +40,10 @@
   width: min(100%, 34rem);
   margin-inline: auto;
   padding: clamp(2rem, 8cqi, 3rem) clamp(1rem, 5cqi, 1.5rem) clamp(2.5rem, 10cqi, 3.5rem);
+  /* Nada de la tabla (chispas, capas en parallax) ocupa espacio fuera de ella: así la página
+     no crece de ancho en el teléfono ni deja espacio vacío abajo. "clip" no la vuelve una caja
+     con scroll propio. */
+  overflow: clip;
   color: var(--tp-tinta);
   font-family: Urbanist, system-ui, sans-serif;
   text-align: center;
@@ -259,9 +263,10 @@
 .tp-descargar:active { transform: translateY(0) scale(0.98); }
 .tp-descargar:disabled { opacity: 0.65; cursor: progress; transform: none; }
 
-/* ---------- Tabla liquidada: "Ya es tuyo" ----------
-   En lugar de la tarjeta de pagos: el sello dorado estampado sobre el frasco, el total pagado,
-   el agradecimiento y un solo paso siguiente, coordinar la entrega. */
+/* ---------- Tabla liquidada: "Pago completo" ----------
+   El perfume se entrega desde el principio; esta pantalla celebra que el cliente terminó de
+   pagarlo. En lugar de la tarjeta de pagos: el sello dorado estampado sobre el frasco, el total
+   pagado y el agradecimiento. */
 .tp-sello {
   position: absolute;
   left: calc(50% + clamp(1.75rem, 9cqi, 4.5rem));
@@ -281,8 +286,21 @@
 .tp-chispas { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .tp-chispa { grid-area: 1 / 1; width: 1.4rem; height: 1.4rem; fill: var(--tp-oro); opacity: 0; }
 .tp-chispa:nth-child(3n) { fill: var(--tp-tono); }
-.tp-cierre { grid-area: resumen; max-width: 30ch; margin-top: 1.25rem; color: var(--tp-tinta-2); font-size: clamp(1rem, 4.4cqi, 1.12rem); line-height: 1.5; }
+.tp-cierre { grid-area: tarjeta; max-width: 30ch; margin-top: 1.25rem; color: var(--tp-tinta-2); font-size: clamp(1rem, 4.4cqi, 1.12rem); line-height: 1.5; }
 .tp-cierre strong { display: block; margin-bottom: 0.2rem; color: var(--tp-tono); font-size: 1.2em; font-weight: 800; }
+/* Invitación a la siguiente compra, separada del agradecimiento por un filo dorado */
+.tp-siguiente {
+  grid-area: resumen;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  width: min(100%, 26rem);
+  margin-top: clamp(1.5rem, 6cqi, 2.25rem);
+  padding-top: clamp(1.25rem, 5cqi, 1.75rem);
+  border-top: 1px solid rgb(227 196 140 / 0.35);
+}
+.tp-siguiente__titulo { font-size: clamp(1.45rem, 7cqi, 1.9rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+.tp-siguiente__texto { max-width: 30ch; color: var(--tp-tinta-2); font-size: clamp(0.98rem, 4.2cqi, 1.08rem); line-height: 1.45; }
 
 /* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
    arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
@@ -293,7 +311,7 @@
     grid-template-areas: "visual ." "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual .";
     column-gap: clamp(2rem, 5cqi, 5rem);
     width: min(100%, 74rem);
-    padding-block: 2.5rem;
+    padding-block: 1.25rem;
   }
   .tp-visual { --tp-alto: min(80svh, 44rem); margin-top: 0; }
   .tp-nombre { margin-top: clamp(1.25rem, 2.5cqi, 2rem); }
@@ -339,6 +357,7 @@
   .tp--entrada .tp-tarjeta:not(.is-vista),
   .tp--entrada .tp-resumen:not(.is-vista),
   .tp--entrada .tp-cierre:not(.is-vista),
+  .tp--entrada .tp-siguiente:not(.is-vista),
   .tp--entrada .tp-acciones:not(.is-vista) { opacity: 0; }
   .tp--entrada .tp-saldo.is-vista .tp-saldo__etiqueta { animation: tp-sube 600ms var(--tp-suave) both; }
   .tp--entrada .tp-saldo.is-vista strong { animation: tp-aparece 600ms var(--tp-suave) 100ms both; }
@@ -359,12 +378,13 @@
   .tp--entrada .tp-tarjeta.is-vista .tp-pago.is-pagado .tp-pago__monto .tp-tachable::after { animation-delay: calc(var(--tp-tachar) + var(--k) * 200ms + 120ms); }
   .tp--entrada .tp-resumen.is-vista,
   .tp--entrada .tp-cierre.is-vista { animation: tp-aparece 700ms var(--tp-suave) both; }
+  .tp--entrada .tp-siguiente.is-vista { animation: tp-sube 700ms var(--tp-suave) both; }
   .tp--entrada .tp-acciones.is-vista { animation: tp-sube 700ms var(--tp-suave) both; }
 
   /* Liquidada: el sello cae y se estampa cuando el frasco termina de subir; las chispas
      saltan del frasco en ese momento */
   .tp--entrada .tp-sello { animation: tp-estampa 700ms cubic-bezier(0.3, 1.4, 0.5, 1) calc(var(--tp-t) + 1450ms) both; }
-  .tp--entrada .tp-chispa { animation: tp-chispa 1300ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--tp-t) + 1650ms + var(--i, 0) * 25ms) both; }
+  .tp--entrada .tp-chispa { animation: tp-chispa 1300ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--tp-t) + 1650ms + var(--i, 0) * 25ms) backwards; }
 
   @keyframes tp-aparece { from { opacity: 0; filter: blur(8px); } }
   @keyframes tp-desliza { from { opacity: 0; transform: translateX(1.2rem); filter: blur(6px); } }

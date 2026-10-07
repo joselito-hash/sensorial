@@ -105,7 +105,7 @@ Cómo se usa:
 - **Plan de pagos:** escribe el total y cuántos pagos y pulsa **Repartir en partes iguales** (si no sale exacto, el último pago absorbe los centavos), o agrega los pagos uno por uno. La fecha límite de cada pago es opcional.
 - **Abonos:** en la tarjeta de cada tabla, **+ Registrar abono** propone lo que falta del siguiente pago, avisa cuánto quedará pendiente y qué pagos se van a tachar, y no deja abonar más de lo pendiente. Los abonos se aplican en orden: un pago se tacha cuando lo abonado lo cubre; si solo cubre una parte, la tabla dice cuánto falta de ese pago. También puedes agregar o quitar abonos desde **Editar**.
 - **Compartir:** **Copiar enlace** o **Enviar por WhatsApp**. El enlace siempre muestra la tabla al día: después de cada abono no hace falta mandarlo otra vez. **Descargar imagen** guarda la tabla como PNG (la misma que puede descargar el cliente), por si prefieres mandarla como foto.
-- **Liquidada:** cuando lo abonado cubre el total, el enlace muestra la pantalla "Ya es tuyo" (sello de liquidado, total pagado y el botón **Coordinar mi entrega**). En el panel pasa a **Liquidadas**.
+- **Liquidada:** cuando lo abonado cubre el total, el enlace muestra la pantalla "Pago completo" (sello de liquidado, total pagado, el agradecimiento y la invitación a pedir otro perfume por WhatsApp). En el panel pasa a **Liquidadas**.
 
 Privacidad: el navegador del cliente no puede listar las tablas; solo lee la suya con su token aleatorio, mediante `sensorial_payment_plan()`. Las notas de los abonos (efectivo, transferencia…) solo se ven en el panel. Eliminar una tabla desactiva su enlace; las fotos que subió se quedan en Storage y se pueden borrar a mano.
 
