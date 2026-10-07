@@ -1312,6 +1312,7 @@
           ${e.liquidado ? "" : '<button type="button" class="accept" data-plan-action="abono">+ Registrar abono</button>'}
           <button type="button" data-plan-action="copiar">Copiar enlace</button>
           <a href="${escapeHTML(whatsappPlan(plan))}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+          <button type="button" data-plan-action="descargar">Descargar imagen</button>
           <button type="button" data-plan-action="editar">Editar</button>
         </div>
       </article>`;
@@ -1330,6 +1331,21 @@
       notify(`Enlace de ${plan.client_name} copiado. Pégalo en su chat.`);
     } catch {
       window.prompt("Copia el enlace de la tabla:", enlace);
+    }
+  }
+
+  /* La tabla como imagen PNG (la misma que puede descargar el cliente), para mandarla como foto */
+  async function descargarPlan(plan, button) {
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = "Preparando…";
+    try {
+      await TP.guardar(TP.archivo(plan));
+    } catch (error) {
+      notify(`No se pudo crear la imagen: ${error.message}`, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = label;
     }
   }
 
@@ -1432,7 +1448,7 @@
     vistaPlan.apertura = { telon, intro: TP.intro(telon) };
     vistaPlan.apertura.intro.entregar(() => $("#plan-vista .tp-logo"), () => {
       vistaPlan.limpiar?.();
-      vistaPlan.limpiar = TP.montar($("#plan-vista .tp"), { entrada: true, inicio: 650, recibe: true });
+      vistaPlan.limpiar = TP.montar($("#plan-vista .tp"), { entrada: true, inicio: 450, recibe: true });
     }).then(() => { if (vistaPlan.apertura?.telon === telon) cancelarApertura(); });
   }
   function cancelarApertura() {
@@ -1757,6 +1773,7 @@
     if (button.dataset.planAction === "abono") abrirAbono(plan.id);
     if (button.dataset.planAction === "editar") abrirPlan(plan.id);
     if (button.dataset.planAction === "copiar") copiarEnlace(plan);
+    if (button.dataset.planAction === "descargar") descargarPlan(plan, button);
   });
   $("#plan-form").addEventListener("submit", guardarPlan);
   $("#plan-form").addEventListener("input", (event) => {
