@@ -1,6 +1,7 @@
 /* Página que ve el cliente: pagos.html#TOKEN.
-   Lee su tabla de Supabase (solo esa, con su token), espera a que carguen las fotos y la letra,
-   y abre el telón: la tabla entra animada sobre el fondo de hilos dorados. */
+   Mientras lee su tabla de Supabase (solo esa, con su token), el logo se arma sobre el telón;
+   cuando todo está listo, el logo viaja a su lugar, el telón se abre y la tabla entra sobre el
+   fondo de hilos dorados. Lo de abajo se anima cuando el cliente llega a verlo. */
 (() => {
   "use strict";
 
@@ -8,18 +9,10 @@
   const T = window.TablaPagos;
   const config = window.SENSORIAL_SUPABASE || {};
   const escena = document.querySelector("#tabla");
-  const telon = document.querySelector(".tp-telon");
-  const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const hilos = T.fondo(document.querySelector(".tp-fondo__hilos"));
+  const apertura = T.intro(document.querySelector(".tp-telon"));
   const token = leerToken();
-
-  /* El telón se ve la primera vez que se abre la tabla en esta pestaña; al recargar, la tabla
-     entra directo con su propia animación */
-  const clave = `sb-tabla-${token}`;
-  let vista = false;
-  try { vista = sessionStorage.getItem(clave) === "1"; } catch { /* sin almacenamiento */ }
-  const conTelon = Boolean(token) && !vista && !reducido;
-  if (!conTelon) telon.hidden = true;
+  T.parallax(document.documentElement, { hilos });
 
   function leerToken() {
     let crudo = location.hash.replace(/^#/, "") || new URLSearchParams(location.search).get("t") || "";
@@ -59,34 +52,30 @@
     });
     const letras = ["400 1em 'Ms Madi'", "400 1em Urbanist", "800 1em Urbanist"]
       .map((fuente) => document.fonts?.load(fuente).catch(() => {}));
-    return Promise.race([Promise.all([...fotos, ...letras]), new Promise((listo) => setTimeout(listo, 4000))]);
+    return Promise.race([Promise.all([...fotos, ...letras]), new Promise((listo) => { setTimeout(listo, 4000); })]);
   }
 
   const whatsapp = (mensaje) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
 
-  /* Abre el telón (o no, si ya se vio) y devuelve cuándo debe empezar la entrada de la tabla */
-  function abrir() {
+  /* El logo de la apertura viaja al de la página; justo entonces empieza la entrada */
+  function abrir(alAbrir) {
     escena.removeAttribute("aria-busy");
-    if (!conTelon) {
+    apertura.entregar(() => escena.querySelector(".tp-logo"), () => {
       hilos.empezar(0);
-      return 100;
-    }
-    try { sessionStorage.setItem(clave, "1"); } catch { /* sin almacenamiento */ }
-    telon.classList.add("abre");
-    hilos.empezar(450);
-    setTimeout(() => { telon.hidden = true; }, 1600);
-    return 750;
+      alAbrir?.();
+    });
   }
 
   function mostrarTabla(datos) {
     const perfume = [datos.brand, datos.product_name].filter(Boolean).join(" ");
-    escena.innerHTML = T.pintar(datos, {
-      contacto: whatsapp(`Hola, soy ${datos.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${perfume}.`),
-    });
+    const mensaje = T.calcular(datos).liquidado
+      ? `Hola, soy ${datos.client_name}. Ya liquidé mi ${perfume}. ¿Cuándo me lo pueden entregar?`
+      : `Hola, soy ${datos.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${perfume}.`;
+    escena.innerHTML = T.pintar(datos, { contacto: whatsapp(mensaje) });
     const tabla = escena.querySelector(".tp");
     document.body.dataset.tono = tabla.dataset.tono;
     document.title = `Tabla de pagos de ${datos.client_name} | Sensorial Boutique`;
-    T.montar(tabla, { entrada: true, inicio: abrir() });
+    abrir(() => T.montar(tabla, { entrada: true, inicio: 650, recibe: true }));
   }
 
   function mostrarAviso(motivo) {
@@ -99,7 +88,7 @@
     const accion = motivo === "error"
       ? '<button class="tp-contacto" type="button" data-reintentar>Intentar de nuevo</button>'
       : `<a class="tp-contacto" href="${T.escapar(whatsapp("Hola, necesito el enlace de mi tabla de pagos."))}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Escribir a Sensorial</a>`;
-    escena.innerHTML = `<div class="tp-aviso" role="alert"><span class="tp-logo" role="img" aria-label="Sensorial Boutique"></span><h1>${titulo}</h1><p>${texto}</p>${accion}</div>`;
+    escena.innerHTML = `<div class="tp-aviso" role="alert">${T.logo()}<h1>${titulo}</h1><p>${texto}</p>${accion}</div>`;
     escena.querySelector("[data-reintentar]")?.addEventListener("click", () => location.reload());
     abrir();
   }
