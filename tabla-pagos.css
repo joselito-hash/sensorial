@@ -1,7 +1,8 @@
 /* Tabla de pagos de Sensorial: plantilla compartida por pagos.html y la vista previa del panel.
-   Forma: póster oscuro; tarjeta de pagos 1.75rem, botones en pastilla (igual que la tienda).
-   Color: fondo ciruela de la tienda, dorado para logo, marco e hilos, y un tono por perfume
-   solo para el nombre manuscrito.
+   Forma: póster oscuro; tarjeta de pagos y sello 1.75rem / círculo, botones en pastilla
+   (igual que la tienda).
+   Color: fondo ciruela de la tienda, dorado para logo, marco, sello e hilos, y un tono por
+   perfume solo para el nombre manuscrito y su halo.
    La plantilla responde al ancho de su contenedor (.tp-escena), no al de la pantalla: así la
    vista previa del panel se ve igual que en el teléfono del cliente. */
 
@@ -14,6 +15,7 @@
 
 .tp,
 .tp-fondo,
+.tp-telon,
 .tp-pagina {
   --tp-papel: #201a1e;
   --tp-tinta: #f7f2f4;
@@ -48,24 +50,9 @@
 .tp-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .tp-cabeza { grid-area: cabeza; display: grid; justify-items: center; }
-/* El logo de la tienda, en dorado: el SVG funciona como máscara de un degradado metálico */
-.tp-logo {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  width: clamp(9.5rem, 42cqi, 12.5rem);
-  aspect-ratio: 827 / 439;
-  background: linear-gradient(100deg, #9c7845 0%, #e9cf98 38%, #c7a165 62%, #8f6c3d 100%);
-  -webkit-mask: url("img/sensorial-logo.svg") center / contain no-repeat;
-  mask: url("img/sensorial-logo.svg") center / contain no-repeat;
-}
-.tp-logo::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 35%, rgb(255 246 220 / 0.9) 50%, transparent 65%);
-  transform: translateX(-120%);
-}
+
+/* Logo en dorado: SVG dentro de la página, con un destello que lo recorre */
+.tp-logo { display: block; width: clamp(9.5rem, 42cqi, 12.5rem); height: auto; overflow: visible; }
 
 .tp-titulo {
   display: grid;
@@ -77,26 +64,34 @@
 }
 .tp-titulo__a { font-size: clamp(2.1rem, 10.5cqi, 3.1rem); translate: 0.55em 0; }
 .tp-titulo__b { font-size: clamp(3.6rem, 18cqi, 5.4rem); margin-top: -0.2em; translate: -0.12em 0; }
-/* Hueco para la cola de la "g" mientras las letras suben */
+/* Hueco para las colas de la "g" y la "y" mientras las letras suben */
 .tp-letras { display: inline-flex; overflow: clip; padding-bottom: 0.22em; margin-bottom: -0.22em; }
 .tp-letra { display: inline-block; }
 
-/* Acomodo de las fotos: el frasco ocupa siempre la misma caja (alto fijo, centrado, sin
-   deformarse) y la silueta o el texto de fondo quedan detrás, hacia la izquierda */
+/* Acomodo de las fotos en tres capas (parallax): detrás el texto o la silueta, en medio el
+   halo y al frente el frasco, que ocupa siempre la misma caja sin deformarse */
 .tp-visual {
   --tp-alto: clamp(17rem, 86cqi, 26rem);
   grid-area: visual;
   position: relative;
   isolation: isolate;
-  display: grid;
-  place-items: center;
   width: 100%;
   height: var(--tp-alto);
   margin-top: clamp(-1.25rem, -3cqi, -0.5rem);
 }
+.tp-capa {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform: translate3d(calc(var(--mx, 0) * var(--tp-m, 0px)), calc(var(--my, 0) * var(--tp-m, 0px)), 0);
+  transition: transform 1.1s var(--tp-suave);
+}
+.tp-capa--atras { --tp-m: -12px; }
+.tp-capa--medio { --tp-m: 8px; }
+.tp-capa--frente { --tp-m: 18px; }
 .tp-agua {
   position: absolute;
-  z-index: -2;
   left: 36%;
   top: 50%;
   translate: -50% -50%;
@@ -112,7 +107,6 @@
 /* Cualquier logo o silueta PNG se vuelve una sombra clara y tenue, sin importar sus colores */
 .tp-silueta {
   position: absolute;
-  z-index: -2;
   left: 34%;
   top: 50%;
   width: 72%;
@@ -123,8 +117,6 @@
   opacity: 0.065;
 }
 .tp-halo {
-  position: absolute;
-  z-index: -1;
   width: min(88%, 24rem);
   aspect-ratio: 1;
   border-radius: 50%;
@@ -232,7 +224,6 @@
 
 .tp-resumen { grid-area: resumen; max-width: 32ch; margin-top: 1.1rem; color: var(--tp-tinta-2); font-size: clamp(0.95rem, 4cqi, 1.05rem); font-weight: 500; line-height: 1.45; }
 .tp-resumen small { display: block; font-size: 0.92em; }
-.tp[data-estado="liquidado"] .tp-resumen { color: var(--tp-tono); font-weight: 700; }
 
 .tp-contacto {
   grid-area: contacto;
@@ -254,6 +245,31 @@
 .tp-contacto:active { transform: translateY(0) scale(0.98); }
 .tp-contacto:focus-visible { outline: 2px solid var(--tp-tono); outline-offset: 3px; }
 
+/* ---------- Tabla liquidada: "Ya es tuyo" ----------
+   En lugar de la tarjeta de pagos: el sello dorado estampado sobre el frasco, el total pagado,
+   el agradecimiento y un solo paso siguiente, coordinar la entrega. */
+.tp-sello {
+  position: absolute;
+  left: calc(50% + clamp(1.75rem, 9cqi, 4.5rem));
+  bottom: 9%;
+  display: grid;
+  place-items: center;
+  width: clamp(5.75rem, 27cqi, 7.75rem);
+  aspect-ratio: 1;
+  rotate: -9deg;
+  filter: drop-shadow(0 0.9rem 1.2rem rgb(10 6 9 / 0.55));
+}
+.tp-sello svg { grid-area: 1 / 1; width: 100%; height: 100%; overflow: visible; }
+.tp-sello__disco { fill: var(--tp-papel); }
+.tp-sello__aro { fill: none; stroke: var(--tp-oro); stroke-width: 1.6; }
+.tp-sello__texto { fill: var(--tp-oro); font: 800 9.5px Urbanist, system-ui, sans-serif; letter-spacing: 0.08em; }
+.tp-sello__icono { grid-area: 1 / 1; color: var(--tp-oro); font-size: clamp(1.7rem, 8cqi, 2.3rem); }
+.tp-chispas { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.tp-chispa { grid-area: 1 / 1; width: 1.4rem; height: 1.4rem; fill: var(--tp-oro); opacity: 0; }
+.tp-chispa:nth-child(3n) { fill: var(--tp-tono); }
+.tp-cierre { grid-area: resumen; max-width: 30ch; margin-top: 1.25rem; color: var(--tp-tinta-2); font-size: clamp(1rem, 4.4cqi, 1.12rem); line-height: 1.5; }
+.tp-cierre strong { display: block; margin-bottom: 0.2rem; color: var(--tp-tono); font-size: 1.2em; font-weight: 800; }
+
 /* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
    arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
 @container (min-width: 62rem) {
@@ -265,22 +281,35 @@
     width: min(100%, 74rem);
     padding-block: 2.5rem;
   }
-  .tp-visual { --tp-alto: min(80dvh, 44rem); margin-top: 0; }
+  .tp-visual { --tp-alto: min(80svh, 44rem); margin-top: 0; }
   .tp-nombre { margin-top: clamp(1.25rem, 2.5cqi, 2rem); }
 }
 
-/* ---------- Entrada (solo si se permite movimiento) ----------
-   1. El logo aparece y un brillo lo cruza; "Tabla de" llega de lado y "Pagos" sube letra por letra.
-   2. El texto de fondo sube, el halo se abre y el frasco se eleva hasta quedar flotando.
-   3. La casa aparece y el nombre se escribe de izquierda a derecha.
-   4. El saldo cuenta desde $0.00 mientras sus rayas se abren desde el centro.
-   5. El marco dorado se traza alrededor de la tarjeta, las filas suben y los pagos cubiertos
-      por abonos se tachan uno por uno. */
+/* ---------- Movimiento (solo si se permite) ---------- */
 
 @media (prefers-reduced-motion: no-preference) {
-  .tp--entrada { --tp-t: var(--inicio, 0ms); --tp-tachar: calc(var(--tp-t) + 2350ms + var(--filas, 4) * 90ms); }
-  .tp--entrada .tp-logo { animation: tp-aparece 900ms var(--tp-suave) var(--tp-t) both; }
-  .tp--entrada .tp-logo::after { animation: tp-brillo 1400ms cubic-bezier(0.45, 0, 0.2, 1) calc(var(--tp-t) + 250ms) both; }
+  /* Logo: la luna gira hasta su sitio, los rayos se juntan hacia ella, los brillos titilan y
+     un barrido de luz descubre "Sensorial" y BOUTIQUE; al final un destello lo recorre.
+     Distinto de la intro de la tienda, donde el logo se traza a mano. */
+  .tp-logo--arma .tp-l--luna { transform-box: fill-box; transform-origin: 50% 50%; animation: tpl-luna 900ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--tpl-t, 0ms) both; }
+  .tp-logo--arma .tp-l--rayo { transform-origin: 513px 315px; animation: tpl-rayo 800ms var(--tp-suave) calc(var(--tpl-t, 0ms) + 250ms + var(--d, 0) * 60ms) both; }
+  .tp-logo--arma .tp-l--brillo,
+  .tp-logo--arma .tp-l--brillo-bajo { transform-box: fill-box; transform-origin: 50% 50%; animation: tpl-brillo 700ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--tpl-t, 0ms) + 700ms + var(--d, 0) * 140ms) both; }
+  .tp-logo--arma .tp-l--brillo-bajo { animation-delay: calc(var(--tpl-t, 0ms) + 1350ms + var(--d, 0) * 120ms); }
+  .tp-logo--arma .tp-logo__barrido { animation: tpl-barrido 1300ms cubic-bezier(0.45, 0, 0.2, 1) calc(var(--tpl-t, 0ms) + 400ms) both; }
+  .tp-logo--arma .tp-logo__luz,
+  .tp-logo.is-recibido .tp-logo__luz { animation: tpl-luz 1100ms cubic-bezier(0.45, 0, 0.2, 1) calc(var(--tpl-t, 0ms) + 1750ms) both; }
+  .tp-logo.is-recibido .tp-logo__luz { animation-delay: 80ms; }
+  @keyframes tpl-luna { from { opacity: 0; transform: rotate(-70deg) scale(0.4); } }
+  @keyframes tpl-rayo { from { opacity: 0; transform: scale(1.5); } }
+  @keyframes tpl-brillo { from { opacity: 0; transform: scale(0) rotate(90deg); } }
+  @keyframes tpl-barrido { from { transform: translateX(-1500px); } }
+  @keyframes tpl-luz { from { transform: translateX(0); } to { transform: translateX(1300px); } }
+  @keyframes tpl-luz-espera { 0% { transform: translateX(0); } 45%, 100% { transform: translateX(1300px); } }
+
+  /* Entrada de la parte de arriba, a partir de --inicio */
+  .tp--entrada { --tp-t: var(--inicio, 0ms); }
+  .tp--recibe .tp-cabeza .tp-logo:not(.is-recibido) { opacity: 0; }
   .tp--entrada .tp-titulo__a { animation: tp-desliza 800ms var(--tp-suave) calc(var(--tp-t) + 150ms) both; }
   .tp--entrada .tp-letra { animation: tp-letra 800ms var(--tp-suave) calc(var(--tp-t) + 250ms + var(--i) * 55ms) both; }
   .tp--entrada .tp-agua { animation: tp-agua 1600ms var(--tp-suave) calc(var(--tp-t) + 350ms) both; }
@@ -290,27 +319,40 @@
   .tp--entrada .tp-frasco img { animation: tp-flota 7s ease-in-out calc(var(--tp-t) + 1700ms) infinite; }
   .tp--entrada .tp-casa { animation: tp-sube 700ms var(--tp-suave) calc(var(--tp-t) + 950ms) both; }
   .tp--entrada .tp-perfume { animation: tp-escribe 1200ms cubic-bezier(0.55, 0, 0.25, 1) calc(var(--tp-t) + 1100ms) both; }
-  .tp--entrada .tp-saldo__etiqueta { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 1400ms) both; }
-  .tp--entrada .tp-saldo__monto strong { animation: tp-aparece 600ms var(--tp-suave) calc(var(--tp-t) + 1500ms) both; }
-  .tp--entrada .tp-raya { transform-origin: left center; animation: tp-raya 900ms var(--tp-suave) calc(var(--tp-t) + 1550ms) both; }
-  .tp--entrada .tp-raya:first-child { transform-origin: right center; }
-  .tp--entrada .tp-tarjeta { animation: tp-sube 800ms var(--tp-suave) calc(var(--tp-t) + 1750ms) both; }
-  .tp--entrada .tp-marco__trazo { stroke-dasharray: 1; animation: tp-traza 1300ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--tp-t) + 1850ms) both; }
-  .tp--entrada .tp-cliente { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2050ms) both; }
-  .tp--entrada .tp-pago { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both; }
-  .tp--entrada .tp-pago.is-pagado {
+
+  /* Lo de abajo espera a que el cliente llegue a verlo (montar() le pone .is-vista) */
+  .tp--entrada .tp-saldo:not(.is-vista),
+  .tp--entrada .tp-tarjeta:not(.is-vista),
+  .tp--entrada .tp-resumen:not(.is-vista),
+  .tp--entrada .tp-cierre:not(.is-vista),
+  .tp--entrada .tp-contacto:not(.is-vista) { opacity: 0; }
+  .tp--entrada .tp-saldo.is-vista .tp-saldo__etiqueta { animation: tp-sube 600ms var(--tp-suave) both; }
+  .tp--entrada .tp-saldo.is-vista strong { animation: tp-aparece 600ms var(--tp-suave) 100ms both; }
+  .tp--entrada .tp-saldo.is-vista .tp-raya { transform-origin: left center; animation: tp-raya 900ms var(--tp-suave) 150ms both; }
+  .tp--entrada .tp-saldo.is-vista .tp-raya:first-child { transform-origin: right center; }
+  /* Tarjeta: sube, el marco dorado se traza, las filas suben y los pagos cubiertos se tachan */
+  .tp--entrada .tp-tarjeta.is-vista { --tp-tachar: calc(600ms + var(--filas, 4) * 90ms); animation: tp-sube 800ms var(--tp-suave) both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-marco__trazo { stroke-dasharray: 1; animation: tp-traza 1300ms cubic-bezier(0.65, 0, 0.35, 1) 100ms both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-cliente { animation: tp-sube 600ms var(--tp-suave) 300ms both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-pago { animation: tp-sube 600ms var(--tp-suave) calc(400ms + var(--i) * 90ms) both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-pago.is-pagado {
     animation:
-      tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both,
+      tp-sube 600ms var(--tp-suave) calc(400ms + var(--i) * 90ms) both,
       tp-atenua 500ms ease calc(var(--tp-tachar) + var(--k) * 200ms + 350ms) both;
   }
-  .tp--entrada .tp-pago::before { animation: tp-raya 700ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both; }
-  .tp--entrada .tp-pago.is-pagado .tp-tachable::after { animation: tp-raya 420ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--tp-tachar) + var(--k) * 200ms) both; }
-  .tp--entrada .tp-pago.is-pagado .tp-pago__monto .tp-tachable::after { animation-delay: calc(var(--tp-tachar) + var(--k) * 200ms + 120ms); }
-  .tp--entrada .tp-resumen { animation: tp-aparece 700ms var(--tp-suave) calc(var(--tp-tachar) + 300ms) both; }
-  .tp--entrada .tp-contacto { animation: tp-sube 700ms var(--tp-suave) calc(var(--tp-tachar) + 450ms) both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-pago::before { animation: tp-raya 700ms var(--tp-suave) calc(400ms + var(--i) * 90ms) both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-pago.is-pagado .tp-tachable::after { animation: tp-raya 420ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--tp-tachar) + var(--k) * 200ms) both; }
+  .tp--entrada .tp-tarjeta.is-vista .tp-pago.is-pagado .tp-pago__monto .tp-tachable::after { animation-delay: calc(var(--tp-tachar) + var(--k) * 200ms + 120ms); }
+  .tp--entrada .tp-resumen.is-vista,
+  .tp--entrada .tp-cierre.is-vista { animation: tp-aparece 700ms var(--tp-suave) both; }
+  .tp--entrada .tp-contacto.is-vista { animation: tp-sube 700ms var(--tp-suave) both; }
+
+  /* Liquidada: el sello cae y se estampa cuando el frasco termina de subir; las chispas
+     saltan del frasco en ese momento */
+  .tp--entrada .tp-sello { animation: tp-estampa 700ms cubic-bezier(0.3, 1.4, 0.5, 1) calc(var(--tp-t) + 1450ms) both; }
+  .tp--entrada .tp-chispa { animation: tp-chispa 1300ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--tp-t) + 1650ms + var(--i, 0) * 25ms) both; }
 
   @keyframes tp-aparece { from { opacity: 0; filter: blur(8px); } }
-  @keyframes tp-brillo { to { transform: translateX(120%); } }
   @keyframes tp-desliza { from { opacity: 0; transform: translateX(1.2rem); filter: blur(6px); } }
   @keyframes tp-letra { from { transform: translateY(105%); } }
   /* El texto de fondo está girado 180°: -14% en su eje lo deja más abajo en pantalla */
@@ -327,49 +369,77 @@
   @keyframes tp-raya { from { transform: scaleX(0); } }
   @keyframes tp-traza { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
   @keyframes tp-atenua { from { color: var(--tp-tinta); } }
+  @keyframes tp-estampa {
+    0% { opacity: 0; transform: scale(1.9) rotate(-28deg); }
+    60% { opacity: 1; transform: scale(0.92) rotate(2deg); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes tp-chispa {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.2) rotate(0deg); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(var(--e)) rotate(var(--g)); }
+  }
+
+  /* Parallax al bajar: las capas se desplazan a distinta velocidad. Lo calcula el navegador
+     junto con el scroll (sin JavaScript), así que no hay saltos. 1000px de scroll = recorrido
+     completo, de modo que cada capa se mueve una fracción fija de lo que se baja. */
+  @supports (animation-timeline: scroll()) {
+    .tp-capa,
+    .tp-pagina .tp-fondo__hilos,
+    .tp-pagina .tp-fondo__luz {
+      animation: tp-paralaje linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: 0px 1000px;
+    }
+    /* El fondo es fijo: sigue el scroll de la página completa */
+    .tp-pagina .tp-fondo__hilos,
+    .tp-pagina .tp-fondo__luz { animation-timeline: scroll(root block); }
+    .tp-capa--atras { --tp-p: 300px; }
+    .tp-capa--medio { --tp-p: 170px; }
+    .tp-capa--frente { --tp-p: -60px; }
+    .tp-pagina .tp-fondo__hilos { --tp-p: -110px; }
+    .tp-pagina .tp-fondo__luz--a { --tp-p: -60px; }
+    .tp-pagina .tp-fondo__luz--b { --tp-p: -140px; }
+    @keyframes tp-paralaje { to { translate: 0 var(--tp-p, 0px); } }
+  }
 }
 
-/* ---------- Fondo animado ---------- */
+/* ---------- Fondo animado ----------
+   Mide el alto máximo de la pantalla (lvh): cuando el navegador del teléfono esconde o muestra
+   su barra al bajar, el fondo no cambia de tamaño ni se redibuja, así que no da tirones. */
 
-.tp-fondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--tp-papel); pointer-events: none; }
-.tp-fondo--marco { position: absolute; }
-.tp-fondo__hilos { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tp-fondo__luz { position: absolute; width: 80vmax; aspect-ratio: 1; border-radius: 50%; }
-.tp-fondo--marco .tp-fondo__luz { width: 150%; }
-.tp-fondo__luz--a {
-  left: 50%;
-  top: 22%;
-  translate: -50% -50%;
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--tp-tono) 12%, transparent), transparent);
-}
-.tp-fondo__luz--b {
-  left: 70%;
-  top: 95%;
-  translate: -50% -50%;
-  background: radial-gradient(closest-side, rgb(201 160 98 / 0.1), transparent);
-}
-/* Grano fijo, sobre una capa que no se desplaza */
+.tp-fondo { position: fixed; left: 0; top: 0; z-index: 0; width: 100%; height: 100vh; height: 100lvh; overflow: clip; background: var(--tp-papel); pointer-events: none; }
+.tp-fondo--marco { position: absolute; inset: 0; width: auto; height: auto; }
+/* Más alto que la pantalla: el parallax lo sube sin dejar ver su borde */
+.tp-fondo__hilos { position: absolute; left: 0; top: 0; width: 100%; height: calc(100% + 120px); }
+/* Cada luz es una capa que se mueve con el parallax; su resplandor (::before) deriva despacio */
+.tp-fondo__luz { position: absolute; width: 80vmax; width: 80lvmax; aspect-ratio: 1; margin: -40vmax 0 0 -40vmax; margin: -40lvmax 0 0 -40lvmax; }
+.tp-fondo--marco .tp-fondo__luz { width: 150%; margin: -75% 0 0 -75%; }
+.tp-fondo__luz::before { content: ""; position: absolute; inset: 0; border-radius: 50%; }
+.tp-fondo__luz--a { left: 50%; top: 22%; }
+.tp-fondo__luz--a::before { background: radial-gradient(closest-side, color-mix(in oklab, var(--tp-tono) 12%, transparent), transparent); }
+.tp-fondo__luz--b { left: 70%; top: 95%; }
+.tp-fondo__luz--b::before { background: radial-gradient(closest-side, rgb(201 160 98 / 0.1), transparent); }
+/* Grano fijo y tenue, sin modos de fusión (no cuesta nada al bajar) */
 .tp-fondo::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.07;
-  mix-blend-mode: overlay;
+  opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 @media (prefers-reduced-motion: no-preference) {
-  .tp-fondo__luz--a { animation: tp-deriva-a 22s ease-in-out infinite alternate; }
-  .tp-fondo__luz--b { animation: tp-deriva-b 27s ease-in-out infinite alternate; }
-  @keyframes tp-deriva-a { to { transform: translate(-9%, 7%) scale(1.12); } }
-  @keyframes tp-deriva-b { to { transform: translate(-14%, -10%) scale(0.92); } }
+  .tp-fondo__luz::before { animation: tp-deriva 24s ease-in-out infinite alternate; }
+  .tp-fondo__luz--b::before { animation-duration: 29s; animation-direction: alternate-reverse; }
+  @keyframes tp-deriva { to { transform: translate(-9%, 7%) scale(1.12); } }
 }
 
 /* ---------- Página del cliente (pagos.html) ---------- */
 
-.tp-pagina { margin: 0; min-height: 100dvh; overflow-x: clip; background: var(--tp-papel); color: var(--tp-tinta); font-family: Urbanist, system-ui, sans-serif; }
-.tp-pagina .tp-escena { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; min-height: 100dvh; padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right)); }
+.tp-pagina { margin: 0; min-height: 100svh; overflow-x: clip; background: var(--tp-papel); color: var(--tp-tinta); font-family: Urbanist, system-ui, sans-serif; }
+.tp-pagina .tp-escena { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; min-height: 100svh; padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right)); }
 
-/* Mientras llega la tabla: siluetas de su forma */
+/* Mientras llega la tabla (sin apertura): siluetas de su forma */
 .tp-cargando { display: grid; justify-items: center; gap: 1.1rem; width: min(100%, 30rem); margin: 0 auto; padding: 3rem 1rem; }
 .tp-cargando span { display: block; border-radius: 1rem; background: rgb(255 255 255 / 0.05); }
 .tp-cargando span:nth-child(1) { width: 10rem; height: 5.3rem; }
@@ -392,33 +462,30 @@
 .tp-aviso .tp-logo { width: 10rem; }
 .tp-aviso .tp-contacto { grid-area: auto; margin-top: 0.5rem; }
 
-/* Telón de apertura: un hilo dorado espera a la tabla y la página se abre por la mitad */
+/* ---------- Apertura: el logo se arma sobre el telón y viaja a su lugar ---------- */
 .tp-telon { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
-.tp-telon__mitad { position: absolute; left: 0; right: 0; height: 50.5%; background: var(--tp-papel); }
-.tp-telon__mitad--arriba { top: 0; box-shadow: inset 0 -1px 0 rgb(227 196 140 / 0.35); }
-.tp-telon__mitad--abajo { bottom: 0; box-shadow: inset 0 1px 0 rgb(227 196 140 / 0.35); }
-.tp-telon__hilo {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 100%;
-  height: 2px;
-  margin-top: -1px;
-  background: linear-gradient(90deg, transparent, var(--tp-oro) 30%, #fbe7bd 50%, var(--tp-oro) 70%, transparent);
-  transform: scaleX(0.3);
-}
-.tp-telon__texto { position: absolute; top: calc(50% + 1.4rem); left: 0; right: 0; margin: 0; color: var(--tp-tinta-2); font-size: 0.95rem; text-align: center; opacity: 0; }
+.tp-telon--marco { position: absolute; z-index: 3; border-radius: inherit; overflow: hidden; }
 .tp-telon[hidden] { display: none; }
+.tp-telon__mitad { position: absolute; left: 0; right: 0; height: 50.5%; background: var(--tp-papel); }
+.tp-telon__mitad--arriba { top: 0; }
+.tp-telon__mitad--abajo { bottom: 0; }
+/* Al abrirse, cada mitad lleva un filo dorado */
+.tp-telon.abre .tp-telon__mitad--arriba { box-shadow: inset 0 -1px 0 rgb(227 196 140 / 0.35); }
+.tp-telon.abre .tp-telon__mitad--abajo { box-shadow: inset 0 1px 0 rgb(227 196 140 / 0.35); }
+.tp-intro { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1.4rem; }
+.tp-intro__logo { width: min(72vw, 21rem); }
+.tp-telon--marco .tp-intro__logo { width: 72%; }
+.tp-intro__texto { margin: 0; color: var(--tp-tinta-2); font: 500 0.95rem Urbanist, system-ui, sans-serif; opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  .tp-telon__hilo { animation: tp-respira 1.4s ease-in-out infinite alternate; }
-  .tp-telon__texto { animation: tp-muestra 600ms var(--tp-suave) 1.4s forwards; }
-  .tp-telon.abre .tp-telon__hilo { animation: tp-hilo-abre 500ms var(--tp-suave) forwards, tp-desvanece 400ms linear 700ms forwards; }
-  .tp-telon.abre .tp-telon__texto { animation: tp-desvanece 200ms linear forwards; }
-  .tp-telon.abre .tp-telon__mitad--arriba { animation: tp-abre-arriba 1100ms cubic-bezier(0.7, 0, 0.2, 1) 350ms forwards; }
-  .tp-telon.abre .tp-telon__mitad--abajo { animation: tp-abre-abajo 1100ms cubic-bezier(0.7, 0, 0.2, 1) 350ms forwards; }
-  @keyframes tp-respira { from { transform: scaleX(0.12); opacity: 0.55; } to { transform: scaleX(0.38); opacity: 1; } }
+  /* Si la tabla tarda, el destello sigue recorriendo el logo y aparece un aviso */
+  .tp-telon.arma:not(.abre) .tp-intro__logo .tp-logo__luz {
+    animation: tpl-luz 1100ms cubic-bezier(0.45, 0, 0.2, 1) 1750ms both, tpl-luz-espera 2600ms ease-in-out 2850ms infinite;
+  }
+  .tp-telon.arma .tp-intro__texto { animation: tp-muestra 600ms var(--tp-suave) 2800ms forwards; }
+  .tp-telon.abre .tp-intro__texto { animation: tp-desvanece 200ms linear forwards; }
+  .tp-telon.abre .tp-telon__mitad--arriba { animation: tp-abre-arriba 1100ms cubic-bezier(0.7, 0, 0.2, 1) 120ms forwards; }
+  .tp-telon.abre .tp-telon__mitad--abajo { animation: tp-abre-abajo 1100ms cubic-bezier(0.7, 0, 0.2, 1) 120ms forwards; }
   @keyframes tp-muestra { to { opacity: 1; } }
-  @keyframes tp-hilo-abre { to { transform: scaleX(1); opacity: 1; } }
   @keyframes tp-desvanece { to { opacity: 0; } }
   @keyframes tp-abre-arriba { to { transform: translateY(-101%); } }
   @keyframes tp-abre-abajo { to { transform: translateY(101%); } }

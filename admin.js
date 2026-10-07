@@ -1260,7 +1260,7 @@
   const TP = window.TablaPagos;
   const planFields = $("#plan-form").elements;
   const abonoFields = $("#abono-form").elements;
-  const vistaPlan = { limpiar: null, hilos: null, espera: 0 };
+  const vistaPlan = { limpiar: null, hilos: null, espera: 0, parallax: null, apertura: null };
   let abonoPlanId = null;
 
   const hoy = () => {
@@ -1398,6 +1398,7 @@
     $(".plan-vista__scroll").scrollTop = 0;
     vistaPlan.hilos = TP.fondo($("#plan-vista-marco canvas"));
     vistaPlan.hilos.empezar(0);
+    vistaPlan.parallax = TP.parallax($("#plan-vista-marco"), { hilos: vistaPlan.hilos });
     pintarVista(true);
     if (!plan) planFields.client_name.focus();
   }
@@ -1420,6 +1421,27 @@
     $("#plan-vista-marco").dataset.tono = datos.tone;
     vistaPlan.limpiar = TP.montar($("#plan-vista .tp"), { entrada, inicio: 200 });
   }
+  /* "Ver la animación": la apertura completa dentro de la vista previa, con el logo que se
+     arma y viaja a la cabecera, igual que la verá el cliente */
+  function verAnimacion() {
+    if (!state.plan) return;
+    cancelarApertura();
+    $(".plan-vista__scroll").scrollTop = 0;
+    pintarVista(false);
+    const telon = TP.telon($("#plan-vista-marco"));
+    vistaPlan.apertura = { telon, intro: TP.intro(telon) };
+    vistaPlan.apertura.intro.entregar(() => $("#plan-vista .tp-logo"), () => {
+      vistaPlan.limpiar?.();
+      vistaPlan.limpiar = TP.montar($("#plan-vista .tp"), { entrada: true, inicio: 650, recibe: true });
+    }).then(() => { if (vistaPlan.apertura?.telon === telon) cancelarApertura(); });
+  }
+  function cancelarApertura() {
+    if (!vistaPlan.apertura) return;
+    vistaPlan.apertura.intro.cancelar();
+    vistaPlan.apertura.telon.remove();
+    vistaPlan.apertura = null;
+  }
+
   function refrescarVista() {
     clearTimeout(vistaPlan.espera);
     vistaPlan.espera = setTimeout(() => pintarVista(false), 140);
@@ -1787,7 +1809,7 @@
   $("#plan-repartir").addEventListener("click", repartir);
   $("#plan-add-abono").addEventListener("click", agregarAbono);
   $$("[data-foto-quitar]").forEach((button) => button.addEventListener("click", () => quitarFoto(button.dataset.fotoQuitar)));
-  $("#plan-replay").addEventListener("click", () => { $(".plan-vista__scroll").scrollTop = 0; pintarVista(true); });
+  $("#plan-replay").addEventListener("click", verAnimacion);
   $("#plan-delete").addEventListener("click", eliminarPlan);
   $("#plan-copy").addEventListener("click", () => {
     const plan = state.data.plans.find((item) => item.id === state.plan?.id);
@@ -1796,10 +1818,12 @@
   $$("[data-plan-close]").forEach((button) => button.addEventListener("click", cerrarPlan));
   $("#plan-dialog").addEventListener("cancel", (event) => { event.preventDefault(); cerrarPlan(); });
   $("#plan-dialog").addEventListener("close", () => {
+    cancelarApertura();
     vistaPlan.limpiar?.();
     vistaPlan.hilos?.detener();
+    vistaPlan.parallax?.();
     clearTimeout(vistaPlan.espera);
-    Object.assign(vistaPlan, { limpiar: null, hilos: null });
+    Object.assign(vistaPlan, { limpiar: null, hilos: null, parallax: null });
     Object.values(state.plan?.fotos || {}).forEach((foto) => { if (foto.vista) URL.revokeObjectURL(foto.vista); });
     $("#plan-vista").innerHTML = "";
     state.plan = null;
