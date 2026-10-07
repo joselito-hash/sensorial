@@ -57,6 +57,17 @@ test('el nombre se escapa y un token inválido no consulta Supabase', async () =
   assert.match(invalido.res.cuerpo, /<meta property="og:title" content="Tu tabla de pagos \| Sensorial Boutique">/);
 });
 
+test('con varias tablas juntas nombra todos sus perfumes', async () => {
+  const otra = { ...plan, brand: 'Carolina Herrera', product_name: 'Good Girl', payments: [] };
+  const { res } = await pedir(TOKEN, { ...plan, grupo: [{ ...plan, token: TOKEN }, otra] });
+  assert.match(res.cuerpo, /<meta property="og:title" content="Tablas de pagos de Erika">/);
+  assert.match(res.cuerpo, /<meta property="og:description" content="Burberry Her y Carolina Herrera Good Girl · Sensorial Boutique">/);
+  assert.match(res.cuerpo, /og:image" content="https:\/\/demo\.supabase\.co\/.+perfume\.webp"/);
+  const cinco = Array.from({ length: 5 }, (_, i) => ({ ...plan, product_name: `P${i + 1}`, payments: [{ amount: 1140, date: '2026-10-06' }] }));
+  const { res: muchas } = await pedir(TOKEN, { ...plan, grupo: cinco });
+  assert.match(muchas.cuerpo, /og:description" content="Burberry P1, Burberry P2 y 3 perfumes más · Pago completo"/);
+});
+
 test('si la tabla no existe, la vista previa es genérica', async () => {
   const { res } = await pedir(TOKEN, null);
   assert.match(res.cuerpo, /<title>Tu tabla de pagos \| Sensorial Boutique<\/title>/);

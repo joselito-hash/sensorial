@@ -1272,11 +1272,22 @@
   const nombrePerfume = (plan) => [plan.brand, plan.product_name].filter(Boolean).join(" ");
   /* /p/TOKEN: WhatsApp muestra el nombre del cliente y su perfume en la vista previa (api/tabla.js) */
   const enlacePlan = (plan) => new URL(`p/${plan.token}`, location.href).href;
-  const whatsappPlan = (plan) => `https://wa.me/?text=${encodeURIComponent(
-    `Hola ${plan.client_name}, aquí está tu tabla de pagos de ${nombrePerfume(plan)}: ${enlacePlan(plan)}`)}`;
-  const conArticulo = (nombres) => {
-    const lista = nombres.map((nombre) => `el ${nombre.toLowerCase()}`);
-    return lista.length > 1 ? `${lista.slice(0, -1).join(", ")} y ${lista.at(-1)}` : lista[0];
+  const enLista = (nombres) => (nombres.length > 1 ? `${nombres.slice(0, -1).join(", ")} y ${nombres.at(-1)}` : nombres[0] || "");
+  const conArticulo = (nombres) => enLista(nombres.map((nombre) => `el ${nombre.toLowerCase()}`));
+
+  /* Varias tablas de una misma clienta: las que comparten client_group se ven juntas en su
+     enlace y ella desliza de lado para pasar de un perfume a otro (migración 004) */
+  const conGrupos = () => state.data.plans.some((plan) => plan.client_group);
+  const porFecha = (a, b) => String(a.created_at).localeCompare(String(b.created_at)) || String(a.id).localeCompare(String(b.id));
+  const delGrupo = (plan) => (plan.client_group ? state.data.plans.filter((otra) => otra.client_group === plan.client_group) : [plan]).sort(porFecha);
+  const companeras = (plan) => delGrupo(plan).filter((otra) => otra.id !== plan.id);
+
+  const whatsappPlan = (plan) => {
+    const perfumes = delGrupo(plan).map(nombrePerfume);
+    const texto = perfumes.length > 1
+      ? `Hola ${plan.client_name}, aquí están tus tablas de pagos de ${enLista(perfumes)}. Desliza de lado para ver cada perfume: ${enlacePlan(plan)}`
+      : `Hola ${plan.client_name}, aquí está tu tabla de pagos de ${nombrePerfume(plan)}: ${enlacePlan(plan)}`;
+    return `https://wa.me/?text=${encodeURIComponent(texto)}`;
   };
 
   function renderPlans() {
@@ -1295,17 +1306,29 @@
     const filter = $("#plan-filter").value;
     const rows = planes.filter(({ plan, e }) => (filter === "all" || (filter === "paid") === e.liquidado)
       && (!query || `${plan.client_name} ${plan.brand} ${plan.product_name}`.toLocaleLowerCase("es").includes(query)));
+    /* Las tablas de una misma clienta van seguidas, en el orden en que ella las desliza; los
+       grupos, del más reciente al más antiguo */
+    const grupo = (plan) => plan.client_group || plan.id;
+    const reciente = new Map();
+    for (const plan of state.data.plans) {
+      if (String(plan.created_at) > String(reciente.get(grupo(plan)) ?? "")) reciente.set(grupo(plan), String(plan.created_at));
+    }
+    rows.sort((a, b) => reciente.get(grupo(b.plan)).localeCompare(reciente.get(grupo(a.plan)))
+      || grupo(a.plan).localeCompare(grupo(b.plan)) || porFecha(a.plan, b.plan));
     const dia = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" });
+    const grupos = conGrupos();
     $("#plan-list").innerHTML = rows.map(({ plan, e }) => {
       const foto = TP.imagen(plan.image_url);
       const cuotas = e.pagos.map((p) => `<i class="${p.pagado ? "is-pagado" : p.parcial ? "is-parcial" : ""}"></i>`).join("");
       const fecha = plan.updated_at ? `Actualizada ${dia.format(new Date(plan.updated_at)).replace(/\./g, "")}` : "";
+      const junto = companeras(plan).map(nombrePerfume);
       return `<article class="plan-card" data-plan-id="${escapeHTML(plan.id)}">
         <div class="plan-card__foto">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : `<span>${escapeHTML((plan.product_name || "?").slice(0, 1))}</span>`}</div>
         <div class="plan-card__cuerpo">
           <div class="perfume-card__meta"><span class="pill ${e.liquidado ? "" : "pill--draft"}">${e.liquidado ? "Liquidada" : "En curso"}</span><span>${escapeHTML(fecha)}</span></div>
           <h2>${escapeHTML(plan.client_name)}</h2>
           <p>${escapeHTML(nombrePerfume(plan))}</p>
+          ${junto.length ? `<p class="plan-card__junto">Junto con ${escapeHTML(enLista(junto))}</p>` : ""}
         </div>
         <div class="plan-card__saldo"><strong>${TP.dinero(e.pendiente)}</strong><span>pendiente de ${TP.dinero(e.total)}</span><span>${e.pagados} de ${e.pagos.length} pagos cubiertos</span></div>
         <div class="plan-card__cuotas" aria-hidden="true">${cuotas}</div>
@@ -1315,6 +1338,7 @@
           <a href="${escapeHTML(whatsappPlan(plan))}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
           <button type="button" data-plan-action="descargar">Descargar imagen</button>
           <button type="button" data-plan-action="editar">Editar</button>
+          ${grupos ? '<button type="button" data-plan-action="otro">+ Otro perfume</button>' : ""}
         </div>
       </article>`;
     }).join("");
@@ -1381,7 +1405,8 @@
   function mensajePlan(texto = "") { $("#plan-mensaje").textContent = texto; }
   function marcarCambio() { if (state.plan) state.plan.cambios = true; }
 
-  function abrirPlan(id = null) {
+  /* junto: una tabla de la clienta, para crear otra en su mismo enlace ("+ Otro perfume") */
+  function abrirPlan(id = null, { junto = null } = {}) {
     const plan = id ? state.data.plans.find((item) => item.id === id) : null;
     if (id && !plan) return notify("No encontramos esa tabla.", true);
     $("#plan-form").reset();
@@ -1396,7 +1421,7 @@
         silueta: { url: plan?.watermark_image_url || "", blob: null, vista: "" },
       },
     };
-    $("#plan-dialog-title").textContent = plan ? `Tabla de ${plan.client_name}` : "Nueva tabla";
+    $("#plan-dialog-title").textContent = plan ? `Tabla de ${plan.client_name}` : junto ? `Otro perfume para ${junto.client_name}` : "Nueva tabla";
     $("#plan-delete").hidden = !plan;
     $("#plan-copy").hidden = !plan;
     mensajePlan();
@@ -1406,6 +1431,8 @@
       planFields.total.value = TP.calcular(plan).total;
       planFields.count.value = plan.installments.length;
     }
+    if (junto) planFields.client_name.value = junto.client_name;
+    prepararJunto(plan, junto);
     planFields.abono_date.value = hoy();
     pintarFotos();
     pintarCuotas();
@@ -1417,7 +1444,42 @@
     vistaPlan.hilos.empezar(0);
     vistaPlan.parallax = TP.parallax($("#plan-vista-marco"), { hilos: vistaPlan.hilos });
     pintarVista(true);
-    if (!plan) planFields.client_name.focus();
+    if (!plan) (junto ? planFields.brand : planFields.client_name).focus();
+  }
+
+  /* "Ver junto con": una opción por cada clienta con tablas (cada grupo). Al abrir una tabla
+     que ya está junta con otras, aparece elegido su grupo. */
+  function prepararJunto(plan, junto) {
+    const grupos = new Map();
+    for (const otra of [...state.data.plans].sort(porFecha)) {
+      if (otra.id === plan?.id || !otra.client_group) continue;
+      if (!grupos.has(otra.client_group)) grupos.set(otra.client_group, []);
+      grupos.get(otra.client_group).push(otra);
+    }
+    state.plan.juntos = [...grupos].map(([grupo, planes]) => ({
+      grupo,
+      cliente: planes[0].client_name,
+      perfumes: enLista(planes.map(nombrePerfume)),
+      cuantas: planes.length,
+    })).sort((a, b) => a.cliente.localeCompare(b.cliente, "es") || a.perfumes.localeCompare(b.perfumes, "es"));
+    $("#plan-junto").hidden = !conGrupos() || !grupos.size;
+    planFields.client_group.innerHTML = '<option value="">Nada: esta tabla va sola</option>'
+      + state.plan.juntos.map((o) => `<option value="${escapeHTML(o.grupo)}">${escapeHTML(`${o.cliente}: ${o.perfumes}`)}</option>`).join("");
+    planFields.client_group.value = junto?.client_group || (plan && companeras(plan).length ? plan.client_group : "");
+    sugerirJunto();
+  }
+
+  /* Si el nombre es el de una clienta que ya tiene tablas, propone juntarlas */
+  function sugerirJunto() {
+    const aviso = $("#plan-junto-sugerencia");
+    const nombre = nonempty(planFields.client_name.value).toLocaleLowerCase("es");
+    const opcion = nombre && !planFields.client_group.value && !$("#plan-junto").hidden
+      ? state.plan?.juntos?.find((o) => nonempty(o.cliente).toLocaleLowerCase("es") === nombre)
+      : null;
+    aviso.hidden = !opcion;
+    if (!opcion) return;
+    aviso.dataset.grupo = opcion.grupo;
+    aviso.querySelector("span").textContent = `${opcion.cliente} ya tiene ${opcion.cuantas === 1 ? "otra tabla" : `${opcion.cuantas} tablas`}: ${opcion.perfumes}.`;
   }
 
   function cerrarPlan() {
@@ -1648,9 +1710,18 @@
         foto.blob = null;
       }
       const id = state.plan.id;
+      /* Junta con el grupo elegido; "va sola" a una tabla que estaba junta le da grupo nuevo */
+      const antes = state.data.plans.find((plan) => plan.id === id);
+      let clientGroup = planFields.client_group.value;
+      if (!clientGroup && antes && companeras(antes).length) clientGroup = crypto.randomUUID();
       const saved = await request(id ? `payment_plans?id=eq.${encodeURIComponent(id)}&select=*` : "payment_plans?select=*", {
         method: id ? "PATCH" : "POST",
-        body: { ...datos, image_url: state.plan.fotos.image.url || null, watermark_image_url: state.plan.fotos.silueta.url || null },
+        body: {
+          ...datos,
+          ...(conGrupos() && clientGroup ? { client_group: clientGroup } : {}),
+          image_url: state.plan.fotos.image.url || null,
+          watermark_image_url: state.plan.fotos.silueta.url || null,
+        },
         prefer: "return=representation",
       });
       if (!Array.isArray(saved) || saved.length !== 1) throw new Error("No se guardó la tabla.");
@@ -1660,7 +1731,10 @@
       state.plan.cambios = false;
       $("#plan-dialog").close();
       renderPlans();
-      notify(id ? "Tabla guardada." : "Tabla creada. Ya puedes copiar su enlace o enviarla por WhatsApp.");
+      const juntas = delGrupo(saved[0]).length;
+      notify(juntas > 1
+        ? `${id ? "Tabla guardada" : "Tabla creada"}. ${saved[0].client_name} verá sus ${juntas} perfumes en el mismo enlace.`
+        : id ? "Tabla guardada." : "Tabla creada. Ya puedes copiar su enlace o enviarla por WhatsApp.");
     } catch (error) {
       mensajePlan(error.message);
     } finally {
@@ -1775,6 +1849,7 @@
     if (button.dataset.planAction === "editar") abrirPlan(plan.id);
     if (button.dataset.planAction === "copiar") copiarEnlace(plan);
     if (button.dataset.planAction === "descargar") descargarPlan(plan, button);
+    if (button.dataset.planAction === "otro") abrirPlan(null, { junto: plan });
   });
   $("#plan-form").addEventListener("submit", guardarPlan);
   $("#plan-form").addEventListener("input", (event) => {
@@ -1782,6 +1857,7 @@
     if (["abono_amount", "abono_date", "abono_note", "total", "count"].includes(event.target.name)) return;
     marcarCambio();
     if (event.target.name === "watermark") state.plan.aguaEditada = true;
+    if (["client_name", "client_group"].includes(event.target.name)) sugerirJunto();
     if (event.target.name === "brand" && !state.plan.aguaEditada) planFields.watermark.value = TP.marcaDeAgua(event.target.value);
     const campo = event.target.closest("[data-cuota]");
     if (campo) {
@@ -1825,6 +1901,11 @@
     $$("#plan-cuotas [data-cuota=amount]").at(-1)?.focus();
   });
   $("#plan-repartir").addEventListener("click", repartir);
+  $("#plan-junto-usar").addEventListener("click", () => {
+    planFields.client_group.value = $("#plan-junto-sugerencia").dataset.grupo || "";
+    marcarCambio();
+    sugerirJunto();
+  });
   $("#plan-add-abono").addEventListener("click", agregarAbono);
   $$("[data-foto-quitar]").forEach((button) => button.addEventListener("click", () => quitarFoto(button.dataset.fotoQuitar)));
   $("#plan-replay").addEventListener("click", verAnimacion);

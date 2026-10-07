@@ -314,3 +314,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .abono-efecto.is-error{color:#efb4b4}
 @media(max-width:1000px){.plan-body{grid-template-columns:minmax(0,1fr) 340px}.fila--cuota{grid-template-columns:100px minmax(0,1fr) minmax(0,1fr) 32px}.fila--cuota .fila__estado{grid-column:1/-1;grid-row:2}.abono-nuevo{grid-template-columns:1fr 1fr}.abono-nuevo .button{grid-column:1/-1}}
 @media(max-width:720px){.plan-body{display:grid;grid-template-columns:1fr}.plan-vista{position:static}.plan-vista__marco{height:70vh}.fotos{grid-template-columns:1fr}.repartir{grid-template-columns:1fr 90px}.repartir .button{grid-column:1/-1}.fila--cuota{grid-template-columns:1fr 1fr 32px}.fila--cuota .fila__nombre{grid-column:1/-1}.fila--cuota .fila__quitar{grid-row:2;grid-column:3}.fila--abono{grid-template-columns:80px 1fr 32px}.fila--abono small{grid-column:1/3;grid-row:2}.fila--abono .fila__quitar{grid-row:1;grid-column:3}.abono-cuerpo{padding:18px 16px}.plan-card{grid-template-columns:72px minmax(0,1fr)}}
+.plan-junto{display:grid;gap:10px;margin-top:15px}
+.plan-junto__sugerencia{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0;padding:10px 14px;border:1px solid #6a5a3e;border-radius:12px;background:#3a3127;color:#efe4cf;font-size:13px;line-height:1.4}
+.plan-junto__sugerencia .text-button{padding:2px 0;color:#e3c48c}
+.plan-card__cuerpo .plan-card__junto{margin-top:6px;color:#e3c48c;font-size:12px;font-weight:700}
