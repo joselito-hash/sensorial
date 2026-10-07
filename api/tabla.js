@@ -3,7 +3,8 @@
    JavaScript ni ven lo que va después de "#". Por eso el enlace que se comparte es /p/TOKEN
    (vercel.json lo dirige aquí): esta función lee esa tabla, solo esa y con la misma consulta
    pública que usa pagos.html, y devuelve pagos.html con el nombre del cliente, su perfume y la
-   foto del frasco en el título, la descripción y la imagen. La página funciona igual que
+   foto del frasco en el título, la descripción y la imagen. Si la clienta tiene varias tablas
+   juntas, la descripción nombra todos sus perfumes. La página funciona igual que
    pagos.html#TOKEN. */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -48,6 +49,13 @@ function liquidada(datos) {
   return total > 0 && suma(datos.payments) >= total;
 }
 
+const perfumeDe = (plan) => [plan?.brand, plan?.product_name].map((p) => String(p || "").trim()).filter(Boolean).join(" ");
+/* "A", "A y B", "A, B y C"; con más, "A, B y 3 perfumes más" */
+function enLista(nombres) {
+  if (nombres.length > 3) return `${nombres.slice(0, 2).join(", ")} y ${nombres.length - 2} perfumes más`;
+  return nombres.length > 1 ? `${nombres.slice(0, -1).join(", ")} y ${nombres.at(-1)}` : nombres[0] || "";
+}
+
 function vistaPrevia(datos, token, origen) {
   const url = `${origen}/p/${token}`;
   if (!datos) {
@@ -58,15 +66,16 @@ function vistaPrevia(datos, token, origen) {
     };
   }
   const cliente = String(datos.client_name || "").trim();
-  const perfume = [datos.brand, datos.product_name].map((p) => String(p || "").trim()).filter(Boolean).join(" ");
+  const grupo = Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos];
+  const perfumes = enLista(grupo.map(perfumeDe).filter(Boolean));
   let imagen = "";
   try {
     const foto = String(datos.image_url || "");
     if (/^https:\/\//i.test(foto) || /^img\//.test(foto)) imagen = new URL(foto, `${origen}/`).href;
   } catch { imagen = ""; }
   return {
-    titulo: cliente ? `Tabla de pagos de ${cliente}` : "Tu tabla de pagos | Sensorial Boutique",
-    descripcion: `${perfume || "Tu perfume"} · ${liquidada(datos) ? "Pago completo" : "Sensorial Boutique"}`,
+    titulo: cliente ? `${grupo.length > 1 ? "Tablas" : "Tabla"} de pagos de ${cliente}` : "Tu tabla de pagos | Sensorial Boutique",
+    descripcion: `${perfumes || "Tu perfume"} · ${grupo.every(liquidada) ? "Pago completo" : "Sensorial Boutique"}`,
     imagen,
     url,
   };

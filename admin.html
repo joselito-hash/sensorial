@@ -147,6 +147,13 @@
               <label>Nombre del perfume <input name="product_name" required maxlength="120" placeholder="Her" autocomplete="off"><small>Se escribe en letra manuscrita.</small></label>
               <label>Texto de fondo <input name="watermark" maxlength="16" placeholder="BURBERRY" autocomplete="off"><small>Letras grandes detrás del frasco. Si subes una silueta, se usa la silueta.</small></label>
             </div>
+            <div class="plan-junto" id="plan-junto" hidden>
+              <label>Ver junto con
+                <select name="client_group" id="plan-grupo"><option value="">Nada: esta tabla va sola</option></select>
+                <small>Si tu clienta tiene otro perfume en abonos, junta sus tablas: con cualquiera de sus enlaces desliza de lado para ver cada perfume.</small>
+              </label>
+              <p class="plan-junto__sugerencia" id="plan-junto-sugerencia" role="status" hidden><span></span><button type="button" class="text-button" id="plan-junto-usar">Juntarlas</button></p>
+            </div>
             <div class="tonos" role="radiogroup" aria-labelledby="tonos-titulo">
               <span id="tonos-titulo" class="tonos__titulo">Color del nombre</span>
               <label class="tono tono--rosa"><input type="radio" name="tone" value="rosa" checked><span>Rosa</span></label>

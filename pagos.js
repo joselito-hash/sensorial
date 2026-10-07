@@ -1,13 +1,16 @@
-/* Página que ve el cliente: pagos.html#TOKEN.
+/* Página que ve el cliente: /p/TOKEN (o pagos.html#TOKEN).
    La primera vez que la abre (y otra vez cada que hay un abono nuevo), el logo se arma sobre el
    telón; cuando su tabla de Supabase está lista (solo esa, con su token), el logo viaja a su
    lugar, el telón se abre y la tabla entra sobre el fondo de hilos dorados. Lo de abajo se anima
-   cuando el cliente llega a verlo. Si no hay abonos nuevos, la tabla aparece lista. */
+   cuando el cliente llega a verlo. Si no hay abonos nuevos, la tabla aparece lista.
+   Si la clienta tiene varias tablas juntas (mismo grupo en el panel), cada perfume es una hoja:
+   desliza de lado o toca su frasco arriba para pasar de uno a otro. */
 (() => {
   "use strict";
 
   const WHATSAPP = "527445424972"; // el mismo número que CONFIG.whatsapp en app.js
   const T = window.TablaPagos;
+  const reducido = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const config = window.SENSORIAL_SUPABASE || {};
   const escena = document.querySelector("#tabla");
   const hilos = T.fondo(document.querySelector(".tp-fondo__hilos"));
@@ -31,7 +34,7 @@
   T.parallax(document.documentElement, { hilos });
 
   function recordar(datos) {
-    vistas[token] = firmaDe(datos);
+    vistas[datos.token || token] = firmaDe(datos);
     try { localStorage.setItem(CLAVE, JSON.stringify(vistas)); } catch { /* sin almacenamiento: se verá otra vez */ }
   }
 
@@ -81,9 +84,9 @@
 
   const whatsapp = (mensaje) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
 
-  /* El logo de la apertura viaja al de la página; justo entonces empieza la entrada. Sin
-     apertura (visitas siguientes), los hilos aparecen ya trazados. */
-  function abrir(alAbrir) {
+  /* El logo de la apertura viaja al de la página (destino); justo entonces empieza la entrada.
+     Sin apertura (visitas siguientes), los hilos aparecen ya trazados. */
+  function abrir(destino, alAbrir) {
     escena.removeAttribute("aria-busy");
     if (!apertura) {
       telon.hidden = true;
@@ -91,23 +94,22 @@
       alAbrir?.();
       return;
     }
-    apertura.entregar(() => escena.querySelector(".tp-logo"), () => {
+    apertura.entregar(destino, () => {
       hilos.empezar(0);
       alAbrir?.();
     });
   }
 
-  /* Botón Descargar: la imagen se prepara de antemano para que el menú de compartir del
-     teléfono abra al instante */
-  function prepararDescarga(datos) {
-    const boton = escena.querySelector("[data-tp-descargar]");
-    if (!boton) return;
+  /* Botón Descargar de una tabla. Devuelve una función que prepara la imagen de antemano, para
+     que la descarga sea inmediata. */
+  function prepararDescarga(tabla, datos) {
+    const boton = tabla.querySelector("[data-tp-descargar]");
+    if (!boton) return () => {};
     let listo = null;
     const preparar = () => {
       listo ??= T.archivo(datos).catch((error) => { listo = null; throw error; });
       return listo;
     };
-    setTimeout(() => preparar().catch(() => {}), 3500);
     boton.addEventListener("click", async () => {
       const etiqueta = boton.innerHTML;
       boton.disabled = true;
@@ -123,26 +125,285 @@
         boton.disabled = false;
       }
     });
+    return () => { preparar().catch(() => {}); };
   }
 
-  function mostrarTabla(datos) {
-    const perfume = [datos.brand, datos.product_name].filter(Boolean).join(" ");
-    /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume */
-    escena.innerHTML = T.pintar(datos, {
-      contacto: whatsapp(`Hola, soy ${datos.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${perfume}.`),
-      descargar: true,
-      siguiente: whatsapp(`Hola, soy ${datos.client_name}. Ya terminé de pagar mi ${perfume}. Me gustaría elegir mi siguiente perfume.`),
+  const nombreDe = (plan) => [plan.brand, plan.product_name].map((p) => String(p || "").trim()).filter(Boolean).join(" ") || "Perfume";
+  const tonoDe = (plan) => (T.TONOS.includes(plan.tone) ? plan.tone : "rosa");
+
+  /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume */
+  const opcionesDe = (plan) => ({
+    contacto: whatsapp(`Hola, soy ${plan.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${nombreDe(plan)}.`),
+    descargar: true,
+    siguiente: whatsapp(`Hola, soy ${plan.client_name}. Ya terminé de pagar mi ${nombreDe(plan)}. Me gustaría elegir mi siguiente perfume.`),
+  });
+
+  /* Varias tablas: arriba la pastilla con sus frascos y abajo una hoja por perfume. El frasco
+     elegido muestra el nombre del perfume; los liquidados llevan una palomita. */
+  function carruselHTML(grupo) {
+    const hojas = grupo.map((plan, i) => `<div class="tp-hoja" role="group" aria-roledescription="perfume" aria-label="${i + 1} de ${grupo.length}: ${T.escapar(nombreDe(plan))}">${T.pintar(plan, opcionesDe(plan))}</div>`).join("");
+    const botones = grupo.map((plan, i) => {
+      const foto = T.imagen(plan.image_url);
+      const pagado = T.calcular(plan).liquidado;
+      const corto = String(plan.product_name || "").trim() || nombreDe(plan);
+      return `<button class="tp-frascos__boton" type="button" data-hoja="${i}" data-tono="${tonoDe(plan)}" aria-label="${T.escapar(nombreDe(plan))}${pagado ? ", pagado" : ""}">`
+        + `<span class="tp-frascos__foto">${foto ? `<img src="${T.escapar(foto)}" alt="" decoding="async">` : `<span aria-hidden="true">${T.escapar(corto.slice(0, 1))}</span>`}`
+        + `${pagado ? '<i class="ph ph-check tp-frascos__pagado" aria-hidden="true"></i>' : ""}</span>`
+        + `<span class="tp-frascos__nombre" aria-hidden="true"><span>${T.escapar(corto)}</span></span></button>`;
+    }).join("");
+    return `<nav class="tp-frascos" aria-label="Elige un perfume">
+        <button class="tp-frascos__flecha" type="button" data-paso="-1" aria-label="Perfume anterior"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+        <div class="tp-frascos__lista">${botones}</div>
+        <button class="tp-frascos__flecha" type="button" data-paso="1" aria-label="Perfume siguiente"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+      </nav>
+      <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes"><div class="tp-carrusel__pista">${hojas}</div></div>
+      <p class="tp-oculto" aria-live="polite" data-tp-anuncio></p>`;
+  }
+
+  /* ---------- Varios perfumes: la clienta desliza de lado ----------
+     La pista se mueve con transform (no es una caja con scroll): la página baja con su scroll de
+     siempre y el parallax y las animaciones al llegar funcionan igual. El dedo o el mouse la
+     arrastran; al soltar pasa al perfume de al lado si se arrastró lo suficiente o rápido.
+     También con el trackpad, las flechas del teclado y los frascos de arriba. El alto de la
+     página es el del perfume que se ve. */
+  function carrusel(raiz, { inicial = 0, alCambiar } = {}) {
+    const pista = raiz.querySelector(".tp-carrusel__pista");
+    const hojas = [...pista.children];
+    const ultima = hojas.length - 1;
+    const t = (x) => `translate3d(${x}px, 0, 0)`;
+    let actual = inicial;
+    let movimiento = null;
+    let arrastre = null;
+    let soltado = -Infinity;
+
+    const paso = () => pista.offsetWidth + (parseFloat(getComputedStyle(pista).columnGap) || 0);
+    const lugar = (i) => -i * paso();
+    const colocar = (x) => { pista.style.transform = t(x); };
+    const posicion = () => {
+      const matriz = getComputedStyle(pista).transform;
+      return matriz && matriz !== "none" ? new DOMMatrixReadOnly(matriz).m41 : 0;
+    };
+    const ajustarAlto = () => { raiz.style.height = `${hojas[actual].offsetHeight}px`; };
+    const detener = () => {
+      if (!movimiento) return;
+      const x = posicion();
+      movimiento.cancel();
+      movimiento = null;
+      colocar(x);
+    };
+    const mover = (desde, hasta, duracion, fotogramas) => {
+      const animacion = pista.animate(fotogramas || [{ transform: t(desde) }, { transform: t(hasta) }], { duration: duracion, easing: fotogramas ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)" });
+      movimiento = animacion;
+      animacion.finished.then(() => {
+        if (movimiento !== animacion) return;
+        movimiento = null;
+        ajustarAlto();
+      }).catch(() => {});
+    };
+
+    function ir(destino, { rapido = false } = {}) {
+      destino = Math.max(0, Math.min(ultima, destino));
+      detener();
+      const desde = posicion();
+      const hasta = lugar(destino);
+      const antes = actual;
+      actual = destino;
+      hojas.forEach((hoja, i) => { hoja.inert = i !== destino; });
+      /* Si el perfume nuevo es más alto, la página crece desde ya; si es más corto, se encoge al
+         terminar el paso, y si la clienta estaba más abajo de donde termina, la página sube */
+      const nuevo = hojas[destino].offsetHeight;
+      const sobra = raiz.offsetHeight - nuevo;
+      if (sobra < 0) raiz.style.height = `${nuevo}px`;
+      else if (sobra > 0) {
+        const tope = document.documentElement.scrollHeight - sobra - window.innerHeight;
+        if (window.scrollY > tope) window.scrollTo({ top: Math.max(0, tope), behavior: reducido() ? "auto" : "smooth" });
+      }
+      if (destino !== antes) alCambiar?.(destino, antes);
+      colocar(hasta);
+      const distancia = Math.abs(hasta - desde);
+      if (distancia < 1 || reducido()) { ajustarAlto(); return; }
+      mover(desde, hasta, Math.round((rapido ? 300 : 420) + Math.min(1, distancia / paso()) * 160));
+    }
+
+    /* Arrastre: decide en los primeros 8 px si es de lado (carrusel) o hacia abajo (la página) */
+    raiz.addEventListener("pointerdown", (evento) => {
+      if (!evento.isPrimary || evento.button !== 0) return;
+      arrastre = { id: evento.pointerId, x0: evento.clientX, y0: evento.clientY, lado: false, desde: 0, muestras: [[evento.timeStamp, evento.clientX]] };
     });
-    const tabla = escena.querySelector(".tp");
-    document.body.dataset.tono = tabla.dataset.tono;
-    document.title = `Tabla de pagos de ${datos.client_name} | Sensorial Boutique`;
-    /* Primera vez o abono nuevo: apertura y entrada completas. Si no, la tabla ya lista. */
-    const conAnimacion = vistas[token] !== firmaDe(datos);
+    raiz.addEventListener("pointermove", (evento) => {
+      const a = arrastre;
+      if (!a || evento.pointerId !== a.id) return;
+      const dx = evento.clientX - a.x0;
+      if (!a.lado) {
+        const dy = evento.clientY - a.y0;
+        if (Math.hypot(dx, dy) < 8) return;
+        if (Math.abs(dx) <= Math.abs(dy)) { arrastre = null; return; }
+        a.lado = true;
+        detener();
+        a.desde = posicion() - dx;
+        raiz.setPointerCapture(evento.pointerId);
+        raiz.classList.add("is-arrastrando");
+        window.getSelection()?.removeAllRanges();
+      }
+      /* En el primer y el último perfume cuesta más jalar hacia fuera */
+      let x = a.desde + dx;
+      const fin = lugar(ultima);
+      if (x > 0) x /= 3;
+      else if (x < fin) x = fin + (x - fin) / 3;
+      colocar(x);
+      a.muestras.push([evento.timeStamp, evento.clientX]);
+      if (a.muestras.length > 5) a.muestras.shift();
+    });
+    const soltar = (evento) => {
+      const a = arrastre;
+      if (!a || evento.pointerId !== a.id) return;
+      arrastre = null;
+      if (!a.lado) return;
+      soltado = performance.now();
+      raiz.classList.remove("is-arrastrando");
+      const [[t0, x0], [t1, x1]] = [a.muestras[0], a.muestras.at(-1)];
+      const velocidad = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0;
+      const avance = -posicion() / paso();
+      let destino = Math.round(avance);
+      if (Math.abs(velocidad) > 0.35) destino = velocidad < 0 ? Math.floor(avance) + 1 : Math.ceil(avance) - 1;
+      ir(Math.max(actual - 1, Math.min(actual + 1, destino)), { rapido: Math.abs(velocidad) > 0.35 });
+    };
+    raiz.addEventListener("pointerup", soltar);
+    raiz.addEventListener("pointercancel", soltar);
+    /* Un arrastre no abre el enlace ni el botón donde empezó */
+    raiz.addEventListener("click", (evento) => {
+      if (performance.now() - soltado < 400) { evento.preventDefault(); evento.stopPropagation(); }
+    }, true);
+    raiz.addEventListener("dragstart", (evento) => evento.preventDefault());
+
+    /* Trackpad: un deslizamiento de lado pasa un perfume (y no regresa a la página anterior) */
+    let rueda = 0;
+    let ruedaPausa = 0;
+    let ruedaUsada = false;
+    window.addEventListener("wheel", (evento) => {
+      if (Math.abs(evento.deltaX) <= Math.abs(evento.deltaY)) return;
+      evento.preventDefault();
+      clearTimeout(ruedaPausa);
+      ruedaPausa = setTimeout(() => { rueda = 0; ruedaUsada = false; }, 220);
+      if (ruedaUsada) return;
+      rueda += evento.deltaX;
+      if (Math.abs(rueda) > 40) {
+        ruedaUsada = true;
+        ir(actual + Math.sign(rueda), { rapido: true });
+      }
+    }, { passive: false });
+    window.addEventListener("keydown", (evento) => {
+      if (evento.altKey || evento.ctrlKey || evento.metaKey || evento.target.closest?.("input, textarea, select")) return;
+      if (evento.key === "ArrowLeft") ir(actual - 1);
+      if (evento.key === "ArrowRight") ir(actual + 1);
+    });
+
+    /* Si cambia el ancho (giro del teléfono) la pista se recoloca; si cambia el alto del perfume
+       que se ve (fotos o letras que terminan de cargar), la página se ajusta */
+    let ancho = raiz.offsetWidth;
+    const observador = new ResizeObserver(() => {
+      if (raiz.offsetWidth !== ancho) {
+        ancho = raiz.offsetWidth;
+        if (!arrastre?.lado) { detener(); colocar(lugar(actual)); }
+      }
+      if (!movimiento && !arrastre?.lado) ajustarAlto();
+    });
+    observador.observe(raiz);
+    hojas.forEach((hoja) => observador.observe(hoja));
+
+    hojas.forEach((hoja, i) => { hoja.inert = i !== actual; });
+    colocar(lugar(actual));
+    ajustarAlto();
+
+    return {
+      ir,
+      get actual() { return actual; },
+      /* La primera vez, la pista hace el gesto de deslizarse hacia el otro perfume para enseñar
+         que se puede. Devuelve hacia cuál (o -1 si no se movió). */
+      asomar() {
+        if (arrastre || movimiento || reducido()) return -1;
+        const x = lugar(actual);
+        const lado = actual < ultima ? -1 : 1;
+        mover(x, x, 1300, [
+          { transform: t(x), easing: "cubic-bezier(0.3, 0, 0.2, 1)" },
+          { transform: t(x + lado * 64), offset: 0.38, easing: "cubic-bezier(0.4, 0, 0.1, 1)" },
+          { transform: t(x) },
+        ]);
+        return actual - lado;
+      },
+    };
+  }
+
+  /* La tabla del enlace y, si la clienta tiene más, las demás de su grupo (del panel) */
+  function mostrarTablas(datos) {
+    const grupo = (Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos]).filter((plan) => plan && Array.isArray(plan.installments));
+    if (!grupo.length) grupo.push(datos);
+    const varias = grupo.length > 1;
+    const inicial = Math.max(0, grupo.findIndex((plan) => plan.token === token));
+    escena.classList.toggle("tp-escena--varias", varias);
+    escena.innerHTML = varias ? carruselHTML(grupo) : T.pintar(grupo[0], opcionesDe(grupo[0]));
+    const tablas = [...escena.querySelectorAll(".tp")];
+    const descargas = tablas.map((tabla, i) => prepararDescarga(tabla, grupo[i]));
+    const cliente = grupo[inicial].client_name;
+    document.title = `${varias ? "Tablas" : "Tabla"} de pagos de ${cliente} | Sensorial Boutique`;
+    document.body.dataset.tono = tonoDe(grupo[inicial]);
+
+    /* Primera vez o abono nuevo en cualquiera de sus tablas: apertura y entrada completas. Si
+       no, todo aparece listo. */
+    const conAnimacion = grupo.some((plan) => vistas[plan.token || token] !== firmaDe(plan));
     if (conAnimacion) apertura ??= T.intro(telon);
     else if (apertura) { apertura.cancelar(); apertura = null; }
-    abrir(() => T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion }));
-    recordar(datos);
-    prepararDescarga(datos);
+
+    let pasar = null;
+    if (varias) {
+      const frascos = escena.querySelector(".tp-frascos");
+      const botones = [...frascos.querySelectorAll("[data-hoja]")];
+      const flechas = [...frascos.querySelectorAll("[data-paso]")];
+      const lista = frascos.querySelector(".tp-frascos__lista");
+      const anuncio = escena.querySelector("[data-tp-anuncio]");
+      const marcar = (i) => {
+        botones.forEach((boton, k) => boton.setAttribute("aria-current", String(k === i)));
+        flechas[0].disabled = i === 0;
+        flechas[1].disabled = i === grupo.length - 1;
+        if (lista.scrollWidth > lista.clientWidth) {
+          lista.scrollTo({ left: botones[i].offsetLeft - (lista.clientWidth - botones[i].offsetWidth) / 2, behavior: "smooth" });
+        }
+      };
+      pasar = carrusel(escena.querySelector(".tp-carrusel"), {
+        inicial,
+        alCambiar(i) {
+          marcar(i);
+          document.body.dataset.tono = tonoDe(grupo[i]);
+          anuncio.textContent = `Perfume ${i + 1} de ${grupo.length}: ${nombreDe(grupo[i])}`;
+          setTimeout(descargas[i], 1500);
+        },
+      });
+      marcar(inicial);
+      botones.forEach((boton, i) => boton.addEventListener("click", () => pasar.ir(i)));
+      flechas.forEach((flecha) => flecha.addEventListener("click", () => pasar.ir(pasar.actual + Number(flecha.dataset.paso))));
+      /* Los otros perfumes ya tienen lista la parte de arriba; su saldo y su tarjeta se animan
+         cuando la clienta llega a ellos */
+      tablas.forEach((tabla, i) => { if (i !== inicial) T.montar(tabla, { entrada: conAnimacion, inicio: -4000 }); });
+      if (conAnimacion) frascos.classList.add("tp-frascos--espera");
+    }
+
+    const tabla = tablas[inicial];
+    abrir(() => tabla.querySelector(".tp-cabeza .tp-logo"), () => {
+      T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
+      if (varias && conAnimacion) {
+        escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
+        /* Y el frasco de ese perfume, en la pastilla, destella una vez */
+        setTimeout(() => {
+          const otro = pasar.asomar();
+          const boton = escena.querySelector(`.tp-frascos__boton[data-hoja="${otro}"]`);
+          if (!boton) return;
+          boton.classList.add("is-llama");
+          boton.addEventListener("animationend", () => boton.classList.remove("is-llama"), { once: true });
+        }, 3400);
+      }
+    });
+    grupo.forEach((plan) => recordar(plan));
+    setTimeout(descargas[inicial], 3500);
   }
 
   function mostrarAviso(motivo) {
@@ -157,14 +418,14 @@
       : `<a class="tp-contacto" href="${T.escapar(whatsapp("Hola, necesito el enlace de mi tabla de pagos."))}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Escribir a Sensorial</a>`;
     escena.innerHTML = `<div class="tp-aviso" role="alert">${T.logo()}<h1>${titulo}</h1><p>${texto}</p>${accion}</div>`;
     escena.querySelector("[data-reintentar]")?.addEventListener("click", () => location.reload());
-    abrir();
+    abrir(() => escena.querySelector(".tp-logo"));
   }
 
   (async () => {
     try {
       const datos = await cargar();
       await precargar([T.imagen(datos.image_url), T.imagen(datos.watermark_image_url)]);
-      mostrarTabla(datos);
+      mostrarTablas(datos);
     } catch (error) {
       const motivo = ["sin-token", "no-encontrada"].includes(error.message) ? error.message : "error";
       if (motivo === "error") console.warn(error);
