@@ -87,6 +87,27 @@ Para activarla (usa el `SITE_ORIGIN` que ya configuraste para `submit-review`):
 
 Opcional: `APIFY_ACTOR` cambia el extractor de Apify (por defecto `parsebird~fragrantica-scraper`) y `PERFUMAPI_URL` apunta el respaldo a una copia propia de PerfumAPI.
 
+## Tablas de pagos (apartados en abonos)
+
+En el panel, la sección **Pagos** arma la tabla de pagos de cada apartado con la plantilla de Sensorial y le da al cliente un enlace propio (`pagos.html#TOKEN`) que se abre con una animación y un fondo animado.
+
+Para activarla:
+
+1. En **SQL Editor**, ejecuta `supabase/migrations/20261007_003_payment_plans.sql` una sola vez. Requiere las migraciones `001` y `002`.
+2. Sube al repositorio `pagos.html`, `pagos.js`, `tabla-pagos.js`, `tabla-pagos.css` y las versiones nuevas de `admin.html`, `admin.js` y `admin.css`.
+
+Las fotos van al bucket `sensorial-perfumes` que ya usa el panel, en la carpeta `pagos/`; no hace falta crear otro.
+
+Cómo se usa:
+
+- **Nueva tabla:** escribe el cliente, la casa y el nombre del perfume (este va en letra manuscrita, con el color que elijas). El texto grande de fondo se sugiere solo: la casa si es corta (BURBERRY) o sus iniciales si es larga (CH); puedes cambiarlo o subir una **silueta** en PNG (como el perrito de Ferrioni), que se usa en lugar del texto.
+- **Fotos:** sube el frasco en PNG sin fondo. La plantilla recorta los bordes transparentes, reduce la foto a 1600 px como máximo, la centra y la ajusta a su lugar; todos los frascos quedan del mismo alto sin que tengas que acomodarlos.
+- **Plan de pagos:** escribe el total y cuántos pagos y pulsa **Repartir en partes iguales** (si no sale exacto, el último pago absorbe los centavos), o agrega los pagos uno por uno. La fecha límite de cada pago es opcional.
+- **Abonos:** en la tarjeta de cada tabla, **+ Registrar abono** propone lo que falta del siguiente pago, avisa cuánto quedará pendiente y qué pagos se van a tachar, y no deja abonar más de lo pendiente. Los abonos se aplican en orden: un pago se tacha cuando lo abonado lo cubre; si solo cubre una parte, la tabla dice cuánto falta de ese pago. También puedes agregar o quitar abonos desde **Editar**.
+- **Compartir:** **Copiar enlace** o **Enviar por WhatsApp**. El enlace siempre muestra la tabla al día: después de cada abono no hace falta mandarlo otra vez.
+
+Privacidad: el navegador del cliente no puede listar las tablas; solo lee la suya con su token aleatorio, mediante `sensorial_payment_plan()`. Las notas de los abonos (efectivo, transferencia…) solo se ven en el panel. Eliminar una tabla desactiva su enlace; las fotos que subió se quedan en Storage y se pueden borrar a mano.
+
 ## Recordar la sesión del panel
 
 En el inicio de sesión, **Recordarme en este dispositivo** guarda la sesión en el navegador (sigue abierta al cerrarlo) y deja el correo escrito para la próxima vez. Sin marcarla, la sesión termina al cerrar la pestaña. Úsala solo en tus propios dispositivos. **Cerrar sesión** siempre termina la sesión; el correo recordado se mantiene hasta que entres sin marcar la casilla.

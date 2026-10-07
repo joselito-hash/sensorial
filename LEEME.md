@@ -18,6 +18,15 @@ Todo vive en `index.html`. El menú tiene tres pestañas y al cambiar de una a o
 - Cada pestaña y cada paso tienen su dirección (`#catalogo`, `#catalogo?origen=arabe&familia=orientales`, `#catalogo?todo`, `#pedido`), así que el botón "atrás" del navegador funciona y se pueden compartir enlaces.
 - La carpeta `.claude` solo sirve para la vista previa local; no hace falta subirla al hosting.
 
+## Tablas de pagos
+
+`pagos.html` es la página que ve cada cliente con su tabla de pagos (apartados en abonos), con la misma idea de tus diseños: logo dorado, "Tabla de Pagos", el frasco con su texto o silueta detrás, el nombre del perfume en letra manuscrita, lo pendiente y los pagos con los ya cubiertos tachados.
+
+- **Entrada:** un hilo dorado espera mientras carga y la página se abre por la mitad; luego el logo recibe un brillo, "Pagos" sube letra por letra, el frasco se eleva y queda flotando, el nombre se escribe, el pendiente cuenta desde $0.00, el marco de la tarjeta se traza y los pagos cubiertos se tachan uno por uno. El telón se ve la primera vez que se abre en la pestaña; al recargar, solo la entrada de la tabla.
+- **Fondo:** hilos dorados que ondulan despacio, con un destello que los recorre de vez en cuando, y una luz suave del color del nombre.
+- Con "reducir movimiento" todo aparece quieto. En pantallas anchas el frasco va a la izquierda y la tabla a la derecha.
+- Se crean y se actualizan desde el panel (sección **Pagos**). La puesta en marcha está en [`SUPABASE.md`](SUPABASE.md#tablas-de-pagos-apartados-en-abonos). La plantilla vive en `tabla-pagos.js` y `tabla-pagos.css`, y la vista previa del panel usa la misma.
+
 ## Lo que tienes que completar
 
 1. **Número de WhatsApp.** Ya está puesto en `app.js`, bloque `CONFIG`: `"527445424972"` (52 es el código de México, seguido de tu número de 10 dígitos). Si cambias de número, escríbelo igual: código de país y solo dígitos.
