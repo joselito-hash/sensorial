@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/p/:token", "destination": "/api/tabla?t=:token" }
+  ],
+  "functions": {
+    "api/tabla.js": { "includeFiles": "{pagos.html,supabase-config.js}" }
+  }
+}

@@ -35,8 +35,11 @@
     try { localStorage.setItem(CLAVE, JSON.stringify(vistas)); } catch { /* sin almacenamiento: se verá otra vez */ }
   }
 
+  /* El enlace que se comparte es /p/TOKEN (con vista previa en WhatsApp, ver api/tabla.js);
+     los enlaces anteriores, pagos.html#TOKEN, siguen funcionando */
   function leerToken() {
-    let crudo = location.hash.replace(/^#/, "") || new URLSearchParams(location.search).get("t") || "";
+    let crudo = (location.pathname.match(/^\/p\/([^/]+)\/?$/) || [])[1]
+      || location.hash.replace(/^#/, "") || new URLSearchParams(location.search).get("t") || "";
     try { crudo = decodeURIComponent(crudo); } catch { crudo = ""; }
     return /^[A-Za-z0-9_-]{16,64}$/.test(crudo) ? crudo : "";
   }
