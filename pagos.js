@@ -1,8 +1,8 @@
 /* Página que ve el cliente: pagos.html#TOKEN.
-   La primera vez, mientras lee su tabla de Supabase (solo esa, con su token), el logo se arma
-   sobre el telón; cuando todo está listo, el logo viaja a su lugar, el telón se abre y la tabla
-   entra sobre el fondo de hilos dorados. Lo de abajo se anima cuando el cliente llega a verlo.
-   Al volver a abrirla, la tabla aparece lista, sin animación de entrada. */
+   Al abrirla, mientras lee su tabla de Supabase (solo esa, con su token), el logo se arma sobre
+   el telón; cuando todo está listo, el logo viaja a su lugar, el telón se abre y la tabla entra
+   sobre el fondo de hilos dorados. Lo de abajo se anima cuando el cliente llega a verlo.
+   Al recargar la página (o volver con el botón atrás), la tabla aparece lista, sin animación. */
 (() => {
   "use strict";
 
@@ -12,23 +12,16 @@
   const escena = document.querySelector("#tabla");
   const hilos = T.fondo(document.querySelector(".tp-fondo__hilos"));
   const token = leerToken();
-  /* La animación sale una sola vez por tabla en este dispositivo. Se recuerda en qué estado se
-     vio: si después queda liquidada, la celebración del sello sí se ve, también una sola vez. */
-  const CLAVE = "sb-tablas-vistas";
-  const vistas = (() => {
-    try { return JSON.parse(localStorage.getItem(CLAVE) || "{}") || {}; } catch { return {}; }
-  })();
-  const primeraVez = Boolean(token) && !vistas[token];
+  /* La animación sale cada vez que se abre la tabla (desde el enlace, en otra pestaña o al
+     volver a entrar), pero no al recargar ni al regresar con el botón atrás */
+  const navegacion = performance.getEntriesByType?.("navigation")?.[0]?.type;
+  const conAnimacion = Boolean(token) && navegacion !== "reload" && navegacion !== "back_forward";
   const telon = document.querySelector(".tp-telon");
-  const apertura = primeraVez ? T.intro(telon) : null;
+  const apertura = conAnimacion ? T.intro(telon) : null;
   if (!apertura) telon.hidden = true;
   T.parallax(document.documentElement, { hilos });
-
-  function recordar(estado) {
-    if (!token) return;
-    vistas[token] = [...new Set([...(vistas[token] || []), estado])];
-    try { localStorage.setItem(CLAVE, JSON.stringify(vistas)); } catch { /* sin almacenamiento: se verá otra vez */ }
-  }
+  /* La versión anterior recordaba aquí las tablas ya vistas; ya no hace falta */
+  try { localStorage.removeItem("sb-tablas-vistas"); } catch { /* sin almacenamiento */ }
 
   function leerToken() {
     let crudo = location.hash.replace(/^#/, "") || new URLSearchParams(location.search).get("t") || "";
@@ -125,14 +118,10 @@
       siguiente: whatsapp(`Hola, soy ${datos.client_name}. Ya terminé de pagar mi ${perfume}. Me gustaría elegir mi siguiente perfume.`),
     });
     const tabla = escena.querySelector(".tp");
-    const estado = tabla.dataset.estado;
     document.body.dataset.tono = tabla.dataset.tono;
     document.title = `Tabla de pagos de ${datos.client_name} | Sensorial Boutique`;
-    /* Primera vez: apertura y entrada completas. Recién liquidada: solo la entrada (sello y
-       chispas). Visitas siguientes: la tabla ya lista. */
-    const entrada = primeraVez || !(vistas[token] || []).includes(estado);
-    abrir(() => T.montar(tabla, { entrada, inicio: apertura ? 450 : 100, recibe: Boolean(apertura) }));
-    recordar(estado);
+    /* Al abrir: apertura y entrada completas. Al recargar: la tabla ya lista. */
+    abrir(() => T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion }));
     prepararDescarga(datos);
   }
 
