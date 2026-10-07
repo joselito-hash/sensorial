@@ -1270,7 +1270,8 @@
   const fechaValida = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || "");
   const monto = (value) => Math.round(Number(value) * 100) / 100;
   const nombrePerfume = (plan) => [plan.brand, plan.product_name].filter(Boolean).join(" ");
-  const enlacePlan = (plan) => new URL(`pagos.html#${plan.token}`, location.href).href;
+  /* /p/TOKEN: WhatsApp muestra el nombre del cliente y su perfume en la vista previa (api/tabla.js) */
+  const enlacePlan = (plan) => new URL(`p/${plan.token}`, location.href).href;
   const whatsappPlan = (plan) => `https://wa.me/?text=${encodeURIComponent(
     `Hola ${plan.client_name}, aquí está tu tabla de pagos de ${nombrePerfume(plan)}: ${enlacePlan(plan)}`)}`;
   const conArticulo = (nombres) => {
