@@ -10,8 +10,10 @@
   const TONOS = ["rosa", "dorado", "celeste", "verde", "lila"];
   const numero = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dia = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
-  /* Lo que tarda el logo en armarse en la apertura (ver .tp-logo--arma en tabla-pagos.css) */
-  const ARMADO = 2000;
+  /* Lo que tarda el logo en armarse en la apertura (ver .tp-logo--arma en tabla-pagos.css) y en
+     viajar a la cabecera: sin pausas, la tabla aparece en cerca de un segundo y medio */
+  const ARMADO = 1000;
+  const VIAJE = 850;
 
   const reducido = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pausa = (ms) => new Promise((listo) => { setTimeout(listo, ms); });
@@ -83,7 +85,7 @@
   }
 
   /* ---------- Logotipo ----------
-     El logo de Sensorial en piezas (las mismas de la intro de la tienda), dibujado en dorado
+     El logo de Sensorial en piezas (las mismas de la intro de la tienda), dibujado en blanco
      dentro de la página: no depende de cargar otra imagen. [pieza, orden, trazo] */
   const LOGO = [
     ["letra", 0, "M208.82,449.24 C197.6,443.67 186.27,439.17 175.71,433.09 C170.49,430.08 165.6,426.66 161.34,422.36 C144.08,404.91 147.13,380.86 168.22,368.33 C187.34,356.98 218.77,358.45 236.65,371.7 C242.64,376.14 246.9,381.73 246.28,389.81 C246.09,392.22 245.31,394.41 243.48,396.03 C240.71,398.49 237.65,397.45 236.78,393.85 C232.75,377.1 221.33,367.42 204.12,366.18 C194.64,365.5 185.5,366.44 177.14,371.55 C162.76,380.34 160.32,398.23 171.85,410.42 C177.58,416.48 184.81,420.25 192.09,423.97 C204.25,430.18 217.03,435.14 228.76,442.22 C237.88,447.73 246.02,454.28 250.89,464.03 C258.68,479.62 253.68,499.23 238.78,511.6 C222.77,524.89 204.09,529.97 183.53,529.57 C166.45,529.24 151,524.7 138.03,513.21 C126.62,503.11 122.25,487.85 126.83,474.78 C131.33,461.93 145.92,451.41 160.33,450.76 C165.48,450.52 170.68,450.18 175.59,452.35 C176.81,452.89 178.32,453.5 177.91,455.14 C177.4,457.14 175.71,456.79 174.22,456.38 C162.22,453.15 151.77,455.83 144.41,465.93 C136.15,477.24 136.5,489.63 142.68,501.84 C147.86,512.07 156.56,518.53 167.32,521.66 C187.96,527.63 207.24,524.79 224.27,511 C232.22,504.56 237.23,496.21 238.59,486.02 C240,475.44 235.33,467.27 227.37,460.74 C221.81,456.17 215.5,452.75 208.82,449.24 z"],
@@ -147,12 +149,11 @@
     const solas = LOGO.filter(([tipo]) => LOGO_ARMA.has(tipo)).map(pieza).join("");
     const reveladas = LOGO.filter(([tipo]) => !LOGO_ARMA.has(tipo)).map(pieza).join("");
     return `<svg class="tp-logo ${clase}" viewBox="112 154 827 439" role="img" aria-label="Sensorial Boutique" focusable="false"><defs>`
-      + `<linearGradient id="tpl-oro-${n}" gradientUnits="userSpaceOnUse" x1="112" y1="154" x2="939" y2="593"><stop offset="0" stop-color="#9c7845"/><stop offset=".38" stop-color="#ecd29b"/><stop offset=".62" stop-color="#c7a165"/><stop offset="1" stop-color="#8f6c3d"/></linearGradient>`
-      + `<linearGradient id="tpl-luz-${n}"><stop offset="0" stop-color="#fff6dc" stop-opacity="0"/><stop offset=".5" stop-color="#fff6dc" stop-opacity=".95"/><stop offset="1" stop-color="#fff6dc" stop-opacity="0"/></linearGradient>`
+      + `<linearGradient id="tpl-luz-${n}"><stop offset="0" stop-color="#e3c48c" stop-opacity="0"/><stop offset=".5" stop-color="#e3c48c" stop-opacity=".9"/><stop offset="1" stop-color="#e3c48c" stop-opacity="0"/></linearGradient>`
       + `<linearGradient id="tpl-barrido-${n}"><stop offset=".45" stop-color="#fff"/><stop offset=".5" stop-color="#000"/></linearGradient>`
       + `<mask id="tpl-revela-${n}" maskUnits="userSpaceOnUse" x="100" y="140" width="860" height="470"><rect class="tp-logo__barrido" x="100" y="140" width="3000" height="470" fill="url(#tpl-barrido-${n})"/></mask>`
       + `<mask id="tpl-forma-${n}" maskUnits="userSpaceOnUse" x="100" y="140" width="860" height="470"><use href="#tpl-trazos-${n}" fill="#fff"/></mask>`
-      + `</defs><g fill="url(#tpl-oro-${n})"><g id="tpl-trazos-${n}">${solas}<g mask="url(#tpl-revela-${n})">${reveladas}</g></g></g>`
+      + `</defs><g fill="currentColor"><g id="tpl-trazos-${n}">${solas}<g mask="url(#tpl-revela-${n})">${reveladas}</g></g></g>`
       + `<rect class="tp-logo__luz" x="-200" y="140" width="300" height="470" fill="url(#tpl-luz-${n})" mask="url(#tpl-forma-${n})"/></svg>`;
   }
 
@@ -168,7 +169,7 @@
   /* ---------- Plantilla ----------
      opciones.foto / opciones.silueta reemplazan las URL guardadas (vista previa del panel);
      opciones.vacio es el texto del hueco cuando aún no hay foto; opciones.contacto, el enlace
-     de WhatsApp del botón final */
+     de WhatsApp del botón final; opciones.descargar agrega el botón para guardar la imagen */
   function pintar(datos, opciones = {}) {
     const e = calcular(datos);
     const tono = TONOS.includes(datos?.tone) ? datos.tone : "rosa";
@@ -203,9 +204,11 @@
         <p class="tp-saldo__etiqueta">${etiqueta}</p>
         <p class="tp-saldo__monto"><span class="tp-raya" aria-hidden="true"></span><strong data-tp-monto="${valor}" aria-hidden="true">${dinero(valor)}</strong><span class="tp-oculto">${dinero(valor)}</span><span class="tp-raya" aria-hidden="true"></span></p>
       </div>`;
-    const contacto = opciones.contacto
-      ? `<a class="tp-contacto" href="${escapar(opciones.contacto)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>${e.liquidado ? "Coordinar mi entrega" : "Escríbenos por WhatsApp"}</a>`
-      : "";
+    const botones = [
+      opciones.contacto ? `<a class="tp-contacto" href="${escapar(opciones.contacto)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>${e.liquidado ? "Coordinar mi entrega" : "Escríbenos por WhatsApp"}</a>` : "",
+      opciones.descargar ? '<button class="tp-descargar" type="button" data-tp-descargar><i class="ph ph-download-simple" aria-hidden="true"></i>Descargar</button>' : "",
+    ].join("");
+    const contacto = botones ? `<div class="tp-acciones">${botones}</div>` : "";
 
     if (e.liquidado) {
       const abonos = (datos.payments || []).length;
@@ -353,7 +356,7 @@
       if (monto) limpiar.push(contar(monto, Number(monto.dataset.tpMonto), 120));
     }, "0%"));
     const tarjeta = tabla.querySelector(".tp-tarjeta");
-    const abajo = [".tp-resumen", ".tp-cierre", ".tp-contacto"].map((sel) => tabla.querySelector(sel)).filter(Boolean);
+    const abajo = [".tp-resumen", ".tp-cierre", ".tp-acciones"].map((sel) => tabla.querySelector(sel)).filter(Boolean);
     /* Lo último de la página se anima en cuanto se ve la mitad: ahí ya no se puede bajar más */
     const revelarAbajo = (desde) => abajo.forEach((el, i) => limpiar.push(alVer(el, desde + i * 150, 0.5, () => el.classList.add("is-vista"), "0%")));
     if (tarjeta) {
@@ -428,12 +431,12 @@
           const viaje = marca.animate([
             { transform: "none" },
             { transform: `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px, ${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(${b.width / a.width})` },
-          ], { duration: 1150, easing: "cubic-bezier(0.65, 0, 0.25, 1)", fill: "forwards" });
+          ], { duration: VIAJE, easing: "cubic-bezier(0.65, 0, 0.25, 1)", fill: "forwards" });
           await viaje.finished.catch(() => {});
           if (cancelado) return;
           objetivo.classList.add("is-recibido");
         } else {
-          await pausa(1150);
+          await pausa(VIAJE);
         }
         cerrar();
       },
@@ -569,10 +572,11 @@
     observador.observe(lienzo);
 
     return {
-      empezar(retraso = 0) {
+      /* trazar: false los muestra completos de inmediato (visitas siguientes) */
+      empezar(retraso = 0, { trazar = true } = {}) {
         clearTimeout(espera);
         espera = setTimeout(() => {
-          inicio = performance.now();
+          inicio = performance.now() - (trazar ? 0 : 1800);
           cancelAnimationFrame(id);
           if (quieto) cuadro(inicio);
           else id = requestAnimationFrame(bucle);
@@ -587,8 +591,327 @@
     };
   }
 
+  /* ---------- Imagen para descargar ----------
+     La misma tabla en una imagen vertical de 1414 × 2000 px, como las que se hacían a mano:
+     fondo con hilos, logo blanco, título, frasco con su texto o silueta detrás, nombre,
+     pendiente y tarjeta de pagos; o "Ya es tuyo" con el sello, si ya está liquidada. Si hay
+     muchos pagos, la imagen crece hacia abajo. */
+  const TINTAS = { rosa: "#ebc4c6", dorado: "#e6c891", celeste: "#a9d1e8", verde: "#b2d7c2", lila: "#d7bbea" };
+  const ORO = "#e3c48c";
+  const PAPEL = "#201a1e";
+  const TINTA = "#f7f2f4";
+  const TINTA_2 = "#c9bcc3";
+  const ANCHO = 1414;
+
+  /* Con CORS para poder exportar el lienzo; si la foto no lo permite, la imagen sale sin ella */
+  const cargarFoto = (src) => new Promise((resolve) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    if (!/^blob:/.test(src)) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+  const fuente = (peso, tam, manuscrita = false) => `${peso} ${tam}px ${manuscrita ? '"Ms Madi", cursive' : "Urbanist, sans-serif"}`;
+  const conAlfa = (hex, alfa) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
+  };
+
+  /* Escribe una línea; si no cabe en `ancho`, reduce la letra hasta que quepa */
+  function escribir(ctx, txt, x, y, { peso = 400, tam = 40, manuscrita = false, color = TINTA, alinear = "center", ancho = 0 } = {}) {
+    let t = tam;
+    ctx.font = fuente(peso, t, manuscrita);
+    while (ancho && ctx.measureText(txt).width > ancho && t > 14) {
+      t -= 2;
+      ctx.font = fuente(peso, t, manuscrita);
+    }
+    ctx.fillStyle = color;
+    ctx.textAlign = alinear;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(txt, x, y);
+    return ctx.measureText(txt).width;
+  }
+
+  /* Divide un texto en renglones que caben en `ancho` */
+  function renglones(ctx, txt, ancho) {
+    const lineas = [];
+    let actual = "";
+    txt.split(/\s+/).forEach((palabra) => {
+      const prueba = actual ? `${actual} ${palabra}` : palabra;
+      if (actual && ctx.measureText(prueba).width > ancho) { lineas.push(actual); actual = palabra; } else actual = prueba;
+    });
+    if (actual) lineas.push(actual);
+    return lineas;
+  }
+
+  /* Encaja la foto en la caja sin deformarla, centrada */
+  function contener(img, x, y, w, h) {
+    const k = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+    const dw = img.naturalWidth * k;
+    const dh = img.naturalHeight * k;
+    return [x + (w - dw) / 2, y + (h - dh) / 2, dw, dh];
+  }
+
+  function rectanguloRedondo(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function dibujarLogo(ctx, centro, arriba, ancho) {
+    const k = ancho / 827;
+    ctx.save();
+    ctx.translate(centro - ancho / 2, arriba);
+    ctx.scale(k, k);
+    ctx.translate(-112, -154);
+    ctx.fillStyle = TINTA;
+    LOGO.forEach(([, , trazo]) => ctx.fill(new Path2D(trazo)));
+    ctx.restore();
+  }
+
+  function dibujarMonto(ctx, valor, y) {
+    const ancho = escribir(ctx, dinero(valor), ANCHO / 2, y, { peso: 800, tam: 96, ancho: ANCHO * 0.62 });
+    ctx.fillStyle = TINTA;
+    ctx.fillRect(ANCHO / 2 - ancho / 2 - 152, y - 34, 110, 6);
+    ctx.fillRect(ANCHO / 2 + ancho / 2 + 42, y - 34, 110, 6);
+  }
+
+  /* El sello de liquidado: disco, dos aros, el texto alrededor y una palomita al centro */
+  function dibujarSello(ctx, x, y, r) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((-9 * Math.PI) / 180);
+    ctx.shadowColor = "rgba(10, 6, 9, 0.55)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 20;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = PAPEL;
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.strokeStyle = ORO;
+    ctx.lineWidth = 3;
+    [r, r * 0.54].forEach((radio) => { ctx.beginPath(); ctx.arc(0, 0, radio, 0, Math.PI * 2); ctx.stroke(); });
+    const letras = [..."LIQUIDADO · SENSORIAL BOUTIQUE · "];
+    const paso = (Math.PI * 2) / letras.length;
+    ctx.font = fuente(800, r * 0.16);
+    ctx.fillStyle = ORO;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    letras.forEach((letra, i) => {
+      ctx.save();
+      ctx.rotate(-Math.PI / 2 + i * paso);
+      ctx.translate(r * 0.77, 0);
+      ctx.rotate(Math.PI / 2);
+      ctx.fillText(letra, 0, 0);
+      ctx.restore();
+    });
+    ctx.lineWidth = r * 0.07;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.2, 0);
+    ctx.lineTo(-r * 0.05, r * 0.15);
+    ctx.lineTo(r * 0.22, -r * 0.14);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  async function dibujar(datos, opciones = {}) {
+    const e = calcular(datos);
+    const tono = TINTAS[datos?.tone] || TINTAS.rosa;
+    const casa = texto(datos?.brand);
+    const perfume = texto(datos?.product_name);
+    const cliente = texto(datos?.client_name);
+    const agua = texto(datos?.watermark).toLocaleUpperCase("es");
+    const [foto, silueta] = await Promise.all([
+      cargarFoto(imagen(opciones.foto ?? datos?.image_url)),
+      cargarFoto(imagen(opciones.silueta ?? datos?.watermark_image_url)),
+    ]);
+    await Promise.all(["400 40px Urbanist", "500 40px Urbanist", "800 40px Urbanist", "400 40px 'Ms Madi'"]
+      .map((f) => document.fonts?.load(f).catch(() => {})));
+
+    const W = ANCHO;
+    const filas = e.liquidado ? [] : e.pagos.map((p) => ({
+      ...p, detalle: [fecha(p.fecha), p.parcial ? `faltan ${dinero(p.falta)}` : ""].filter(Boolean).join(" · "),
+    }));
+    const altoFila = (f) => (f.detalle ? 86 : 66);
+    const tarjeta = { x: 290, y: 1565, w: 834 };
+    tarjeta.h = 108 + filas.reduce((suma, f) => suma + altoFila(f), 0) + 24;
+    const H = e.liquidado ? 2000 : Math.max(2000, tarjeta.y + tarjeta.h + 115);
+    const lienzo = document.createElement("canvas");
+    lienzo.width = W;
+    lienzo.height = H;
+    const ctx = lienzo.getContext("2d");
+
+    /* Fondo, luz del color del nombre e hilos dorados */
+    ctx.fillStyle = PAPEL;
+    ctx.fillRect(0, 0, W, H);
+    const luz = ctx.createRadialGradient(W / 2, 760, 0, W / 2, 760, 780);
+    luz.addColorStop(0, conAlfa(tono, 0.12));
+    luz.addColorStop(1, conAlfa(tono, 0));
+    ctx.fillStyle = luz;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(196, 160, 100, 0.6)";
+    ctx.lineWidth = 3.4;
+    ctx.lineCap = "round";
+    HILOS.forEach((hilo) => { curva(ctx, hilo.map(([x, y]) => [x * W, y * H])); ctx.stroke(); });
+
+    /* Logo y título */
+    dibujarLogo(ctx, W / 2, 78, 320);
+    const [arriba, abajo] = e.liquidado ? ["Ya es", "tuyo"] : ["Tabla de", "Pagos"];
+    escribir(ctx, arriba, W / 2 + 40, 345, { tam: 100 });
+    escribir(ctx, abajo, W / 2 - 18, 452, { tam: 158 });
+
+    /* Frasco: halo, texto o silueta detrás, y la foto con su sombra */
+    const visual = { y: 462, h: 760 };
+    const cy = visual.y + visual.h / 2;
+    const halo = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, 360);
+    halo.addColorStop(0, conAlfa(tono, 0.2));
+    halo.addColorStop(1, conAlfa(tono, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(W / 2 - 360, cy - 360, 720, 720);
+    if (silueta) {
+      const capa = document.createElement("canvas");
+      capa.width = W;
+      capa.height = H;
+      const c2 = capa.getContext("2d");
+      c2.drawImage(silueta, ...contener(silueta, W * 0.34 - 270, cy - visual.h * 0.4, 540, visual.h * 0.8));
+      c2.globalCompositeOperation = "source-in";
+      c2.fillStyle = "#fff";
+      c2.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      ctx.drawImage(capa, 0, 0);
+      ctx.restore();
+    } else if (agua) {
+      const tam = Math.min((visual.h * 1.08) / (Math.max([...agua].length, 2) * 0.7), visual.h * 0.5);
+      ctx.save();
+      ctx.translate(W * 0.34, cy);
+      ctx.rotate(-Math.PI / 2);
+      ctx.font = fuente(800, tam);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.055)";
+      ctx.fillText(agua, 0, 0);
+      ctx.restore();
+    }
+    if (foto) {
+      ctx.save();
+      ctx.shadowColor = "rgba(10, 6, 9, 0.55)";
+      ctx.shadowBlur = 70;
+      ctx.shadowOffsetY = 50;
+      ctx.drawImage(foto, ...contener(foto, W / 2 - 330, visual.y + 20, 660, visual.h - 50));
+      ctx.restore();
+    }
+    if (e.liquidado) dibujarSello(ctx, W / 2 + 175, visual.y + visual.h - 140, 118);
+
+    /* Nombre: casa y perfume en manuscrita */
+    if (casa) escribir(ctx, casa, W / 2, 1262, { tam: 66, ancho: W * 0.8 });
+    escribir(ctx, perfume, W / 2, casa ? 1340 : 1310, { tam: 116, manuscrita: true, color: tono, ancho: W * 0.84 });
+
+    if (e.liquidado) {
+      escribir(ctx, "Total pagado:", W / 2, 1452, { tam: 46, peso: 500 });
+      dibujarMonto(ctx, e.total, 1540);
+      escribir(ctx, `Gracias${cliente ? `, ${cliente}` : ""}.`, W / 2, 1665, { tam: 56, peso: 800, color: tono, ancho: W * 0.8 });
+      const abonos = (datos.payments || []).length;
+      const detalle = [e.ultimoAbono ? `el ${fecha(e.ultimoAbono)}` : "", abonos ? `en ${abonos} ${abonos === 1 ? "abono" : "abonos"}` : ""].filter(Boolean).join(", ");
+      ctx.font = fuente(500, 38);
+      renglones(ctx, `Liquidaste tu perfume${detalle ? ` ${detalle}` : ""}.`, W * 0.66)
+        .forEach((linea, i) => escribir(ctx, linea, W / 2, 1735 + i * 52, { tam: 38, peso: 500, color: TINTA_2 }));
+    } else {
+      escribir(ctx, "Pendiente:", W / 2, 1446, { tam: 46, peso: 500 });
+      dibujarMonto(ctx, e.pendiente, 1532);
+
+      /* Tarjeta de pagos con su marco dorado */
+      rectanguloRedondo(ctx, tarjeta.x, tarjeta.y, tarjeta.w, tarjeta.h, 56);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+      ctx.fill();
+      ctx.strokeStyle = ORO;
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      let tam = 52;
+      const medir = () => {
+        ctx.font = fuente(400, tam);
+        const a = ctx.measureText("Cliente: ").width;
+        ctx.font = fuente(800, tam);
+        return [a, ctx.measureText(cliente).width];
+      };
+      let [w1, w2] = medir();
+      while (w1 + w2 > tarjeta.w - 110 && tam > 24) { tam -= 2; [w1, w2] = medir(); }
+      const x0 = W / 2 - (w1 + w2) / 2;
+      escribir(ctx, "Cliente: ", x0, tarjeta.y + 76, { tam, alinear: "left" });
+      escribir(ctx, cliente, x0 + w1, tarjeta.y + 76, { tam, peso: 800, alinear: "left" });
+      const izq = tarjeta.x + 64;
+      const der = tarjeta.x + tarjeta.w - 64;
+      let fy = tarjeta.y + 106;
+      filas.forEach((f) => {
+        ctx.fillStyle = ORO;
+        ctx.fillRect(izq, fy, der - izq, 4);
+        const color = f.pagado ? "rgba(247, 242, 244, 0.62)" : TINTA;
+        const base = fy + 47;
+        const a = escribir(ctx, f.nombre, izq + 20, base, { tam: 42, peso: 800, color, alinear: "left" });
+        const b = escribir(ctx, `$ ${numero.format(f.monto)}`, der - 20, base, { tam: 42, peso: 800, color, alinear: "right" });
+        if (f.pagado) {
+          ctx.fillStyle = color;
+          ctx.fillRect(izq + 16, base - 14, a + 8, 4);
+          ctx.fillRect(der - 24 - b, base - 14, b + 8, 4);
+        }
+        if (f.detalle) escribir(ctx, f.detalle, izq + 20, base + 31, { tam: 27, peso: 600, color: f.parcial ? tono : TINTA_2, alinear: "left" });
+        fy += altoFila(f);
+      });
+      const resumen = e.abonado > 0 ? `Has abonado ${dinero(e.abonado)} de ${dinero(e.total)}.` : `Total: ${dinero(e.total)}`;
+      escribir(ctx, resumen, W / 2, tarjeta.y + tarjeta.h + 64, { tam: 34, peso: 500, color: TINTA_2 });
+    }
+
+    return new Promise((resolve, reject) => {
+      lienzo.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo crear la imagen."))), "image/png");
+    });
+  }
+
+  const nombreArchivo = (datos) => {
+    const cliente = texto(datos?.client_name).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return `tabla-de-pagos-${cliente || "cliente"}.png`;
+  };
+
+  /* La imagen lista como archivo PNG */
+  async function archivo(datos, opciones = {}) {
+    const blob = await dibujar(datos, opciones);
+    return new File([blob], nombreArchivo(datos), { type: "image/png" });
+  }
+
+  /* En el teléfono abre el menú de compartir (ahí está "Guardar imagen"); en la computadora,
+     o si el teléfono no lo permite, la descarga directo */
+  async function guardar(listo) {
+    const png = await listo;
+    const telefono = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+    if (telefono && navigator.canShare?.({ files: [png] })) {
+      try {
+        await navigator.share({ files: [png] });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    const url = URL.createObjectURL(png);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = png.name;
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
   window.TablaPagos = {
-    TONOS, calcular, pintar, montar, intro, telon, logo, parallax, fondo,
+    TONOS, calcular, pintar, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
     dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar,
   };
 })();
