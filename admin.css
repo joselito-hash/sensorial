@@ -222,3 +222,95 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .sidebar-brand img{display:block;width:170px;max-width:100%;height:auto}
 .sidebar-brand small{margin-top:8px}
 .editor-fields input[type=file]{padding:9px;color:#cfc2c9}.editor-fields input[type=file]::file-selector-button{margin-right:12px;border:0;border-radius:8px;background:#a9cbb8;color:#213c2c;padding:8px 12px;font-weight:800;cursor:pointer}
+/* Tablas de pagos: lista, editor con vista previa y registro de abonos */
+.plans-total{margin:-14px 0 24px;color:#cfc2c9;font-size:15px}
+.plans-total strong{color:#f8f4f5;font-size:18px}
+.plan-empty{line-height:1.5}
+.plan-empty strong{display:block;color:#f8f4f5;font-size:17px;margin-bottom:4px}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:17px}
+.plan-card{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px 16px;padding:18px;border:1px solid #4d4248;border-radius:19px;background:#30272d}
+.plan-card__foto{grid-row:span 2;display:flex;align-items:center;justify-content:center;height:112px;border-radius:14px;background:#201a1e;overflow:hidden}
+.plan-card__foto img{width:100%;height:100%;object-fit:contain;padding:8px}
+.plan-card__foto span{color:#e3c48c;font-size:34px;font-weight:800}
+.plan-card__cuerpo h2{margin:9px 0 2px;font-size:20px;letter-spacing:-.02em}
+.plan-card__cuerpo p{margin:0;color:#b4a9af;font-size:14px}
+.plan-card__saldo{display:grid;align-content:start}
+.plan-card__saldo strong{font-size:26px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.plan-card__saldo span{color:#a99da4;font-size:12px}
+.plan-card__cuotas{grid-column:1/-1;display:flex;gap:4px}
+.plan-card__cuotas i{flex:1;height:6px;border-radius:3px;background:#4b3f46}
+.plan-card__cuotas i.is-pagado{background:#add4bd}
+.plan-card__cuotas i.is-parcial{background:linear-gradient(90deg,#add4bd 50%,#4b3f46 50%)}
+.plan-card__acciones{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.plan-card__acciones button,.plan-card__acciones a{border:1px solid #695b62;border-radius:9px;background:#443940;color:#f9f4f6;padding:8px 10px;font-size:12px;font-weight:800;text-decoration:none;transition:transform .15s}
+.plan-card__acciones .accept{background:#a9cbb8;border-color:#a9cbb8;color:#20382a}
+.plan-card__acciones button:active,.plan-card__acciones a:active{transform:scale(.97)}
+.button--danger{color:#efb4b4}
+.dialog-mensaje{margin:0;max-width:44ch;color:#efb4b4;font-size:13px;font-weight:700;line-height:1.35}
+.dialog-mensaje:empty{display:none}
+.plan-dialog{width:min(1240px,calc(100vw - 32px))}
+.plan-body{grid-template-columns:minmax(0,1fr) 392px}
+.plan-vista{position:sticky;top:12px;align-self:start;display:grid;gap:12px}
+.plan-cifras{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.plan-cifras div{display:grid;gap:2px;padding:10px 12px;border:1px solid #594b53;border-radius:12px}
+.plan-cifras span{color:#a99da4;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.plan-cifras strong{font-size:16px;font-variant-numeric:tabular-nums}
+.plan-cifras .plan-cifras__pendiente{background:#a9cbb8;border-color:#a9cbb8;color:#193428}
+.plan-cifras__pendiente span{color:#355345}
+.plan-cifras .plan-cifras__pendiente.is-error{background:#efc2c2;border-color:#efc2c2;color:#572525}
+.plan-vista__marco{position:relative;height:clamp(380px,calc(min(94vh,1000px) - 370px),720px);border:1px solid #4d4148;border-radius:22px;overflow:hidden;isolation:isolate}
+.plan-vista__scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#5b4e55 transparent}
+.plan-vista .text-button{justify-self:center;padding:4px 8px}
+.tonos{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tonos__titulo{width:100%;color:#e8dfe3;font-size:14px;font-weight:700}
+.editor-fields .tono{display:inline-flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border:1px solid #5b4e55;border-radius:999px;cursor:pointer;font-weight:600}
+.editor-fields .tono input{position:absolute;opacity:0;width:1px;height:1px}
+.tono::before{content:"";width:18px;height:18px;border-radius:50%;background:var(--muestra)}
+.tono--rosa{--muestra:#ebc4c6}.tono--dorado{--muestra:#e6c891}.tono--celeste{--muestra:#a9d1e8}.tono--verde{--muestra:#b2d7c2}.tono--lila{--muestra:#d7bbea}
+.tono:has(input:checked){border-color:#f8f4f5;background:#3b3238}
+.tono:has(input:focus-visible){outline:2px solid #b5d6c4;outline-offset:3px}
+.fotos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.foto{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start}
+.foto__vista{display:flex;align-items:center;justify-content:center;text-align:center;height:128px;border:1px dashed #6d5c66;border-radius:14px;background:#201a1e;color:#9e9098;font-size:12px;overflow:hidden}
+.foto__vista img{width:100%;height:100%;object-fit:contain;padding:8px}
+.foto__vista.is-cargando{opacity:.5}
+.foto__datos{display:grid;gap:6px;justify-items:start}
+.foto__datos strong{font-size:14px}
+.foto__datos small{color:#a3959d;font-size:12px;line-height:1.4}
+.editor-fields .foto__subir{position:relative;display:inline-flex;align-items:center;padding:9px 15px;border-radius:999px;background:#a9cbb8;color:#213c2c;font-size:13px;font-weight:800;cursor:pointer;transition:transform .15s}
+.editor-fields .foto__subir:active{transform:scale(.97)}
+.editor-fields .foto__subir input{position:absolute;inset:0;width:100%;height:100%;padding:0;opacity:0;cursor:pointer}
+.foto__subir:focus-within{outline:2px solid #b5d6c4;outline-offset:3px}
+.repartir{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;align-items:end;gap:12px}
+.filas{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.filas:empty{display:none}
+.filas__vacio{padding:14px;border:1px dashed #5a4d54;border-radius:12px;color:#afa3aa;font-size:13px;line-height:1.45}
+.filas__agregar{justify-self:start;padding:2px 0}
+.fila{display:grid;align-items:end;gap:10px;padding:10px 12px;border-radius:12px;background:#322a30}
+.fila--cuota{grid-template-columns:118px minmax(0,1fr) minmax(0,1fr) 92px 32px}
+.fila--abono{grid-template-columns:90px 110px minmax(0,1fr) 32px;align-items:center}
+.fila__nombre{align-self:center;font-weight:800;font-size:14px}
+.editor-fields .fila label{gap:4px;font-size:11px;color:#a99da4}
+.editor-fields .fila input{padding:9px 10px}
+.fila__estado{align-self:center;color:#a99da4;font-size:12px;font-weight:700}
+.fila__estado.is-pagado{color:#add4bd}
+.fila--abono strong{font-variant-numeric:tabular-nums}
+.fila--abono small{color:#a99da4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fila__quitar{align-self:center;width:32px;height:32px;border:0;border-radius:50%;background:#4b3f46;color:#f8f4f5;font-size:18px;line-height:1}
+.fila__quitar:hover{background:#5b4e55}
+.abonos__ayuda{margin-top:-6px}
+.abonos__vacio{margin:0;color:#a99da4;font-size:13px}
+.abono-nuevo{display:grid;grid-template-columns:120px 150px minmax(0,1fr) auto;align-items:end;gap:10px;padding-top:12px;border-top:1px solid #4d4148}
+.abono-dialog{width:min(560px,calc(100vw - 32px))}
+.abono-perfume{margin:4px 0 0;font-size:14px}
+.abono-cuerpo{padding:22px 28px}
+.abono-pendiente{display:flex;justify-content:space-between;align-items:baseline;margin:0;padding:14px 16px;border-radius:14px;background:#a9cbb8;color:#193428;font-weight:700}
+.abono-pendiente strong{font-size:26px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.abono-atajos{display:flex;flex-wrap:wrap;gap:8px}
+.abono-atajos:empty{display:none}
+.abono-atajos button{border:1px solid #695b62;border-radius:999px;background:#3b3238;color:#f8f4f5;padding:8px 13px;font-size:13px;font-weight:700}
+.abono-atajos button:active{transform:scale(.97)}
+.abono-efecto{margin:0;min-height:20px;color:#cfe3d5;font-size:14px;line-height:1.5}
+.abono-efecto.is-error{color:#efb4b4}
+@media(max-width:1000px){.plan-body{grid-template-columns:minmax(0,1fr) 340px}.fila--cuota{grid-template-columns:100px minmax(0,1fr) minmax(0,1fr) 32px}.fila--cuota .fila__estado{grid-column:1/-1;grid-row:2}.abono-nuevo{grid-template-columns:1fr 1fr}.abono-nuevo .button{grid-column:1/-1}}
+@media(max-width:720px){.plan-body{display:grid;grid-template-columns:1fr}.plan-vista{position:static}.plan-vista__marco{height:70vh}.fotos{grid-template-columns:1fr}.repartir{grid-template-columns:1fr 90px}.repartir .button{grid-column:1/-1}.fila--cuota{grid-template-columns:1fr 1fr 32px}.fila--cuota .fila__nombre{grid-column:1/-1}.fila--cuota .fila__quitar{grid-row:2;grid-column:3}.fila--abono{grid-template-columns:80px 1fr 32px}.fila--abono small{grid-column:1/3;grid-row:2}.fila--abono .fila__quitar{grid-row:1;grid-column:3}.abono-cuerpo{padding:18px 16px}.plan-card{grid-template-columns:72px minmax(0,1fr)}}

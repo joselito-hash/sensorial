@@ -10,7 +10,9 @@
     reviewFilter: "pending",
     editorId: null,
     idEdited: false,
-    data: { brands: [], families: [], perfumes: [], images: [], notes: [], accords: [], accordNames: [], usage: [], variants: [], sources: [], reviews: [] },
+    data: { brands: [], families: [], perfumes: [], images: [], notes: [], accords: [], accordNames: [], usage: [], variants: [], sources: [], reviews: [], plans: [] },
+    plansError: "",
+    plan: null,
   };
   const fields = $("#perfume-form").elements;
   const storeKey = "sensorial-admin-session";
@@ -135,6 +137,29 @@
     showTab(state.tab);
   }
 
+  async function readAll(path) {
+    const collected = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await request(`${path}&limit=1000&offset=${offset}`);
+      if (!Array.isArray(page)) throw new Error("Supabase no devolvió una lista válida.");
+      collected.push(...page);
+      if (page.length < 1000) return collected;
+    }
+  }
+
+  /* Las tablas de pagos llegan aparte: si falta su migración, el resto del panel sigue igual */
+  async function loadPlans() {
+    try {
+      state.data.plans = await readAll("payment_plans?select=*&order=created_at.desc,id.asc");
+      state.plansError = "";
+    } catch (error) {
+      state.data.plans = [];
+      state.plansError = /payment_plans|schema cache|42P01|PGRST205/i.test(error.message)
+        ? "Falta activar las tablas de pagos: ejecuta supabase/migrations/20261007_003_payment_plans.sql en el SQL Editor de Supabase."
+        : `No se pudieron cargar las tablas de pagos: ${error.message}`;
+    }
+  }
+
   async function loadData() {
     const queries = {
       brands: "brands?select=*&order=id.asc",
@@ -149,16 +174,7 @@
       sources: "perfume_sources?select=*&order=created_at.asc,id.asc",
       reviews: "reviews?select=*&order=created_at.desc,id.asc",
     };
-    const readAll = async (path) => {
-      const collected = [];
-      for (let offset = 0; ; offset += 1000) {
-        const page = await request(`${path}&limit=1000&offset=${offset}`);
-        if (!Array.isArray(page)) throw new Error("Supabase no devolvió una lista válida.");
-        collected.push(...page);
-        if (page.length < 1000) return collected;
-      }
-    };
-    const rows = await Promise.all(Object.values(queries).map(readAll));
+    const [rows] = await Promise.all([Promise.all(Object.values(queries).map(readAll)), loadPlans()]);
     Object.keys(queries).forEach((key, index) => { state.data[key] = rows[index] || []; });
     renderAll();
   }
@@ -169,6 +185,7 @@
     $$(".view").forEach((view) => { view.hidden = view.id !== `view-${name}`; });
     if (name === "perfumes") renderPerfumes();
     if (name === "reviews") renderReviews();
+    if (name === "pagos") renderPlans();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -192,6 +209,7 @@
       <div class="preview-row"><div><strong>${escapeHTML(r.author_name)}</strong><small>${escapeHTML(perfumeName(r.perfume_id))}</small></div><button type="button" data-go="reviews" aria-label="Revisar reseña de ${escapeHTML(r.author_name)}">→</button></div>`).join("") : '<p class="muted">Todo al día. No hay reseñas pendientes.</p>';
     renderPerfumes();
     renderReviews();
+    renderPlans();
     pintarLote();
   }
 
@@ -405,12 +423,16 @@
     };
   }
 
-  async function uploadImage(file, perfumeId, kind, retry = true) {
-    const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
-    if (!extensions[file.type]) throw new Error("Las fotos deben ser JPG, PNG, WebP o AVIF.");
+  const imageExtensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
+
+  async function uploadImage(file, perfumeId, kind) {
+    if (!imageExtensions[file.type]) throw new Error("Las fotos deben ser JPG, PNG, WebP o AVIF.");
     if (file.size > 5 * 1024 * 1024) throw new Error(`La foto ${file.name} supera los 5 MB.`);
+    return uploadToBucket(file, `perfumes/${perfumeId}/${kind}-${crypto.randomUUID()}.${imageExtensions[file.type]}`);
+  }
+
+  async function uploadToBucket(file, path, retry = true) {
     if (state.session.expires_at < Date.now() + 60000) await refreshSession();
-    const path = `perfumes/${perfumeId}/${kind}-${crypto.randomUUID()}.${extensions[file.type]}`;
     const response = await fetch(new URL(`/storage/v1/object/sensorial-perfumes/${path}`, apiBase), {
       method: "POST",
       headers: { apikey: config.publishableKey, Authorization: `Bearer ${state.session.access_token}`,
@@ -419,7 +441,7 @@
     });
     if (response.status === 401 && retry) {
       await refreshSession();
-      return uploadImage(file, perfumeId, kind, false);
+      return uploadToBucket(file, path, false);
     }
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || result.error || "No se pudo subir una imagen. Revisa el bucket sensorial-perfumes.");
@@ -1231,6 +1253,567 @@
     } catch (error) { notify(error.message, true); }
   }
 
+  /* ---------- Tablas de pagos (apartados en abonos) ----------
+     El administrador sube las fotos, escribe el plan y registra cada abono. tabla-pagos.js
+     calcula lo pendiente, tacha los pagos cubiertos y pinta la misma plantilla que ve el
+     cliente en pagos.html#TOKEN. Las fotos se suben al guardar, a la carpeta pagos/ del bucket. */
+  const TP = window.TablaPagos;
+  const planFields = $("#plan-form").elements;
+  const abonoFields = $("#abono-form").elements;
+  const vistaPlan = { limpiar: null, hilos: null, espera: 0 };
+  let abonoPlanId = null;
+
+  const hoy = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const fechaValida = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || "");
+  const monto = (value) => Math.round(Number(value) * 100) / 100;
+  const nombrePerfume = (plan) => [plan.brand, plan.product_name].filter(Boolean).join(" ");
+  const enlacePlan = (plan) => new URL(`pagos.html#${plan.token}`, location.href).href;
+  const whatsappPlan = (plan) => `https://wa.me/?text=${encodeURIComponent(
+    `Hola ${plan.client_name}, aquí está tu tabla de pagos de ${nombrePerfume(plan)}: ${enlacePlan(plan)}`)}`;
+  const conArticulo = (nombres) => {
+    const lista = nombres.map((nombre) => `el ${nombre.toLowerCase()}`);
+    return lista.length > 1 ? `${lista.slice(0, -1).join(", ")} y ${lista.at(-1)}` : lista[0];
+  };
+
+  function renderPlans() {
+    const error = $("#plans-error");
+    error.hidden = !state.plansError;
+    error.textContent = state.plansError;
+    const planes = state.data.plans.map((plan) => ({ plan, e: TP.calcular(plan) }));
+    const abiertos = planes.filter(({ e }) => !e.liquidado);
+    $("#nav-plan-count").textContent = abiertos.length;
+    const porCobrar = abiertos.reduce((suma, { e }) => suma + e.pendiente, 0);
+    $("#plans-total").hidden = !abiertos.length;
+    $("#plans-total").innerHTML = abiertos.length
+      ? `Por cobrar <strong>${TP.dinero(porCobrar)}</strong> en ${abiertos.length} ${abiertos.length === 1 ? "tabla en curso" : "tablas en curso"}.`
+      : "";
+    const query = nonempty($("#plan-search").value).toLocaleLowerCase("es");
+    const filter = $("#plan-filter").value;
+    const rows = planes.filter(({ plan, e }) => (filter === "all" || (filter === "paid") === e.liquidado)
+      && (!query || `${plan.client_name} ${plan.brand} ${plan.product_name}`.toLocaleLowerCase("es").includes(query)));
+    const dia = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" });
+    $("#plan-list").innerHTML = rows.map(({ plan, e }) => {
+      const foto = TP.imagen(plan.image_url);
+      const cuotas = e.pagos.map((p) => `<i class="${p.pagado ? "is-pagado" : p.parcial ? "is-parcial" : ""}"></i>`).join("");
+      const fecha = plan.updated_at ? `Actualizada ${dia.format(new Date(plan.updated_at)).replace(/\./g, "")}` : "";
+      return `<article class="plan-card" data-plan-id="${escapeHTML(plan.id)}">
+        <div class="plan-card__foto">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : `<span>${escapeHTML((plan.product_name || "?").slice(0, 1))}</span>`}</div>
+        <div class="plan-card__cuerpo">
+          <div class="perfume-card__meta"><span class="pill ${e.liquidado ? "" : "pill--draft"}">${e.liquidado ? "Liquidada" : "En curso"}</span><span>${escapeHTML(fecha)}</span></div>
+          <h2>${escapeHTML(plan.client_name)}</h2>
+          <p>${escapeHTML(nombrePerfume(plan))}</p>
+        </div>
+        <div class="plan-card__saldo"><strong>${TP.dinero(e.pendiente)}</strong><span>pendiente de ${TP.dinero(e.total)}</span><span>${e.pagados} de ${e.pagos.length} pagos cubiertos</span></div>
+        <div class="plan-card__cuotas" aria-hidden="true">${cuotas}</div>
+        <div class="plan-card__acciones">
+          ${e.liquidado ? "" : '<button type="button" class="accept" data-plan-action="abono">+ Registrar abono</button>'}
+          <button type="button" data-plan-action="copiar">Copiar enlace</button>
+          <a href="${escapeHTML(whatsappPlan(plan))}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+          <button type="button" data-plan-action="editar">Editar</button>
+        </div>
+      </article>`;
+    }).join("");
+    const empty = $("#plan-empty");
+    empty.hidden = rows.length > 0 || Boolean(state.plansError);
+    empty.innerHTML = state.data.plans.length
+      ? "No hay tablas con ese filtro."
+      : "<strong>Aún no hay tablas de pagos.</strong> Crea la primera con «+ Nueva tabla»: sube la foto del perfume, escribe el plan y comparte el enlace con tu cliente.";
+  }
+
+  async function copiarEnlace(plan) {
+    const enlace = enlacePlan(plan);
+    try {
+      await navigator.clipboard.writeText(enlace);
+      notify(`Enlace de ${plan.client_name} copiado. Pégalo en su chat.`);
+    } catch {
+      window.prompt("Copia el enlace de la tabla:", enlace);
+    }
+  }
+
+  /* ---------- Editor de la tabla ---------- */
+
+  /* Lo que lleva el formulario, sin validar: alimenta la vista previa mientras se escribe */
+  function datosPlan() {
+    return {
+      client_name: nonempty(planFields.client_name.value),
+      brand: nonempty(planFields.brand.value),
+      product_name: nonempty(planFields.product_name.value),
+      watermark: nonempty(planFields.watermark.value),
+      tone: planFields.tone.value || "rosa",
+      installments: state.plan.cuotas.map((c) => ({ amount: monto(c.amount) || 0, ...(fechaValida(c.due) ? { due: c.due } : {}) })),
+      payments: state.plan.abonos.map((a) => ({ amount: monto(a.amount), date: a.date, ...(nonempty(a.note) ? { note: nonempty(a.note) } : {}) })),
+    };
+  }
+
+  function planParaGuardar() {
+    const datos = datosPlan();
+    if (!datos.client_name) throw new Error("Escribe el nombre del cliente.");
+    if (!datos.product_name) throw new Error("Escribe el nombre del perfume.");
+    if (!datos.installments.length) throw new Error("Agrega al menos un pago al plan.");
+    datos.installments.forEach((c, i) => {
+      if (!(c.amount > 0) || c.amount > 1000000) throw new Error(`Revisa el monto del ${TP.nombrePago(i).toLowerCase()}.`);
+    });
+    const e = TP.calcular(datos);
+    if (e.excedente > 0) throw new Error(`Los abonos suman ${TP.dinero(e.abonado)}: más que el total de ${TP.dinero(e.total)}.`);
+    return datos;
+  }
+
+  function mensajePlan(texto = "") { $("#plan-mensaje").textContent = texto; }
+  function marcarCambio() { if (state.plan) state.plan.cambios = true; }
+
+  function abrirPlan(id = null) {
+    const plan = id ? state.data.plans.find((item) => item.id === id) : null;
+    if (id && !plan) return notify("No encontramos esa tabla.", true);
+    $("#plan-form").reset();
+    state.plan = {
+      id: plan?.id || null,
+      cambios: false,
+      aguaEditada: Boolean(plan),
+      cuotas: (plan?.installments || []).map((c) => ({ amount: c.amount, due: c.due || "" })),
+      abonos: (plan?.payments || []).map((a) => ({ amount: a.amount, date: a.date, note: a.note || "" })),
+      fotos: {
+        image: { url: plan?.image_url || "", blob: null, vista: "" },
+        silueta: { url: plan?.watermark_image_url || "", blob: null, vista: "" },
+      },
+    };
+    $("#plan-dialog-title").textContent = plan ? `Tabla de ${plan.client_name}` : "Nueva tabla";
+    $("#plan-delete").hidden = !plan;
+    $("#plan-copy").hidden = !plan;
+    mensajePlan();
+    if (plan) {
+      for (const name of ["client_name", "brand", "product_name", "watermark"]) planFields[name].value = plan[name] || "";
+      planFields.tone.value = plan.tone;
+      planFields.total.value = TP.calcular(plan).total;
+      planFields.count.value = plan.installments.length;
+    }
+    planFields.abono_date.value = hoy();
+    pintarFotos();
+    pintarCuotas();
+    pintarAbonos();
+    $("#plan-dialog").showModal();
+    $(".plan-body").scrollTop = 0;
+    $(".plan-vista__scroll").scrollTop = 0;
+    vistaPlan.hilos = TP.fondo($("#plan-vista-marco canvas"));
+    vistaPlan.hilos.empezar(0);
+    pintarVista(true);
+    if (!plan) planFields.client_name.focus();
+  }
+
+  function cerrarPlan() {
+    if (state.plan?.cambios && !window.confirm("¿Salir sin guardar los cambios de esta tabla?")) return;
+    $("#plan-dialog").close();
+  }
+
+  function pintarVista(entrada = false) {
+    if (!state.plan) return;
+    vistaPlan.limpiar?.();
+    const datos = datosPlan();
+    const { image, silueta } = state.plan.fotos;
+    $("#plan-vista").innerHTML = TP.pintar(datos, {
+      foto: image.vista || image.url,
+      silueta: silueta.vista || silueta.url,
+      vacio: "Aquí va la foto del perfume",
+    });
+    $("#plan-vista-marco").dataset.tono = datos.tone;
+    vistaPlan.limpiar = TP.montar($("#plan-vista .tp"), { entrada, inicio: 200 });
+  }
+  function refrescarVista() {
+    clearTimeout(vistaPlan.espera);
+    vistaPlan.espera = setTimeout(() => pintarVista(false), 140);
+  }
+
+  function actualizarCifras() {
+    const e = TP.calcular(datosPlan());
+    $("#plan-total").textContent = TP.dinero(e.total);
+    $("#plan-abonado").textContent = TP.dinero(e.abonado);
+    $("#plan-pendiente").textContent = e.excedente > 0 ? `${TP.dinero(e.excedente)} de más` : TP.dinero(e.pendiente);
+    $(".plan-cifras__pendiente").classList.toggle("is-error", e.excedente > 0);
+    $$("[data-estado-cuota]").forEach((el) => {
+      const pago = e.pagos[Number(el.dataset.estadoCuota)];
+      el.textContent = pago?.pagado ? "Pagado" : pago?.parcial ? `Faltan ${TP.dinero(pago.falta)}` : "";
+      el.classList.toggle("is-pagado", Boolean(pago?.pagado));
+    });
+  }
+
+  function pintarCuotas() {
+    $("#plan-cuotas").innerHTML = state.plan.cuotas.map((c, i) => {
+      const nombre = TP.nombrePago(i);
+      return `<li class="fila fila--cuota">
+        <span class="fila__nombre">${nombre}</span>
+        <label>Monto <input type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHTML(c.amount)}" data-cuota="amount" data-i="${i}"></label>
+        <label>Fecha límite <input type="date" value="${escapeHTML(c.due)}" data-cuota="due" data-i="${i}"></label>
+        <span class="fila__estado" data-estado-cuota="${i}"></span>
+        <button type="button" class="fila__quitar" data-quitar-cuota="${i}" aria-label="Quitar ${nombre.toLowerCase()}">×</button>
+      </li>`;
+    }).join("") || '<li class="filas__vacio">Escribe el total y cuántos pagos, y pulsa «Repartir en partes iguales». También puedes agregarlos uno por uno.</li>';
+    actualizarCifras();
+  }
+
+  function pintarAbonos() {
+    $("#plan-abonos").innerHTML = state.plan.abonos.map((a, i) => `<li class="fila fila--abono">
+      <span class="fila__nombre">${escapeHTML(TP.fecha(a.date) || a.date)}</span>
+      <strong>${TP.dinero(monto(a.amount))}</strong>
+      <small>${escapeHTML(a.note || "")}</small>
+      <button type="button" class="fila__quitar" data-quitar-abono="${i}" aria-label="Quitar el abono de ${TP.dinero(monto(a.amount))}">×</button>
+    </li>`).join("");
+    $("#plan-abonos-vacio").hidden = state.plan.abonos.length > 0;
+    actualizarCifras();
+  }
+
+  function repartir() {
+    const total = Math.round(Number(planFields.total.value) * 100);
+    const cuantos = Number(planFields.count.value);
+    if (!(total > 0)) { mensajePlan("Escribe el total del perfume para repartirlo."); planFields.total.focus(); return; }
+    if (!Number.isInteger(cuantos) || cuantos < 1 || cuantos > 24) { mensajePlan("El número de pagos va de 1 a 24."); planFields.count.focus(); return; }
+    /* Partes iguales en centavos; el último pago absorbe el redondeo */
+    const base = Math.floor(total / cuantos);
+    const fechas = state.plan.cuotas.map((c) => c.due);
+    state.plan.cuotas = Array.from({ length: cuantos }, (_, i) => ({
+      amount: (i === cuantos - 1 ? total - base * (cuantos - 1) : base) / 100, due: fechas[i] || "",
+    }));
+    mensajePlan();
+    marcarCambio();
+    pintarCuotas();
+    refrescarVista();
+  }
+
+  function agregarAbono() {
+    const cantidad = monto(planFields.abono_amount.value);
+    const fecha = planFields.abono_date.value;
+    const e = TP.calcular(datosPlan());
+    if (!(e.total > 0)) { mensajePlan("Primero escribe el plan de pagos."); return; }
+    if (!(cantidad > 0)) { mensajePlan("Escribe el monto del abono."); planFields.abono_amount.focus(); return; }
+    if (!fechaValida(fecha)) { mensajePlan("Elige la fecha del abono."); planFields.abono_date.focus(); return; }
+    if (cantidad > e.pendiente) { mensajePlan(`El abono supera lo pendiente (${TP.dinero(e.pendiente)}).`); planFields.abono_amount.focus(); return; }
+    state.plan.abonos.push({ amount: cantidad, date: fecha, note: nonempty(planFields.abono_note.value) });
+    planFields.abono_amount.value = "";
+    planFields.abono_note.value = "";
+    mensajePlan();
+    marcarCambio();
+    pintarAbonos();
+    pintarVista(false);
+  }
+
+  /* La plantilla acomoda cualquier foto: la reduce a 1600 px como máximo, recorta los bordes
+     transparentes para que el frasco llene su lugar y la guarda en WebP (PNG si el navegador
+     no sabe hacer WebP), siempre por debajo de los 5 MB del bucket. */
+  const aBlob = (lienzo, tipo, calidad) => new Promise((resolve, reject) => {
+    lienzo.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo preparar la foto."))), tipo, calidad);
+  });
+  async function prepararFoto(file, lado = 1600) {
+    if (!/^image\/(png|webp|avif|jpeg)$/.test(file.type)) throw new Error("Sube la foto en PNG, WebP, AVIF o JPG.");
+    if (file.size > 15 * 1024 * 1024) throw new Error("La foto pesa más de 15 MB.");
+    const bitmap = await createImageBitmap(file).catch(() => { throw new Error("No se pudo leer la foto."); });
+    const escala = Math.min(1, lado / Math.max(bitmap.width, bitmap.height));
+    const ancho = Math.max(1, Math.round(bitmap.width * escala));
+    const alto = Math.max(1, Math.round(bitmap.height * escala));
+    let lienzo = document.createElement("canvas");
+    lienzo.width = ancho;
+    lienzo.height = alto;
+    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0, ancho, alto);
+    bitmap.close();
+    const { data } = ctx.getImageData(0, 0, ancho, alto);
+    let x0 = ancho;
+    let y0 = alto;
+    let x1 = -1;
+    let y1 = -1;
+    for (let y = 0; y < alto; y += 1) {
+      for (let x = 0; x < ancho; x += 1) {
+        if (data[(y * ancho + x) * 4 + 3] > 10) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) throw new Error("La foto está vacía: todo es transparente.");
+    if (x0 > 0 || y0 > 0 || x1 < ancho - 1 || y1 < alto - 1) {
+      const recorte = document.createElement("canvas");
+      recorte.width = x1 - x0 + 1;
+      recorte.height = y1 - y0 + 1;
+      recorte.getContext("2d").drawImage(lienzo, x0, y0, recorte.width, recorte.height, 0, 0, recorte.width, recorte.height);
+      lienzo = recorte;
+    }
+    let blob = await aBlob(lienzo, "image/webp", 0.9);
+    if (blob.type !== "image/webp") blob = await aBlob(lienzo, "image/png");
+    if (blob.size > 5 * 1024 * 1024) {
+      if (lado <= 800) throw new Error("La foto sigue pesando más de 5 MB. Prueba con una más ligera.");
+      return prepararFoto(file, Math.round(lado * 0.75));
+    }
+    return blob;
+  }
+
+  function pintarFotos() {
+    for (const tipo of ["image", "silueta"]) {
+      const foto = state.plan.fotos[tipo];
+      const src = foto.vista || TP.imagen(foto.url);
+      $(`#foto-${tipo}`).innerHTML = src ? `<img src="${escapeHTML(src)}" alt="">` : `<span>${tipo === "image" ? "Sin foto" : "Sin silueta"}</span>`;
+      $(`[data-foto-quitar="${tipo}"]`).hidden = !src;
+      $(`[name=upload_${tipo}]`).previousElementSibling.textContent = src
+        ? (tipo === "image" ? "Cambiar foto" : "Cambiar silueta")
+        : (tipo === "image" ? "Subir foto" : "Subir silueta");
+    }
+  }
+
+  async function elegirFoto(tipo, input) {
+    const file = input.files[0];
+    if (!file || !state.plan) return;
+    const caja = $(`#foto-${tipo}`);
+    caja.classList.add("is-cargando");
+    try {
+      const blob = await prepararFoto(file);
+      const foto = state.plan.fotos[tipo];
+      if (foto.vista) URL.revokeObjectURL(foto.vista);
+      foto.blob = blob;
+      foto.vista = URL.createObjectURL(blob);
+      mensajePlan();
+      marcarCambio();
+      pintarFotos();
+      pintarVista(false);
+    } catch (error) {
+      mensajePlan(error.message);
+    } finally {
+      input.value = "";
+      caja.classList.remove("is-cargando");
+    }
+  }
+
+  function quitarFoto(tipo) {
+    const foto = state.plan.fotos[tipo];
+    if (foto.vista) URL.revokeObjectURL(foto.vista);
+    Object.assign(foto, { url: "", blob: null, vista: "" });
+    marcarCambio();
+    pintarFotos();
+    pintarVista(false);
+  }
+
+  async function guardarPlan(event) {
+    event.preventDefault();
+    const button = $("#plan-save");
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = "Guardando…";
+    mensajePlan();
+    try {
+      const datos = planParaGuardar();
+      /* Si después falla el guardado, la foto ya subida se conserva y no se vuelve a subir */
+      for (const tipo of ["image", "silueta"]) {
+        const foto = state.plan.fotos[tipo];
+        if (!foto.blob) continue;
+        foto.url = await uploadToBucket(foto.blob, `pagos/${tipo === "image" ? "perfume" : "silueta"}-${crypto.randomUUID()}.${imageExtensions[foto.blob.type] || "png"}`);
+        foto.blob = null;
+      }
+      const id = state.plan.id;
+      const saved = await request(id ? `payment_plans?id=eq.${encodeURIComponent(id)}&select=*` : "payment_plans?select=*", {
+        method: id ? "PATCH" : "POST",
+        body: { ...datos, image_url: state.plan.fotos.image.url || null, watermark_image_url: state.plan.fotos.silueta.url || null },
+        prefer: "return=representation",
+      });
+      if (!Array.isArray(saved) || saved.length !== 1) throw new Error("No se guardó la tabla.");
+      const index = state.data.plans.findIndex((plan) => plan.id === saved[0].id);
+      if (index >= 0) state.data.plans[index] = saved[0];
+      else state.data.plans.unshift(saved[0]);
+      state.plan.cambios = false;
+      $("#plan-dialog").close();
+      renderPlans();
+      notify(id ? "Tabla guardada." : "Tabla creada. Ya puedes copiar su enlace o enviarla por WhatsApp.");
+    } catch (error) {
+      mensajePlan(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  async function eliminarPlan() {
+    const plan = state.data.plans.find((item) => item.id === state.plan?.id);
+    if (!plan || !window.confirm(`¿Eliminar la tabla de ${plan.client_name}? Su enlace dejará de funcionar.`)) return;
+    try {
+      const deleted = await request(`payment_plans?id=eq.${encodeURIComponent(plan.id)}&select=id`, { method: "DELETE", prefer: "return=representation" });
+      if (!Array.isArray(deleted) || deleted.length !== 1) throw new Error("No se eliminó la tabla.");
+      state.data.plans = state.data.plans.filter((item) => item.id !== plan.id);
+      state.plan.cambios = false;
+      $("#plan-dialog").close();
+      renderPlans();
+      notify("Tabla eliminada.");
+    } catch (error) {
+      mensajePlan(error.message);
+    }
+  }
+
+  /* ---------- Registrar un abono desde la lista ---------- */
+
+  function abrirAbono(id) {
+    const plan = state.data.plans.find((item) => item.id === id);
+    if (!plan) return;
+    abonoPlanId = id;
+    const e = TP.calcular(plan);
+    $("#abono-form").reset();
+    $("#abono-title").textContent = plan.client_name;
+    $("#abono-perfume").textContent = nombrePerfume(plan);
+    $("#abono-pendiente").textContent = TP.dinero(e.pendiente);
+    $("#abono-mensaje").textContent = "";
+    const atajos = [];
+    if (e.siguiente) atajos.push([e.siguiente.parcial ? `Resto del ${e.siguiente.nombre.toLowerCase()}` : e.siguiente.nombre, e.siguiente.falta]);
+    if (e.pendiente > 0 && e.pendiente !== e.siguiente?.falta) atajos.push(["Liquidar todo", e.pendiente]);
+    $("#abono-atajos").innerHTML = atajos.map(([etiqueta, valor]) =>
+      `<button type="button" data-abono-monto="${valor}">${escapeHTML(etiqueta)}: ${TP.dinero(valor)}</button>`).join("");
+    abonoFields.amount.value = e.siguiente ? e.siguiente.falta : "";
+    abonoFields.date.value = hoy();
+    efectoAbono();
+    $("#abono-dialog").showModal();
+    abonoFields.amount.select();
+  }
+
+  /* Antes de guardar, dice qué va a pasar: cuánto queda y qué pagos se tachan */
+  function efectoAbono() {
+    const plan = state.data.plans.find((item) => item.id === abonoPlanId);
+    const efecto = $("#abono-efecto");
+    const cantidad = monto(abonoFields.amount.value);
+    efecto.classList.remove("is-error");
+    $("#abono-save").disabled = false;
+    if (!plan || !(cantidad > 0)) { efecto.textContent = ""; return; }
+    const antes = TP.calcular(plan);
+    const despues = TP.calcular({ ...plan, payments: [...plan.payments, { amount: cantidad, date: hoy() }] });
+    if (despues.excedente > 0) {
+      efecto.textContent = `Son ${TP.dinero(despues.excedente)} más de lo pendiente.`;
+      efecto.classList.add("is-error");
+      $("#abono-save").disabled = true;
+      return;
+    }
+    const tachados = despues.pagos.filter((p, i) => p.pagado && !antes.pagos[i].pagado).map((p) => p.nombre);
+    const partes = [despues.liquidado ? "Con este abono queda liquidado." : `Quedarán ${TP.dinero(despues.pendiente)} pendientes.`];
+    if (tachados.length) partes.push(`Se ${tachados.length === 1 ? "tacha" : "tachan"} ${conArticulo(tachados)}.`);
+    if (!despues.liquidado && despues.siguiente?.parcial) partes.push(`Del ${despues.siguiente.nombre.toLowerCase()} faltarán ${TP.dinero(despues.siguiente.falta)}.`);
+    efecto.textContent = partes.join(" ");
+  }
+
+  async function guardarAbono(event) {
+    event.preventDefault();
+    const plan = state.data.plans.find((item) => item.id === abonoPlanId);
+    if (!plan) return;
+    const cantidad = monto(abonoFields.amount.value);
+    const fecha = abonoFields.date.value;
+    const nota = nonempty(abonoFields.note.value);
+    const message = $("#abono-mensaje");
+    if (!(cantidad > 0)) { message.textContent = "Escribe el monto del abono."; abonoFields.amount.focus(); return; }
+    if (!fechaValida(fecha)) { message.textContent = "Elige la fecha del abono."; abonoFields.date.focus(); return; }
+    const button = $("#abono-save");
+    button.disabled = true;
+    message.textContent = "";
+    try {
+      const payments = [...plan.payments, { amount: cantidad, date: fecha, ...(nota ? { note: nota } : {}) }];
+      if (TP.calcular({ ...plan, payments }).excedente > 0) throw new Error("El abono supera lo pendiente.");
+      const saved = await request(`payment_plans?id=eq.${encodeURIComponent(plan.id)}&select=*`, {
+        method: "PATCH", body: { payments }, prefer: "return=representation",
+      });
+      if (!Array.isArray(saved) || saved.length !== 1) throw new Error("No se guardó el abono.");
+      Object.assign(plan, saved[0]);
+      $("#abono-dialog").close();
+      renderPlans();
+      const e = TP.calcular(plan);
+      notify(e.liquidado ? `Abono guardado. ${plan.client_name} liquidó su perfume.` : `Abono guardado. Pendiente: ${TP.dinero(e.pendiente)}.`);
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  $("#plan-search").addEventListener("input", renderPlans);
+  $("#plan-filter").addEventListener("change", renderPlans);
+  $("#plan-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-plan-action]");
+    if (!button) return;
+    const plan = state.data.plans.find((item) => item.id === button.closest("[data-plan-id]").dataset.planId);
+    if (!plan) return;
+    if (button.dataset.planAction === "abono") abrirAbono(plan.id);
+    if (button.dataset.planAction === "editar") abrirPlan(plan.id);
+    if (button.dataset.planAction === "copiar") copiarEnlace(plan);
+  });
+  $("#plan-form").addEventListener("submit", guardarPlan);
+  $("#plan-form").addEventListener("input", (event) => {
+    if (!state.plan || event.target.type === "file") return;
+    if (["abono_amount", "abono_date", "abono_note", "total", "count"].includes(event.target.name)) return;
+    marcarCambio();
+    if (event.target.name === "watermark") state.plan.aguaEditada = true;
+    if (event.target.name === "brand" && !state.plan.aguaEditada) planFields.watermark.value = TP.marcaDeAgua(event.target.value);
+    const campo = event.target.closest("[data-cuota]");
+    if (campo) {
+      state.plan.cuotas[Number(campo.dataset.i)][campo.dataset.cuota] = campo.value;
+      actualizarCifras();
+    }
+    refrescarVista();
+  });
+  $("#plan-form").addEventListener("change", (event) => {
+    if (event.target.name === "upload_image") elegirFoto("image", event.target);
+    if (event.target.name === "upload_silueta") elegirFoto("silueta", event.target);
+  });
+  /* Enter en el plan o en un abono hace su acción, no guarda toda la tabla */
+  $("#plan-form").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.target.tagName !== "INPUT") return;
+    if (["total", "count"].includes(event.target.name)) { event.preventDefault(); repartir(); }
+    if (["abono_amount", "abono_date", "abono_note"].includes(event.target.name)) { event.preventDefault(); agregarAbono(); }
+  });
+  $("#plan-cuotas").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-quitar-cuota]");
+    if (!button) return;
+    state.plan.cuotas.splice(Number(button.dataset.quitarCuota), 1);
+    marcarCambio();
+    pintarCuotas();
+    refrescarVista();
+  });
+  $("#plan-abonos").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-quitar-abono]");
+    if (!button) return;
+    state.plan.abonos.splice(Number(button.dataset.quitarAbono), 1);
+    marcarCambio();
+    pintarAbonos();
+    refrescarVista();
+  });
+  $("#plan-add-cuota").addEventListener("click", () => {
+    if (state.plan.cuotas.length >= 24) { mensajePlan("El plan admite hasta 24 pagos."); return; }
+    state.plan.cuotas.push({ amount: state.plan.cuotas.at(-1)?.amount || "", due: "" });
+    marcarCambio();
+    pintarCuotas();
+    refrescarVista();
+    $$("#plan-cuotas [data-cuota=amount]").at(-1)?.focus();
+  });
+  $("#plan-repartir").addEventListener("click", repartir);
+  $("#plan-add-abono").addEventListener("click", agregarAbono);
+  $$("[data-foto-quitar]").forEach((button) => button.addEventListener("click", () => quitarFoto(button.dataset.fotoQuitar)));
+  $("#plan-replay").addEventListener("click", () => { $(".plan-vista__scroll").scrollTop = 0; pintarVista(true); });
+  $("#plan-delete").addEventListener("click", eliminarPlan);
+  $("#plan-copy").addEventListener("click", () => {
+    const plan = state.data.plans.find((item) => item.id === state.plan?.id);
+    if (plan) copiarEnlace(plan).then(() => mensajePlan("Enlace copiado."));
+  });
+  $$("[data-plan-close]").forEach((button) => button.addEventListener("click", cerrarPlan));
+  $("#plan-dialog").addEventListener("cancel", (event) => { event.preventDefault(); cerrarPlan(); });
+  $("#plan-dialog").addEventListener("close", () => {
+    vistaPlan.limpiar?.();
+    vistaPlan.hilos?.detener();
+    clearTimeout(vistaPlan.espera);
+    Object.assign(vistaPlan, { limpiar: null, hilos: null });
+    Object.values(state.plan?.fotos || {}).forEach((foto) => { if (foto.vista) URL.revokeObjectURL(foto.vista); });
+    $("#plan-vista").innerHTML = "";
+    state.plan = null;
+  });
+  $("#abono-form").addEventListener("submit", guardarAbono);
+  $("#abono-form").addEventListener("input", efectoAbono);
+  $("#abono-atajos").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-abono-monto]");
+    if (!button) return;
+    abonoFields.amount.value = button.dataset.abonoMonto;
+    efectoAbono();
+  });
+  $$("[data-abono-close]").forEach((button) => button.addEventListener("click", () => $("#abono-dialog").close()));
+
   async function signOut() {
     const token = state.session?.access_token;
     saveSession(null);
@@ -1351,6 +1934,7 @@
     if (nav) showTab(nav.dataset.tab || nav.dataset.go);
     const add = event.target.closest("[data-new-perfume]");
     if (add) openEditor();
+    if (event.target.closest("[data-new-plan]")) abrirPlan();
     const edit = event.target.closest("[data-edit]");
     if (edit) openEditor(edit.dataset.edit);
     const elegir = event.target.closest("[data-lote-elegir]");

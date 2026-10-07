@@ -9,9 +9,11 @@
   <title>Panel privado | Sensorial Boutique</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ms+Madi&family=Urbanist:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="tabla-pagos.css">
   <link rel="stylesheet" href="admin.css">
   <script src="supabase-config.js" defer></script>
+  <script src="tabla-pagos.js" defer></script>
   <script src="admin.js" defer></script>
 </head>
 <body>
@@ -41,6 +43,7 @@
           <button type="button" data-tab="overview" class="active"><span aria-hidden="true">◫</span> Resumen</button>
           <button type="button" data-tab="perfumes"><span aria-hidden="true">◈</span> Perfumes <span id="nav-perfume-count" class="nav-count">0</span></button>
           <button type="button" data-tab="reviews"><span aria-hidden="true">✎</span> Reseñas <span id="nav-review-count" class="nav-count">0</span></button>
+          <button type="button" data-tab="pagos"><span aria-hidden="true">▤</span> Pagos <span id="nav-plan-count" class="nav-count">0</span></button>
         </nav>
         <div class="sidebar-bottom">
           <a href="index.html" target="_blank" rel="noopener">Ver tienda <span aria-hidden="true">↗</span></a>
@@ -92,6 +95,14 @@
           <div id="review-list" class="review-list"></div>
           <p id="review-empty" class="empty" hidden>No hay reseñas en esta sección.</p>
         </section>
+        <section id="view-pagos" class="view" hidden aria-labelledby="pagos-title">
+          <div class="page-heading"><div><p class="eyebrow">APARTADOS</p><h1 id="pagos-title">Tablas de pagos</h1><p class="muted">Sube las fotos, escribe el plan y ve registrando los abonos. El enlace siempre muestra lo que lleva tu cliente.</p></div><button class="button button--primary" type="button" data-new-plan>+ Nueva tabla</button></div>
+          <p id="plans-error" class="empty" role="alert" hidden></p>
+          <p id="plans-total" class="plans-total" hidden></p>
+          <div class="catalog-toolbar"><label class="search-label"><span aria-hidden="true">⌕</span><input id="plan-search" type="search" placeholder="Buscar por cliente o perfume" aria-label="Buscar tablas de pagos"></label><select id="plan-filter" aria-label="Filtrar tablas de pagos"><option value="open">En curso</option><option value="paid">Liquidadas</option><option value="all">Todas</option></select></div>
+          <div id="plan-list" class="plan-grid"></div>
+          <div id="plan-empty" class="empty plan-empty" hidden></div>
+        </section>
       </div>
     </section>
   </main>
@@ -121,6 +132,90 @@
         </div>
       </div>
       <footer class="editor-footer"><button type="button" id="archive-perfume" class="button button--subtle" hidden>Ocultar de la tienda</button><span class="editor-spacer"></span><button type="button" id="cancel-editor" class="button button--subtle">Cancelar</button><button type="submit" id="save-perfume" class="button button--primary">Guardar perfume</button></footer>
+    </form>
+  </dialog>
+  <dialog id="plan-dialog" class="editor-dialog plan-dialog" aria-labelledby="plan-dialog-title">
+    <form id="plan-form" class="editor-form" novalidate>
+      <header class="editor-header"><div><p class="eyebrow">TABLA DE PAGOS</p><h2 id="plan-dialog-title">Nueva tabla</h2></div><button type="button" class="icon-button" data-plan-close aria-label="Cerrar tabla de pagos">×</button></header>
+      <div class="editor-body plan-body">
+        <div class="editor-fields">
+          <fieldset><legend>Cliente y perfume</legend>
+            <div class="field-grid">
+              <label>Cliente <input name="client_name" required maxlength="80" placeholder="Erika" autocomplete="off"></label>
+              <label>Casa <input name="brand" maxlength="80" placeholder="Burberry" autocomplete="off"></label>
+              <label>Nombre del perfume <input name="product_name" required maxlength="120" placeholder="Her" autocomplete="off"><small>Se escribe en letra manuscrita.</small></label>
+              <label>Texto de fondo <input name="watermark" maxlength="16" placeholder="BURBERRY" autocomplete="off"><small>Letras grandes detrás del frasco. Si subes una silueta, se usa la silueta.</small></label>
+            </div>
+            <div class="tonos" role="radiogroup" aria-labelledby="tonos-titulo">
+              <span id="tonos-titulo" class="tonos__titulo">Color del nombre</span>
+              <label class="tono tono--rosa"><input type="radio" name="tone" value="rosa" checked><span>Rosa</span></label>
+              <label class="tono tono--dorado"><input type="radio" name="tone" value="dorado"><span>Dorado</span></label>
+              <label class="tono tono--celeste"><input type="radio" name="tone" value="celeste"><span>Celeste</span></label>
+              <label class="tono tono--verde"><input type="radio" name="tone" value="verde"><span>Verde</span></label>
+              <label class="tono tono--lila"><input type="radio" name="tone" value="lila"><span>Lila</span></label>
+            </div>
+          </fieldset>
+          <fieldset><legend>Fotos</legend>
+            <div class="fotos">
+              <div class="foto" data-foto="image">
+                <div class="foto__vista" id="foto-image"></div>
+                <div class="foto__datos"><strong>Foto del perfume</strong><small>PNG sin fondo, para que el frasco quede flotando.</small><label class="foto__subir"><span>Subir foto</span><input type="file" name="upload_image" accept="image/png,image/webp,image/avif,image/jpeg"></label><button type="button" class="text-button" data-foto-quitar="image" hidden>Quitar</button></div>
+              </div>
+              <div class="foto" data-foto="silueta">
+                <div class="foto__vista" id="foto-silueta"></div>
+                <div class="foto__datos"><strong>Silueta de fondo <span class="muted">(opcional)</span></strong><small>Un logo o figura en PNG sin fondo, como el perrito de Ferrioni. Se ve tenue detrás del frasco.</small><label class="foto__subir"><span>Subir silueta</span><input type="file" name="upload_silueta" accept="image/png,image/webp,image/avif"></label><button type="button" class="text-button" data-foto-quitar="silueta" hidden>Quitar</button></div>
+              </div>
+            </div>
+            <small>La plantilla recorta los bordes vacíos de cada foto, la centra y la ajusta a su lugar. Hasta 15 MB por foto.</small>
+          </fieldset>
+          <fieldset><legend>Plan de pagos</legend>
+            <div class="repartir">
+              <label>Total <input name="total" type="number" min="0" step="0.01" inputmode="decimal" placeholder="2850"></label>
+              <label>Pagos <input name="count" type="number" min="1" max="24" step="1" value="4" inputmode="numeric"></label>
+              <button type="button" class="button button--subtle" id="plan-repartir">Repartir en partes iguales</button>
+            </div>
+            <ol id="plan-cuotas" class="filas" aria-label="Pagos del plan"></ol>
+            <button type="button" class="text-button filas__agregar" id="plan-add-cuota">+ Agregar pago</button>
+          </fieldset>
+          <fieldset><legend>Abonos</legend>
+            <small class="abonos__ayuda">Cada abono se descuenta del pendiente; los pagos se tachan solos cuando lo abonado los cubre.</small>
+            <ol id="plan-abonos" class="filas" aria-label="Abonos registrados"></ol>
+            <p id="plan-abonos-vacio" class="abonos__vacio">Todavía no hay abonos.</p>
+            <div class="abono-nuevo">
+              <label>Monto <input name="abono_amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="570"></label>
+              <label>Fecha <input name="abono_date" type="date"></label>
+              <label>Nota (opcional) <input name="abono_note" maxlength="120" placeholder="Efectivo, transferencia…"></label>
+              <button type="button" class="button button--subtle" id="plan-add-abono">Agregar abono</button>
+            </div>
+          </fieldset>
+        </div>
+        <aside class="plan-vista" aria-label="Vista previa de la tabla">
+          <div class="plan-cifras"><div><span>Total</span><strong id="plan-total">$0.00</strong></div><div><span>Abonado</span><strong id="plan-abonado">$0.00</strong></div><div class="plan-cifras__pendiente"><span>Pendiente</span><strong id="plan-pendiente">$0.00</strong></div></div>
+          <div class="plan-vista__marco" id="plan-vista-marco" data-tono="rosa">
+            <div class="tp-fondo tp-fondo--marco" aria-hidden="true"><span class="tp-fondo__luz tp-fondo__luz--a"></span><span class="tp-fondo__luz tp-fondo__luz--b"></span><canvas class="tp-fondo__hilos"></canvas></div>
+            <div class="plan-vista__scroll"><div class="tp-escena" id="plan-vista"></div></div>
+          </div>
+          <button type="button" class="text-button" id="plan-replay">↻ Ver la animación</button>
+        </aside>
+      </div>
+      <footer class="editor-footer"><button type="button" id="plan-delete" class="button button--subtle button--danger" hidden>Eliminar tabla</button><button type="button" id="plan-copy" class="button button--subtle" hidden>Copiar enlace</button><p id="plan-mensaje" class="dialog-mensaje" role="alert"></p><span class="editor-spacer"></span><button type="button" class="button button--subtle" data-plan-close>Cancelar</button><button type="submit" id="plan-save" class="button button--primary">Guardar tabla</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="abono-dialog" class="editor-dialog abono-dialog" aria-labelledby="abono-title">
+    <form id="abono-form" class="editor-form" novalidate>
+      <header class="editor-header"><div><p class="eyebrow">REGISTRAR ABONO</p><h2 id="abono-title">Abono</h2><p id="abono-perfume" class="muted abono-perfume"></p></div><button type="button" class="icon-button" data-abono-close aria-label="Cerrar registro de abono">×</button></header>
+      <div class="editor-fields abono-cuerpo">
+        <p class="abono-pendiente">Pendiente <strong id="abono-pendiente">$0.00</strong></p>
+        <div class="field-grid">
+          <label>Monto <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+          <label>Fecha <input name="date" type="date" required></label>
+        </div>
+        <label>Nota (opcional) <input name="note" maxlength="120" placeholder="Efectivo, transferencia…"></label>
+        <div class="abono-atajos" id="abono-atajos"></div>
+        <p id="abono-efecto" class="abono-efecto" role="status" aria-live="polite"></p>
+      </div>
+      <footer class="editor-footer"><p id="abono-mensaje" class="dialog-mensaje" role="alert"></p><span class="editor-spacer"></span><button type="button" class="button button--subtle" data-abono-close>Cancelar</button><button type="submit" id="abono-save" class="button button--primary">Guardar abono</button></footer>
     </form>
   </dialog>
 </body>

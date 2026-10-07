@@ -1,0 +1,428 @@
+/* Tabla de pagos de Sensorial: plantilla compartida por pagos.html y la vista previa del panel.
+   Forma: póster oscuro; tarjeta de pagos 1.75rem, botones en pastilla (igual que la tienda).
+   Color: fondo ciruela de la tienda, dorado para logo, marco e hilos, y un tono por perfume
+   solo para el nombre manuscrito.
+   La plantilla responde al ancho de su contenedor (.tp-escena), no al de la pantalla: así la
+   vista previa del panel se ve igual que en el teléfono del cliente. */
+
+.tp-escena { container-type: inline-size; width: 100%; }
+.tp-escena,
+.tp-escena *,
+.tp-escena *::before,
+.tp-escena *::after,
+.tp-pagina * { box-sizing: border-box; }
+
+.tp,
+.tp-fondo,
+.tp-pagina {
+  --tp-papel: #201a1e;
+  --tp-tinta: #f7f2f4;
+  --tp-tinta-2: #c9bcc3;
+  --tp-oro: #e3c48c;
+  --tp-suave: cubic-bezier(0.16, 1, 0.3, 1);
+  --tp-tono: #ebc4c6;
+}
+[data-tono="rosa"] { --tp-tono: #ebc4c6; }
+[data-tono="dorado"] { --tp-tono: #e6c891; }
+[data-tono="celeste"] { --tp-tono: #a9d1e8; }
+[data-tono="verde"] { --tp-tono: #b2d7c2; }
+[data-tono="lila"] { --tp-tono: #d7bbea; }
+
+/* ---------- Plantilla ---------- */
+
+.tp {
+  position: relative;
+  display: grid;
+  grid-template-areas: "cabeza" "visual" "nombre" "saldo" "tarjeta" "resumen" "contacto";
+  justify-items: center;
+  width: min(100%, 34rem);
+  margin-inline: auto;
+  padding: clamp(2rem, 8cqi, 3rem) clamp(1rem, 5cqi, 1.5rem) clamp(2.5rem, 10cqi, 3.5rem);
+  color: var(--tp-tinta);
+  font-family: Urbanist, system-ui, sans-serif;
+  text-align: center;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+:where(.tp) p { margin: 0; }
+.tp-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.tp-cabeza { grid-area: cabeza; display: grid; justify-items: center; }
+/* El logo de la tienda, en dorado: el SVG funciona como máscara de un degradado metálico */
+.tp-logo {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: clamp(9.5rem, 42cqi, 12.5rem);
+  aspect-ratio: 827 / 439;
+  background: linear-gradient(100deg, #9c7845 0%, #e9cf98 38%, #c7a165 62%, #8f6c3d 100%);
+  -webkit-mask: url("img/sensorial-logo.svg") center / contain no-repeat;
+  mask: url("img/sensorial-logo.svg") center / contain no-repeat;
+}
+.tp-logo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 35%, rgb(255 246 220 / 0.9) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+
+.tp-titulo {
+  display: grid;
+  justify-items: center;
+  margin: clamp(0.75rem, 3cqi, 1.1rem) 0 0;
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+}
+.tp-titulo__a { font-size: clamp(2.1rem, 10.5cqi, 3.1rem); translate: 0.55em 0; }
+.tp-titulo__b { font-size: clamp(3.6rem, 18cqi, 5.4rem); margin-top: -0.2em; translate: -0.12em 0; }
+/* Hueco para la cola de la "g" mientras las letras suben */
+.tp-letras { display: inline-flex; overflow: clip; padding-bottom: 0.22em; margin-bottom: -0.22em; }
+.tp-letra { display: inline-block; }
+
+/* Acomodo de las fotos: el frasco ocupa siempre la misma caja (alto fijo, centrado, sin
+   deformarse) y la silueta o el texto de fondo quedan detrás, hacia la izquierda */
+.tp-visual {
+  --tp-alto: clamp(17rem, 86cqi, 26rem);
+  grid-area: visual;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: var(--tp-alto);
+  margin-top: clamp(-1.25rem, -3cqi, -0.5rem);
+}
+.tp-agua {
+  position: absolute;
+  z-index: -2;
+  left: 36%;
+  top: 50%;
+  translate: -50% -50%;
+  rotate: 180deg;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  font-size: min(calc(var(--tp-alto) / (var(--letras, 6) * 0.7)), calc(var(--tp-alto) * 0.5));
+  font-weight: 800;
+  line-height: 0.78;
+  letter-spacing: 0.01em;
+  color: rgb(255 255 255 / 0.045);
+}
+/* Cualquier logo o silueta PNG se vuelve una sombra clara y tenue, sin importar sus colores */
+.tp-silueta {
+  position: absolute;
+  z-index: -2;
+  left: 34%;
+  top: 50%;
+  width: 72%;
+  height: 80%;
+  translate: -50% -50%;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: 0.065;
+}
+.tp-halo {
+  position: absolute;
+  z-index: -1;
+  width: min(88%, 24rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--tp-tono) 20%, transparent), transparent);
+}
+/* Caja fija para cualquier foto: alta, ancha, con o sin márgenes, siempre cabe completa */
+.tp-frasco { position: absolute; inset: 3% 0 6%; }
+.tp-frasco img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 1.6rem 1.8rem rgb(10 6 9 / 0.55));
+}
+.tp-frasco__vacio {
+  display: grid;
+  place-items: center;
+  width: min(62%, 14rem);
+  height: 86%;
+  margin: 4% auto 0;
+  padding: 1rem;
+  border: 1px dashed rgb(227 196 140 / 0.45);
+  border-radius: 1.75rem;
+  color: var(--tp-tinta-2);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.tp-nombre { grid-area: nombre; display: grid; justify-items: center; max-width: 100%; margin-top: 0.4rem; }
+.tp-casa { font-size: clamp(1.55rem, 7.6cqi, 2.15rem); font-weight: 400; line-height: 1.1; }
+/* Letra manuscrita: interlineado amplio y reserva abajo para que no se corten las colas */
+.tp-perfume {
+  max-width: 100%;
+  margin-top: -0.3em;
+  padding: 0 0.25em 0.15em;
+  color: var(--tp-tono);
+  font-family: "Ms Madi", cursive;
+  font-size: clamp(2.6rem, 14cqi, 3.9rem);
+  font-weight: 400;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.tp-saldo { grid-area: saldo; display: grid; justify-items: center; width: 100%; margin-top: clamp(1rem, 5cqi, 1.6rem); }
+.tp-saldo__etiqueta { font-size: clamp(1.1rem, 5cqi, 1.4rem); font-weight: 500; }
+.tp-saldo__monto {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: clamp(0.9rem, 4cqi, 1.5rem);
+  width: min(100%, 27rem);
+  font-size: clamp(2.4rem, 12cqi, 3.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.tp-saldo__monto strong { font-weight: inherit; }
+.tp-raya { justify-self: start; width: min(100%, 4rem); height: max(2px, 0.07em); border-radius: 1px; background: currentColor; }
+.tp-raya:first-child { justify-self: end; }
+
+.tp-tarjeta {
+  grid-area: tarjeta;
+  position: relative;
+  width: min(100%, 29rem);
+  margin-top: clamp(1.1rem, 5cqi, 1.6rem);
+  padding: clamp(0.9rem, 4cqi, 1.15rem) clamp(1.1rem, 6cqi, 2rem) clamp(1rem, 4.5cqi, 1.3rem);
+  border-radius: 1.75rem;
+  background: rgb(255 255 255 / 0.02);
+  box-shadow: 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9);
+}
+.tp-marco { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.tp-marco__trazo { fill: none; stroke: var(--tp-oro); stroke-width: 2.5; }
+.tp-cliente { margin-bottom: 0.55rem; font-size: clamp(1.15rem, 5.4cqi, 1.5rem); font-weight: 400; }
+.tp-cliente strong { font-weight: 800; }
+.tp-lista { margin: 0; padding: 0; list-style: none; }
+.tp-pago {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+  padding: 0.55em 0.5em;
+  font-size: clamp(1rem, 4.7cqi, 1.28rem);
+  font-weight: 800;
+  text-align: left;
+}
+.tp-pago::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; border-radius: 1px; background: var(--tp-oro); }
+.tp-pago__concepto small { display: block; margin-top: 0.1rem; color: var(--tp-tinta-2); font-size: 0.68em; font-weight: 600; }
+.tp-pago.is-parcial small { color: var(--tp-tono); }
+.tp-pago__monto { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tp-tachable { position: relative; display: inline-block; }
+.tp-pago.is-pagado { color: rgb(247 242 244 / 0.62); }
+.tp-pago.is-pagado .tp-tachable::after {
+  content: "";
+  position: absolute;
+  left: -0.08em;
+  right: -0.08em;
+  top: 52%;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: left center;
+}
+
+.tp-resumen { grid-area: resumen; max-width: 32ch; margin-top: 1.1rem; color: var(--tp-tinta-2); font-size: clamp(0.95rem, 4cqi, 1.05rem); font-weight: 500; line-height: 1.45; }
+.tp-resumen small { display: block; font-size: 0.92em; }
+.tp[data-estado="liquidado"] .tp-resumen { color: var(--tp-tono); font-weight: 700; }
+
+.tp-contacto {
+  grid-area: contacto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1.4rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: 999px;
+  background: var(--tp-oro);
+  color: #2a1f15;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.25s var(--tp-suave), background-color 0.25s;
+}
+.tp-contacto i { font-size: 1.25rem; }
+.tp-contacto:hover { background: #ecd3a3; transform: translateY(-2px); }
+.tp-contacto:active { transform: translateY(0) scale(0.98); }
+.tp-contacto:focus-visible { outline: 2px solid var(--tp-tono); outline-offset: 3px; }
+
+/* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
+   arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
+@container (min-width: 62rem) {
+  .tp {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 30rem);
+    grid-template-rows: 1fr repeat(6, auto) 1fr;
+    grid-template-areas: "visual ." "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual .";
+    column-gap: clamp(2rem, 5cqi, 5rem);
+    width: min(100%, 74rem);
+    padding-block: 2.5rem;
+  }
+  .tp-visual { --tp-alto: min(80dvh, 44rem); margin-top: 0; }
+  .tp-nombre { margin-top: clamp(1.25rem, 2.5cqi, 2rem); }
+}
+
+/* ---------- Entrada (solo si se permite movimiento) ----------
+   1. El logo aparece y un brillo lo cruza; "Tabla de" llega de lado y "Pagos" sube letra por letra.
+   2. El texto de fondo sube, el halo se abre y el frasco se eleva hasta quedar flotando.
+   3. La casa aparece y el nombre se escribe de izquierda a derecha.
+   4. El saldo cuenta desde $0.00 mientras sus rayas se abren desde el centro.
+   5. El marco dorado se traza alrededor de la tarjeta, las filas suben y los pagos cubiertos
+      por abonos se tachan uno por uno. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .tp--entrada { --tp-t: var(--inicio, 0ms); --tp-tachar: calc(var(--tp-t) + 2350ms + var(--filas, 4) * 90ms); }
+  .tp--entrada .tp-logo { animation: tp-aparece 900ms var(--tp-suave) var(--tp-t) both; }
+  .tp--entrada .tp-logo::after { animation: tp-brillo 1400ms cubic-bezier(0.45, 0, 0.2, 1) calc(var(--tp-t) + 250ms) both; }
+  .tp--entrada .tp-titulo__a { animation: tp-desliza 800ms var(--tp-suave) calc(var(--tp-t) + 150ms) both; }
+  .tp--entrada .tp-letra { animation: tp-letra 800ms var(--tp-suave) calc(var(--tp-t) + 250ms + var(--i) * 55ms) both; }
+  .tp--entrada .tp-agua { animation: tp-agua 1600ms var(--tp-suave) calc(var(--tp-t) + 350ms) both; }
+  .tp--entrada .tp-silueta { animation: tp-silueta 1600ms var(--tp-suave) calc(var(--tp-t) + 350ms) both; }
+  .tp--entrada .tp-halo { animation: tp-halo 1400ms var(--tp-suave) calc(var(--tp-t) + 450ms) both; }
+  .tp--entrada .tp-frasco { animation: tp-frasco 1200ms var(--tp-suave) calc(var(--tp-t) + 500ms) both; }
+  .tp--entrada .tp-frasco img { animation: tp-flota 7s ease-in-out calc(var(--tp-t) + 1700ms) infinite; }
+  .tp--entrada .tp-casa { animation: tp-sube 700ms var(--tp-suave) calc(var(--tp-t) + 950ms) both; }
+  .tp--entrada .tp-perfume { animation: tp-escribe 1200ms cubic-bezier(0.55, 0, 0.25, 1) calc(var(--tp-t) + 1100ms) both; }
+  .tp--entrada .tp-saldo__etiqueta { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 1400ms) both; }
+  .tp--entrada .tp-saldo__monto strong { animation: tp-aparece 600ms var(--tp-suave) calc(var(--tp-t) + 1500ms) both; }
+  .tp--entrada .tp-raya { transform-origin: left center; animation: tp-raya 900ms var(--tp-suave) calc(var(--tp-t) + 1550ms) both; }
+  .tp--entrada .tp-raya:first-child { transform-origin: right center; }
+  .tp--entrada .tp-tarjeta { animation: tp-sube 800ms var(--tp-suave) calc(var(--tp-t) + 1750ms) both; }
+  .tp--entrada .tp-marco__trazo { stroke-dasharray: 1; animation: tp-traza 1300ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--tp-t) + 1850ms) both; }
+  .tp--entrada .tp-cliente { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2050ms) both; }
+  .tp--entrada .tp-pago { animation: tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both; }
+  .tp--entrada .tp-pago.is-pagado {
+    animation:
+      tp-sube 600ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both,
+      tp-atenua 500ms ease calc(var(--tp-tachar) + var(--k) * 200ms + 350ms) both;
+  }
+  .tp--entrada .tp-pago::before { animation: tp-raya 700ms var(--tp-suave) calc(var(--tp-t) + 2150ms + var(--i) * 90ms) both; }
+  .tp--entrada .tp-pago.is-pagado .tp-tachable::after { animation: tp-raya 420ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--tp-tachar) + var(--k) * 200ms) both; }
+  .tp--entrada .tp-pago.is-pagado .tp-pago__monto .tp-tachable::after { animation-delay: calc(var(--tp-tachar) + var(--k) * 200ms + 120ms); }
+  .tp--entrada .tp-resumen { animation: tp-aparece 700ms var(--tp-suave) calc(var(--tp-tachar) + 300ms) both; }
+  .tp--entrada .tp-contacto { animation: tp-sube 700ms var(--tp-suave) calc(var(--tp-tachar) + 450ms) both; }
+
+  @keyframes tp-aparece { from { opacity: 0; filter: blur(8px); } }
+  @keyframes tp-brillo { to { transform: translateX(120%); } }
+  @keyframes tp-desliza { from { opacity: 0; transform: translateX(1.2rem); filter: blur(6px); } }
+  @keyframes tp-letra { from { transform: translateY(105%); } }
+  /* El texto de fondo está girado 180°: -14% en su eje lo deja más abajo en pantalla */
+  @keyframes tp-agua { from { opacity: 0; transform: translateY(-14%); } }
+  @keyframes tp-silueta { from { opacity: 0; transform: translateY(10%); } }
+  @keyframes tp-halo { from { opacity: 0; transform: scale(0.55); } }
+  @keyframes tp-frasco { from { opacity: 0; transform: translateY(2.5rem) scale(0.94); filter: blur(10px); } }
+  @keyframes tp-flota { 50% { transform: translateY(-0.55rem); } }
+  @keyframes tp-sube { from { opacity: 0; transform: translateY(0.9rem); } }
+  @keyframes tp-escribe {
+    from { clip-path: inset(-30% 100% -30% -10%); }
+    to { clip-path: inset(-30% -10% -30% -10%); }
+  }
+  @keyframes tp-raya { from { transform: scaleX(0); } }
+  @keyframes tp-traza { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes tp-atenua { from { color: var(--tp-tinta); } }
+}
+
+/* ---------- Fondo animado ---------- */
+
+.tp-fondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--tp-papel); pointer-events: none; }
+.tp-fondo--marco { position: absolute; }
+.tp-fondo__hilos { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tp-fondo__luz { position: absolute; width: 80vmax; aspect-ratio: 1; border-radius: 50%; }
+.tp-fondo--marco .tp-fondo__luz { width: 150%; }
+.tp-fondo__luz--a {
+  left: 50%;
+  top: 22%;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--tp-tono) 12%, transparent), transparent);
+}
+.tp-fondo__luz--b {
+  left: 70%;
+  top: 95%;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, rgb(201 160 98 / 0.1), transparent);
+}
+/* Grano fijo, sobre una capa que no se desplaza */
+.tp-fondo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tp-fondo__luz--a { animation: tp-deriva-a 22s ease-in-out infinite alternate; }
+  .tp-fondo__luz--b { animation: tp-deriva-b 27s ease-in-out infinite alternate; }
+  @keyframes tp-deriva-a { to { transform: translate(-9%, 7%) scale(1.12); } }
+  @keyframes tp-deriva-b { to { transform: translate(-14%, -10%) scale(0.92); } }
+}
+
+/* ---------- Página del cliente (pagos.html) ---------- */
+
+.tp-pagina { margin: 0; min-height: 100dvh; overflow-x: clip; background: var(--tp-papel); color: var(--tp-tinta); font-family: Urbanist, system-ui, sans-serif; }
+.tp-pagina .tp-escena { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; min-height: 100dvh; padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right)); }
+
+/* Mientras llega la tabla: siluetas de su forma */
+.tp-cargando { display: grid; justify-items: center; gap: 1.1rem; width: min(100%, 30rem); margin: 0 auto; padding: 3rem 1rem; }
+.tp-cargando span { display: block; border-radius: 1rem; background: rgb(255 255 255 / 0.05); }
+.tp-cargando span:nth-child(1) { width: 10rem; height: 5.3rem; }
+.tp-cargando span:nth-child(2) { width: 13rem; height: 5rem; }
+.tp-cargando span:nth-child(3) { width: 12rem; height: 18rem; border-radius: 1.75rem; }
+.tp-cargando span:nth-child(4) { width: 15rem; height: 3.2rem; }
+.tp-cargando span:nth-child(5) { width: 100%; height: 14rem; border-radius: 1.75rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .tp-cargando span {
+    background: linear-gradient(100deg, rgb(255 255 255 / 0.04) 30%, rgb(255 255 255 / 0.09) 50%, rgb(255 255 255 / 0.04) 70%) 0 0 / 300% 100%;
+    animation: tp-reflejo 1.6s linear infinite;
+  }
+  @keyframes tp-reflejo { from { background-position: 100% 0; } to { background-position: 0 0; } }
+}
+
+/* Enlace incompleto o tabla que ya no existe */
+.tp-aviso { display: grid; justify-items: center; gap: 1rem; width: min(100% - 2rem, 28rem); margin: 0 auto; padding: 3rem 0; text-align: center; }
+.tp-aviso h1 { margin: 1rem 0 0; font-size: clamp(1.9rem, 7vw, 2.4rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.tp-aviso p { margin: 0; max-width: 34ch; color: var(--tp-tinta-2); line-height: 1.5; }
+.tp-aviso .tp-logo { width: 10rem; }
+.tp-aviso .tp-contacto { grid-area: auto; margin-top: 0.5rem; }
+
+/* Telón de apertura: un hilo dorado espera a la tabla y la página se abre por la mitad */
+.tp-telon { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+.tp-telon__mitad { position: absolute; left: 0; right: 0; height: 50.5%; background: var(--tp-papel); }
+.tp-telon__mitad--arriba { top: 0; box-shadow: inset 0 -1px 0 rgb(227 196 140 / 0.35); }
+.tp-telon__mitad--abajo { bottom: 0; box-shadow: inset 0 1px 0 rgb(227 196 140 / 0.35); }
+.tp-telon__hilo {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, transparent, var(--tp-oro) 30%, #fbe7bd 50%, var(--tp-oro) 70%, transparent);
+  transform: scaleX(0.3);
+}
+.tp-telon__texto { position: absolute; top: calc(50% + 1.4rem); left: 0; right: 0; margin: 0; color: var(--tp-tinta-2); font-size: 0.95rem; text-align: center; opacity: 0; }
+.tp-telon[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .tp-telon__hilo { animation: tp-respira 1.4s ease-in-out infinite alternate; }
+  .tp-telon__texto { animation: tp-muestra 600ms var(--tp-suave) 1.4s forwards; }
+  .tp-telon.abre .tp-telon__hilo { animation: tp-hilo-abre 500ms var(--tp-suave) forwards, tp-desvanece 400ms linear 700ms forwards; }
+  .tp-telon.abre .tp-telon__texto { animation: tp-desvanece 200ms linear forwards; }
+  .tp-telon.abre .tp-telon__mitad--arriba { animation: tp-abre-arriba 1100ms cubic-bezier(0.7, 0, 0.2, 1) 350ms forwards; }
+  .tp-telon.abre .tp-telon__mitad--abajo { animation: tp-abre-abajo 1100ms cubic-bezier(0.7, 0, 0.2, 1) 350ms forwards; }
+  @keyframes tp-respira { from { transform: scaleX(0.12); opacity: 0.55; } to { transform: scaleX(0.38); opacity: 1; } }
+  @keyframes tp-muestra { to { opacity: 1; } }
+  @keyframes tp-hilo-abre { to { transform: scaleX(1); opacity: 1; } }
+  @keyframes tp-desvanece { to { opacity: 0; } }
+  @keyframes tp-abre-arriba { to { transform: translateY(-101%); } }
+  @keyframes tp-abre-abajo { to { transform: translateY(101%); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tp-telon { display: none; }
+}

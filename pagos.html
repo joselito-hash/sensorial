@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#201a1e">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://hlhyvalmeditlasovmtd.supabase.co; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' https: data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Tu tabla de pagos | Sensorial Boutique</title>
+  <meta name="description" content="Consulta tus pagos y lo que te falta para liquidar tu perfume.">
+  <meta property="og:title" content="Tu tabla de pagos | Sensorial Boutique">
+  <meta property="og:description" content="Consulta tus pagos y lo que te falta para liquidar tu perfume.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ms+Madi&family=Urbanist:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="tabla-pagos.css">
+  <script src="supabase-config.js" defer></script>
+  <script src="tabla-pagos.js" defer></script>
+  <script src="pagos.js" defer></script>
+</head>
+<body class="tp-pagina" data-tono="rosa">
+  <div class="tp-fondo" aria-hidden="true">
+    <span class="tp-fondo__luz tp-fondo__luz--a"></span>
+    <span class="tp-fondo__luz tp-fondo__luz--b"></span>
+    <canvas class="tp-fondo__hilos"></canvas>
+  </div>
+
+  <main class="tp-escena" id="tabla" aria-busy="true">
+    <div class="tp-cargando" aria-label="Cargando tu tabla de pagos"><span></span><span></span><span></span><span></span><span></span></div>
+  </main>
+
+  <div class="tp-telon" aria-hidden="true">
+    <div class="tp-telon__mitad tp-telon__mitad--arriba"></div>
+    <div class="tp-telon__mitad tp-telon__mitad--abajo"></div>
+    <span class="tp-telon__hilo"></span>
+    <p class="tp-telon__texto">Preparando tu tabla</p>
+  </div>
+</body>
+</html>
