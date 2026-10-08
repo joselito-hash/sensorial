@@ -142,27 +142,23 @@
     siguiente: whatsapp(`Hola, soy ${plan.client_name}. Ya terminé de pagar mi ${nombreDe(plan)}. Me gustaría elegir mi siguiente perfume.`),
   });
 
-  /* Varias tablas: arriba la pastilla con sus frascos y abajo una hoja por perfume. El aro
-     dorado de cada frasco se llena con lo que lleva pagado; el elegido muestra su nombre y lo
-     que falta. Los liquidados llevan una palomita. La pastilla también da avisos cortos
-     ("Pagaste tu…, ahora sigue…") en el mismo lugar, sin tapar la tabla. */
+  /* Varias tablas: arriba un índice y abajo una hoja por perfume. Cada perfume del índice lleva
+     su número, su nombre, lo que falta (o "Pagado") y una línea dorada que se llena con lo
+     pagado. El índice también da avisos cortos ("Sauvage pagado · Sigue Good Girl") en el mismo
+     lugar, sin tapar la tabla. */
   function carruselHTML(grupo) {
     const hojas = grupo.map((plan, i) => `<div class="tp-hoja" role="group" aria-roledescription="perfume" aria-label="${i + 1} de ${grupo.length}: ${T.escapar(nombreDe(plan))}">${T.pintar(plan, opcionesDe(plan))}</div>`).join("");
     const botones = grupo.map((plan, i) => {
-      const foto = T.imagen(plan.image_url);
       const e = T.calcular(plan);
       const avance = e.total > 0 ? Math.min(1, e.abonado / e.total) : 0;
-      const corto = String(plan.product_name || "").trim() || nombreDe(plan);
       const estado = e.liquidado ? "Pagado" : `Faltan ${T.dinero(e.pendiente)}`;
-      return `<button class="tp-frascos__boton${e.liquidado ? " is-pagado" : ""}" type="button" data-hoja="${i}" data-tono="${tonoDe(plan)}" style="--avance: ${avance.toFixed(3)}" aria-label="${T.escapar(`${nombreDe(plan)}, ${estado.toLowerCase()}`)}">`
-        + `<span class="tp-frascos__foto">${foto ? `<img src="${T.escapar(foto)}" alt="" decoding="async">` : `<span aria-hidden="true">${T.escapar(corto.slice(0, 1))}</span>`}`
-        + `${e.liquidado ? '<i class="ph ph-check tp-frascos__pagado" aria-hidden="true"></i>' : ""}</span>`
-        + `<span class="tp-frascos__nombre" aria-hidden="true"><span><b>${T.escapar(corto)}</b><small>${T.escapar(estado)}</small></span></span></button>`;
+      return `<button class="tp-frascos__boton${e.liquidado ? " is-pagado" : ""}" type="button" data-hoja="${i}" style="--avance: ${avance.toFixed(3)}" aria-label="${T.escapar(`${nombreDe(plan)}, ${estado.toLowerCase()}`)}">`
+        + `<span class="tp-frascos__num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>`
+        + `<span class="tp-frascos__texto" aria-hidden="true"><b>${T.escapar(cortoDe(plan))}</b><small>${e.liquidado ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${T.escapar(estado)}</small></span>`
+        + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     }).join("");
     return `<nav class="tp-frascos" aria-label="Elige un perfume">
-        <button class="tp-frascos__flecha" type="button" data-paso="-1" aria-label="Perfume anterior"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
         <div class="tp-frascos__lista">${botones}</div>
-        <button class="tp-frascos__flecha" type="button" data-paso="1" aria-label="Perfume siguiente"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
         <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>
       <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes"><div class="tp-carrusel__pista">${hojas}</div></div>
@@ -387,13 +383,10 @@
     if (varias) {
       const frascos = escena.querySelector(".tp-frascos");
       const botones = [...frascos.querySelectorAll("[data-hoja]")];
-      const flechas = [...frascos.querySelectorAll("[data-paso]")];
       const lista = frascos.querySelector(".tp-frascos__lista");
       const anuncio = escena.querySelector("[data-tp-anuncio]");
       const marcar = (i) => {
         botones.forEach((boton, k) => boton.setAttribute("aria-current", String(k === i)));
-        flechas[0].disabled = i === 0;
-        flechas[1].disabled = i === grupo.length - 1;
         if (lista.scrollWidth > lista.clientWidth) {
           lista.scrollTo({ left: botones[i].offsetLeft - (lista.clientWidth - botones[i].offsetWidth) / 2, behavior: "smooth" });
         }
@@ -419,7 +412,6 @@
       });
       marcar(inicial);
       botones.forEach((boton, i) => boton.addEventListener("click", () => pasar.ir(i)));
-      flechas.forEach((flecha) => flecha.addEventListener("click", () => pasar.ir(pasar.actual + Number(flecha.dataset.paso))));
       escena.addEventListener("pointerdown", () => { tomoElControl = true; }, { once: true });
       /* Los otros perfumes ya tienen lista la parte de arriba; su saldo y su tarjeta se animan
          cuando la clienta llega a ellos. Con celebración, el principal se guarda su entrada
