@@ -68,9 +68,11 @@ function vistaPrevia(datos, token, origen) {
   const cliente = String(datos.client_name || "").trim();
   const grupo = Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos];
   const perfumes = enLista(grupo.map(perfumeDe).filter(Boolean));
+  /* La foto es la del perfume que sigue pagando (el que abre primero la página) */
+  const principal = grupo.find((plan) => plan && Array.isArray(plan.installments) && !liquidada(plan)) || datos;
   let imagen = "";
   try {
-    const foto = String(datos.image_url || "");
+    const foto = String(principal.image_url || datos.image_url || "");
     if (/^https:\/\//i.test(foto) || /^img\//.test(foto)) imagen = new URL(foto, `${origen}/`).href;
   } catch { imagen = ""; }
   return {

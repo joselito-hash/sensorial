@@ -1290,6 +1290,65 @@
     return `https://wa.me/?text=${encodeURIComponent(texto)}`;
   };
 
+  /* Clientes: se juntan las tablas del mismo grupo (mismo enlace) y las que tienen el mismo
+     nombre de cliente, aunque todavía tengan enlaces distintos */
+  const nombreClave = (nombre) => nonempty(nombre).toLocaleLowerCase("es").normalize("NFD")
+    .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+  const iniciales = (nombre) => nonempty(nombre).split(/\s+/).slice(0, 2).map((p) => p[0] || "").join("").toLocaleUpperCase("es") || "?";
+  function clientesDe(planes) {
+    const padre = new Map();
+    const raiz = (k) => {
+      while (padre.get(k) !== k) { padre.set(k, padre.get(padre.get(k))); k = padre.get(k); }
+      return k;
+    };
+    for (const { plan } of planes) {
+      const nodos = [`p:${plan.id}`, `n:${nombreClave(plan.client_name)}`, ...(plan.client_group ? [`g:${plan.client_group}`] : [])];
+      nodos.forEach((n) => { if (!padre.has(n)) padre.set(n, n); });
+      nodos.slice(1).forEach((n) => padre.set(raiz(n), raiz(nodos[0])));
+    }
+    const porCliente = new Map();
+    for (const item of planes) {
+      const clave = raiz(`p:${item.plan.id}`);
+      if (!porCliente.has(clave)) porCliente.set(clave, []);
+      porCliente.get(clave).push(item);
+    }
+    const cuando = (plan) => String(plan.updated_at || plan.created_at || "");
+    return [...porCliente.values()].map((lista) => {
+      /* El mismo orden que ve la clienta: en curso por antigüedad y luego las liquidadas */
+      const abiertas = lista.filter(({ e }) => !e.liquidado).sort((a, b) => porFecha(a.plan, b.plan));
+      const liquidadas = lista.filter(({ e }) => e.liquidado).sort((a, b) => cuando(b.plan).localeCompare(cuando(a.plan)));
+      /* El nombre de su tabla más reciente, prefiriendo uno escrito con mayúscula inicial */
+      const nombres = [...lista].sort((a, b) => porFecha(b.plan, a.plan)).map(({ plan }) => nonempty(plan.client_name));
+      const nombre = nombres.find((n) => /^\p{Lu}/u.test(n)) || nombres[0];
+      const reciente = lista.reduce((max, { plan }) => (cuando(plan) > max ? cuando(plan) : max), "");
+      return { nombre, planes: [...abiertas, ...liquidadas], abiertas, liquidadas, reciente };
+    }).sort((a, b) => b.reciente.localeCompare(a.reciente) || a.nombre.localeCompare(b.nombre, "es"));
+  }
+
+  /* Pone en el mismo grupo las tablas de una clienta: con cualquiera de sus enlaces ve todas */
+  async function juntarTablas(ids, button) {
+    const lista = ids.map((id) => state.data.plans.find((plan) => plan.id === id)).filter(Boolean).sort(porFecha);
+    if (lista.length < 2) return;
+    if (!window.confirm(`¿Juntar las ${lista.length} tablas de ${lista[0].client_name} en un solo enlace?\n\nCon cualquiera de sus enlaces verá todos sus perfumes. Hazlo solo si son de la misma persona.`)) return;
+    const grupo = lista[0].client_group || crypto.randomUUID();
+    button.disabled = true;
+    try {
+      const saved = await request(`payment_plans?id=in.(${lista.map((plan) => encodeURIComponent(plan.id)).join(",")})&select=*`, {
+        method: "PATCH", body: { client_group: grupo }, prefer: "return=representation",
+      });
+      if (!Array.isArray(saved) || saved.length !== lista.length) throw new Error("No se juntaron todas las tablas.");
+      saved.forEach((fila) => {
+        const i = state.data.plans.findIndex((plan) => plan.id === fila.id);
+        if (i >= 0) state.data.plans[i] = fila;
+      });
+      renderPlans();
+      notify(`Listo: ${lista[0].client_name} verá sus ${lista.length} perfumes en el mismo enlace.`);
+    } catch (error) {
+      button.disabled = false;
+      notify(error.message, true);
+    }
+  }
+
   function renderPlans() {
     const error = $("#plans-error");
     error.hidden = !state.plansError;
@@ -1299,51 +1358,65 @@
     $("#nav-plan-count").textContent = abiertos.length;
     const porCobrar = abiertos.reduce((suma, { e }) => suma + e.pendiente, 0);
     $("#plans-total").hidden = !abiertos.length;
+    const clientesConSaldo = clientesDe(abiertos).length;
     $("#plans-total").innerHTML = abiertos.length
-      ? `Por cobrar <strong>${TP.dinero(porCobrar)}</strong> en ${abiertos.length} ${abiertos.length === 1 ? "tabla en curso" : "tablas en curso"}.`
+      ? `Por cobrar <strong>${TP.dinero(porCobrar)}</strong> en ${abiertos.length} ${abiertos.length === 1 ? "tabla en curso" : "tablas en curso"} de ${clientesConSaldo} ${clientesConSaldo === 1 ? "cliente" : "clientes"}.`
       : "";
     const query = nonempty($("#plan-search").value).toLocaleLowerCase("es");
     const filter = $("#plan-filter").value;
-    const rows = planes.filter(({ plan, e }) => (filter === "all" || (filter === "paid") === e.liquidado)
-      && (!query || `${plan.client_name} ${plan.brand} ${plan.product_name}`.toLocaleLowerCase("es").includes(query)));
-    /* Las tablas de una misma clienta van seguidas, en el orden en que ella las desliza; los
-       grupos, del más reciente al más antiguo */
-    const grupo = (plan) => plan.client_group || plan.id;
-    const reciente = new Map();
-    for (const plan of state.data.plans) {
-      if (String(plan.created_at) > String(reciente.get(grupo(plan)) ?? "")) reciente.set(grupo(plan), String(plan.created_at));
-    }
-    rows.sort((a, b) => reciente.get(grupo(b.plan)).localeCompare(reciente.get(grupo(a.plan)))
-      || grupo(a.plan).localeCompare(grupo(b.plan)) || porFecha(a.plan, b.plan));
+    /* Un bloque por cliente con todas sus tablas: en curso primero (la primera es la que abre
+       su enlace) y luego las liquidadas. El filtro y la búsqueda eligen clientes, no tablas,
+       para que su historia se vea completa. */
+    const clientes = clientesDe(planes).filter((c) => (filter === "all" || (filter === "paid" ? c.liquidadas.length : c.abiertas.length))
+      && (!query || c.planes.some(({ plan }) => `${plan.client_name} ${plan.brand} ${plan.product_name}`.toLocaleLowerCase("es").includes(query))));
     const dia = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" });
     const grupos = conGrupos();
-    $("#plan-list").innerHTML = rows.map(({ plan, e }) => {
-      const foto = TP.imagen(plan.image_url);
-      const cuotas = e.pagos.map((p) => `<i class="${p.pagado ? "is-pagado" : p.parcial ? "is-parcial" : ""}"></i>`).join("");
-      const fecha = plan.updated_at ? `Actualizada ${dia.format(new Date(plan.updated_at)).replace(/\./g, "")}` : "";
-      const junto = companeras(plan).map(nombrePerfume);
-      return `<article class="plan-card" data-plan-id="${escapeHTML(plan.id)}">
-        <div class="plan-card__foto">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : `<span>${escapeHTML((plan.product_name || "?").slice(0, 1))}</span>`}</div>
-        <div class="plan-card__cuerpo">
-          <div class="perfume-card__meta"><span class="pill ${e.liquidado ? "" : "pill--draft"}">${e.liquidado ? "Liquidada" : "En curso"}</span><span>${escapeHTML(fecha)}</span></div>
-          <h2>${escapeHTML(plan.client_name)}</h2>
-          <p>${escapeHTML(nombrePerfume(plan))}</p>
-          ${junto.length ? `<p class="plan-card__junto">Junto con ${escapeHTML(enLista(junto))}</p>` : ""}
-        </div>
-        <div class="plan-card__saldo"><strong>${TP.dinero(e.pendiente)}</strong><span>pendiente de ${TP.dinero(e.total)}</span><span>${e.pagados} de ${e.pagos.length} pagos cubiertos</span></div>
-        <div class="plan-card__cuotas" aria-hidden="true">${cuotas}</div>
-        <div class="plan-card__acciones">
-          ${e.liquidado ? "" : '<button type="button" class="accept" data-plan-action="abono">+ Registrar abono</button>'}
-          <button type="button" data-plan-action="copiar">Copiar enlace</button>
-          <a href="${escapeHTML(whatsappPlan(plan))}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
-          <button type="button" data-plan-action="descargar">Descargar imagen</button>
-          <button type="button" data-plan-action="editar">Editar</button>
-          ${grupos ? '<button type="button" data-plan-action="otro">+ Otro perfume</button>' : ""}
-        </div>
+    $("#plan-list").innerHTML = clientes.map((c) => {
+      const principal = c.abiertas[0]?.plan || c.planes[0].plan;
+      const varios = c.planes.length > 1;
+      /* Tablas de la misma clienta con enlaces distintos: cada enlace solo muestra las suyas */
+      const separadas = grupos && varios && new Set(c.planes.map(({ plan }) => plan.client_group || plan.id)).size > 1;
+      const porCobrar = c.abiertas.reduce((suma, { e }) => suma + e.pendiente, 0);
+      const cuenta = [`${c.planes.length} ${c.planes.length === 1 ? "perfume" : "perfumes"}`,
+        c.abiertas.length && `${c.abiertas.length} en curso`, c.liquidadas.length && `${c.liquidadas.length} ${c.liquidadas.length === 1 ? "liquidada" : "liquidadas"}`]
+        .filter(Boolean).join(" · ");
+      const filas = c.planes.map(({ plan, e }, i) => {
+        const foto = TP.imagen(plan.image_url);
+        const cuotas = e.pagos.map((p) => `<i class="${p.pagado ? "is-pagado" : p.parcial ? "is-parcial" : ""}"></i>`).join("");
+        const fecha = plan.updated_at ? `Actualizada ${dia.format(new Date(plan.updated_at)).replace(/\./g, "")}` : "";
+        const estado = e.liquidado ? '<span class="pill">Liquidada</span>'
+          : varios && i === 0 ? '<span class="pill pill--principal" title="Es la que ve primero al abrir su enlace">Abre primero</span>'
+            : '<span class="pill pill--draft">En curso</span>';
+        return `<li class="tabla-fila${e.liquidado ? " is-liquidada" : ""}" data-plan-id="${escapeHTML(plan.id)}">
+          <div class="tabla-fila__foto">${foto ? `<img src="${escapeHTML(foto)}" alt="" loading="lazy">` : `<span>${escapeHTML((plan.product_name || "?").slice(0, 1))}</span>`}</div>
+          <div class="tabla-fila__nombre"><strong>${escapeHTML(nombrePerfume(plan))}</strong><span>${estado}<small>${escapeHTML(fecha)}</small></span></div>
+          <div class="tabla-fila__avance"><div class="plan-card__cuotas" aria-hidden="true">${cuotas}</div><small>${e.pagados} de ${e.pagos.length} pagos cubiertos</small></div>
+          <div class="tabla-fila__saldo">${e.liquidado ? `<strong>${TP.dinero(e.total)}</strong><small>pagado</small>` : `<strong>${TP.dinero(e.pendiente)}</strong><small>pendiente de ${TP.dinero(e.total)}</small>`}</div>
+          <div class="plan-acciones tabla-fila__acciones">
+            ${e.liquidado ? "" : '<button type="button" class="accept" data-plan-action="abono">+ Abono</button>'}
+            <button type="button" data-plan-action="editar">Editar</button>
+            <button type="button" data-plan-action="descargar">Imagen</button>
+            ${separadas ? '<button type="button" data-plan-action="copiar">Enlace</button>' : ""}
+          </div>
+        </li>`;
+      }).join("");
+      return `<article class="cliente${c.abiertas.length ? "" : " is-al-dia"}">
+        <header class="cliente__cabeza">
+          <span class="cliente__inicial" aria-hidden="true">${escapeHTML(iniciales(c.nombre))}</span>
+          <div class="cliente__quien"><h2>${escapeHTML(c.nombre)}</h2><p>${escapeHTML(cuenta)}</p></div>
+          <div class="cliente__saldo">${c.abiertas.length ? `<strong>${TP.dinero(porCobrar)}</strong><span>por cobrar</span>` : '<strong class="cliente__al-dia">Al día</strong><span>todo pagado</span>'}</div>
+          <div class="plan-acciones cliente__acciones" data-plan-id="${escapeHTML(principal.id)}">
+            ${separadas ? "" : '<button type="button" data-plan-action="copiar">Copiar enlace</button>'}
+            ${separadas ? "" : `<a href="${escapeHTML(whatsappPlan(principal))}" target="_blank" rel="noopener">WhatsApp</a>`}
+            ${grupos ? '<button type="button" data-plan-action="otro">+ Otro perfume</button>' : ""}
+          </div>
+        </header>
+        <ol class="cliente__tablas">${filas}</ol>
+        ${separadas ? `<p class="cliente__aviso"><span>Sus tablas tienen enlaces distintos: con cada uno solo ve una parte.</span><button type="button" class="text-button" data-juntar="${escapeHTML(c.planes.map(({ plan }) => plan.id).join(","))}">Juntar en un solo enlace</button></p>` : ""}
       </article>`;
     }).join("");
     const empty = $("#plan-empty");
-    empty.hidden = rows.length > 0 || Boolean(state.plansError);
+    empty.hidden = clientes.length > 0 || Boolean(state.plansError);
     empty.innerHTML = state.data.plans.length
       ? "No hay tablas con ese filtro."
       : "<strong>Aún no hay tablas de pagos.</strong> Crea la primera con «+ Nueva tabla»: sube la foto del perfume, escribe el plan y comparte el enlace con tu cliente.";
@@ -1841,6 +1914,8 @@
   $("#plan-search").addEventListener("input", renderPlans);
   $("#plan-filter").addEventListener("change", renderPlans);
   $("#plan-list").addEventListener("click", (event) => {
+    const juntar = event.target.closest("[data-juntar]");
+    if (juntar) { juntarTablas(juntar.dataset.juntar.split(","), juntar); return; }
     const button = event.target.closest("[data-plan-action]");
     if (!button) return;
     const plan = state.data.plans.find((item) => item.id === button.closest("[data-plan-id]").dataset.planId);

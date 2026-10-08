@@ -68,6 +68,8 @@
 }
 .tp-titulo__a { font-size: clamp(2.1rem, 10.5cqi, 3.1rem); translate: 0.55em 0; }
 .tp-titulo__b { font-size: clamp(3.6rem, 18cqi, 5.4rem); margin-top: -0.2em; translate: -0.12em 0; }
+/* "Pago completo": "Pago" se alinea con el inicio de "completo", a la izquierda */
+.tp--liquidado .tp-titulo__a { justify-self: start; translate: 0.06em 0; }
 /* Hueco para las colas de la "g" y la "y" mientras las letras suben */
 .tp-letras { display: inline-flex; overflow: clip; padding-bottom: 0.22em; margin-bottom: -0.22em; }
 .tp-letra { display: inline-block; }
@@ -533,16 +535,28 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 2.5rem;
+  width: 2.75rem;
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(closest-side, color-mix(in oklab, var(--tp-tono) 30%, transparent), rgb(255 255 255 / 0.03));
-  box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.2);
-  transition: box-shadow 0.3s, scale 0.2s var(--tp-suave);
+  transition: scale 0.2s var(--tp-suave);
 }
-.tp-frascos__boton[aria-current="true"] .tp-frascos__foto { box-shadow: inset 0 0 0 1.5px var(--tp-oro); }
+/* Aro de avance: el dorado recorre el círculo según lo pagado (--avance, de 0 a 1) */
+.tp-frascos__foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--tp-oro) calc(var(--avance, 0) * 1turn), rgb(227 196 140 / 0.16) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  opacity: 0.75;
+  transition: opacity 0.3s;
+}
+.tp-frascos__boton[aria-current="true"] .tp-frascos__foto::before { opacity: 1; }
 .tp-frascos__boton:active .tp-frascos__foto { scale: 0.93; }
-.tp-frascos__foto img { width: 78%; height: 78%; object-fit: contain; filter: drop-shadow(0 0.2rem 0.25rem rgb(10 6 9 / 0.55)); }
+.tp-frascos__foto img { width: 74%; height: 74%; object-fit: contain; filter: drop-shadow(0 0.2rem 0.25rem rgb(10 6 9 / 0.55)); }
+.tp-frascos__boton.is-pagado:not([aria-current="true"]) .tp-frascos__foto img { opacity: 0.7; }
 .tp-frascos__foto > span { color: var(--tp-tono); font-family: "Ms Madi", cursive; font-size: 1.6rem; line-height: 1; }
 .tp-frascos__pagado {
   position: absolute;
@@ -559,7 +573,53 @@
   box-shadow: 0 0 0 2px var(--tp-papel);
 }
 .tp-frascos__nombre { min-width: 0; overflow: hidden; }
-.tp-frascos__nombre span { display: block; max-width: 11rem; padding: 0 0.85rem 0 0.6rem; overflow: hidden; font-size: 0.95rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.tp-frascos__nombre > span { display: grid; max-width: 11rem; padding: 0 0.95rem 0 0.6rem; text-align: left; line-height: 1.15; }
+.tp-frascos__nombre b,
+.tp-frascos__nombre small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-frascos__nombre b { font-size: 0.95rem; font-weight: 700; }
+.tp-frascos__nombre small { margin-top: 0.1rem; color: var(--tp-oro); font-size: 0.74rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tp-frascos__boton.is-pagado .tp-frascos__nombre small { color: var(--tp-tinta-2); }
+
+/* Aviso dentro de la pastilla ("Pagaste tu…, ahora sigue…"): los frascos se desvanecen y el
+   texto ocupa su lugar unos segundos */
+.tp-frascos__aviso {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0 1.1rem;
+  overflow: hidden;
+  color: var(--tp-tinta);
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s var(--tp-suave);
+}
+.tp-frascos__aviso span { overflow: hidden; text-overflow: ellipsis; }
+.tp-frascos__aviso i {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--tp-oro);
+  color: var(--tp-papel);
+  font-size: 0.8rem;
+}
+.tp-frascos__lista,
+.tp-frascos__flecha { transition: opacity 0.35s var(--tp-suave), filter 0.35s var(--tp-suave); }
+.tp-frascos.is-avisa .tp-frascos__lista,
+.tp-frascos.is-avisa .tp-frascos__flecha { opacity: 0; filter: blur(4px); }
+.tp-frascos.is-avisa .tp-frascos__aviso { opacity: 1; transition-delay: 0.15s; }
+/* Mientras avisa, la pastilla se estira para que quepa el texto completo y luego regresa */
+.tp-frascos { min-width: 0; transition: min-width 0.55s var(--tp-suave); }
+.tp-frascos.is-avisa { min-width: min(22rem, calc(100% - 1.5rem)); }
 .tp-frascos button:focus-visible { outline: 2px solid var(--tp-oro); outline-offset: 2px; }
 /* Las flechas, solo con mouse: en el teléfono se desliza o se toca el frasco */
 .tp-frascos__flecha { display: none; }

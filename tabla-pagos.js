@@ -776,9 +776,14 @@
 
     /* Logo y título */
     dibujarLogo(ctx, W / 2, 78, 320);
-    const [arriba, abajo] = e.liquidado ? ["Pago", "completo"] : ["Tabla de", "Pagos"];
-    escribir(ctx, arriba, W / 2 + 40, 345, { tam: 100 });
-    escribir(ctx, abajo, W / 2 - 18, 452, { tam: 158 });
+    /* "Pago completo": "Pago" se alinea con el inicio de "completo", a la izquierda */
+    if (e.liquidado) {
+      const ancho = escribir(ctx, "completo", W / 2 - 18, 452, { tam: 158 });
+      escribir(ctx, "Pago", W / 2 - 18 - ancho / 2 + 6, 345, { tam: 100, alinear: "left" });
+    } else {
+      escribir(ctx, "Tabla de", W / 2 + 40, 345, { tam: 100 });
+      escribir(ctx, "Pagos", W / 2 - 18, 452, { tam: 158 });
+    }
 
     /* Frasco: halo, texto o silueta detrás, y la foto con su sombra */
     const visual = { y: 462, h: 760 };

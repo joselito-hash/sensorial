@@ -227,7 +227,56 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .plans-total strong{color:#f8f4f5;font-size:18px}
 .plan-empty{line-height:1.5}
 .plan-empty strong{display:block;color:#f8f4f5;font-size:17px;margin-bottom:4px}
-.plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:17px}
+/* Tablas de pagos agrupadas por cliente: cabecera con su saldo total y una fila por perfume */
+.plan-grid{display:grid;gap:14px}
+.cliente{border:1px solid #4d4248;border-radius:22px;background:#2c2429;overflow:hidden;transition:border-color .2s}
+.cliente:hover{border-color:#5d4f57}
+.cliente__cabeza{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:14px 18px;padding:18px 20px}
+.cliente__inicial{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:#201a1e;color:#e3c48c;font-size:17px;font-weight:800;letter-spacing:.02em;box-shadow:inset 0 0 0 1px #5a4a52}
+.cliente__quien h2{margin:0;font-size:20px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cliente__quien p{margin:3px 0 0;color:#a99da4;font-size:13px}
+.cliente__saldo{display:grid;justify-items:end}
+.cliente__saldo strong{font-size:23px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.cliente__saldo .cliente__al-dia{color:#add4bd;font-size:19px}
+.cliente__saldo span{color:#a99da4;font-size:12px}
+.cliente__acciones{justify-content:flex-end}
+.cliente__tablas{margin:0;padding:0;list-style:none;border-top:1px solid #43383e}
+.tabla-fila{display:grid;grid-template-columns:52px minmax(0,1.5fr) minmax(130px,1fr) minmax(120px,auto) auto;align-items:center;gap:12px 18px;padding:12px 20px}
+.tabla-fila+.tabla-fila{border-top:1px solid #3b3237}
+.tabla-fila.is-liquidada{background:#29222680}
+.tabla-fila__foto{display:grid;place-items:center;width:52px;height:62px;border-radius:12px;background:#201a1e;overflow:hidden}
+.tabla-fila__foto img{width:100%;height:100%;object-fit:contain;padding:5px}
+.tabla-fila__foto span{color:#e3c48c;font-size:22px;font-weight:800}
+.tabla-fila.is-liquidada .tabla-fila__foto img{opacity:.65}
+.tabla-fila__nombre{display:grid;gap:5px;min-width:0}
+.tabla-fila__nombre strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabla-fila__nombre>span{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tabla-fila__nombre small{color:#988b92;font-size:12px}
+.tabla-fila__avance{display:grid;gap:6px}
+.tabla-fila__avance small,.tabla-fila__saldo small{color:#a99da4;font-size:12px}
+.tabla-fila__saldo{display:grid;justify-items:end}
+.tabla-fila__saldo strong{font-size:17px;font-variant-numeric:tabular-nums}
+.tabla-fila.is-liquidada .tabla-fila__saldo strong{color:#cfc2c9}
+.tabla-fila__acciones{justify-content:flex-end}
+.plan-acciones{display:flex;flex-wrap:wrap;gap:8px}
+.plan-acciones button,.plan-acciones a{border:1px solid #695b62;border-radius:9px;background:#443940;color:#f9f4f6;padding:8px 10px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;transition:transform .15s,background .2s}
+.plan-acciones button:hover,.plan-acciones a:hover{background:#4d4148}
+.plan-acciones .accept{background:#a9cbb8;border-color:#a9cbb8;color:#20382a}
+.plan-acciones .accept:hover{background:#bcd9c8}
+.plan-acciones button:active,.plan-acciones a:active{transform:scale(.97)}
+.pill--principal{background:#e3c48c26;color:#e3c48c;box-shadow:inset 0 0 0 1px #e3c48c55}
+.cliente__aviso{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 14px;margin:0;padding:12px 20px;border-top:1px solid #43383e;background:#e3c48c0d;color:#d9cbb2;font-size:13px}
+.cliente__aviso .text-button{color:#e3c48c;padding:0}
+@media(max-width:900px){
+.cliente__cabeza{grid-template-columns:auto minmax(0,1fr) auto}
+.cliente__acciones{grid-column:1/-1;justify-content:flex-start}
+.tabla-fila{grid-template-columns:48px minmax(0,1fr) auto;padding:14px 16px}
+.tabla-fila__foto{width:48px;height:58px}
+.tabla-fila__avance{grid-column:2/-1;grid-row:2}
+.tabla-fila__acciones{grid-column:1/-1;justify-content:flex-start}
+.cliente__cabeza,.cliente__aviso{padding-inline:16px}
+.cliente__quien h2,.tabla-fila__nombre strong{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+}
 .plan-card{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px 16px;padding:18px;border:1px solid #4d4248;border-radius:19px;background:#30272d}
 .plan-card__foto{grid-row:span 2;display:flex;align-items:center;justify-content:center;height:112px;border-radius:14px;background:#201a1e;overflow:hidden}
 .plan-card__foto img{width:100%;height:100%;object-fit:contain;padding:8px}

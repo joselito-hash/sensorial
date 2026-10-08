@@ -4,7 +4,9 @@
    lugar, el telón se abre y la tabla entra sobre el fondo de hilos dorados. Lo de abajo se anima
    cuando el cliente llega a verlo. Si no hay abonos nuevos, la tabla aparece lista.
    Si la clienta tiene varias tablas juntas (mismo grupo en el panel), cada perfume es una hoja:
-   desliza de lado o toca su frasco arriba para pasar de uno a otro. */
+   desliza de lado o toca su frasco arriba para pasar de uno a otro. Abre siempre en el perfume
+   que sigue pagando; si acaba de liquidar uno, primero ve su celebración y luego la página pasa
+   sola al siguiente. */
 (() => {
   "use strict";
 
@@ -129,6 +131,8 @@
   }
 
   const nombreDe = (plan) => [plan.brand, plan.product_name].map((p) => String(p || "").trim()).filter(Boolean).join(" ") || "Perfume";
+  /* El nombre del perfume sin la casa, para la pastilla de arriba */
+  const cortoDe = (plan) => String(plan.product_name || "").trim() || nombreDe(plan);
   const tonoDe = (plan) => (T.TONOS.includes(plan.tone) ? plan.tone : "rosa");
 
   /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume */
@@ -138,23 +142,28 @@
     siguiente: whatsapp(`Hola, soy ${plan.client_name}. Ya terminé de pagar mi ${nombreDe(plan)}. Me gustaría elegir mi siguiente perfume.`),
   });
 
-  /* Varias tablas: arriba la pastilla con sus frascos y abajo una hoja por perfume. El frasco
-     elegido muestra el nombre del perfume; los liquidados llevan una palomita. */
+  /* Varias tablas: arriba la pastilla con sus frascos y abajo una hoja por perfume. El aro
+     dorado de cada frasco se llena con lo que lleva pagado; el elegido muestra su nombre y lo
+     que falta. Los liquidados llevan una palomita. La pastilla también da avisos cortos
+     ("Pagaste tu…, ahora sigue…") en el mismo lugar, sin tapar la tabla. */
   function carruselHTML(grupo) {
     const hojas = grupo.map((plan, i) => `<div class="tp-hoja" role="group" aria-roledescription="perfume" aria-label="${i + 1} de ${grupo.length}: ${T.escapar(nombreDe(plan))}">${T.pintar(plan, opcionesDe(plan))}</div>`).join("");
     const botones = grupo.map((plan, i) => {
       const foto = T.imagen(plan.image_url);
-      const pagado = T.calcular(plan).liquidado;
+      const e = T.calcular(plan);
+      const avance = e.total > 0 ? Math.min(1, e.abonado / e.total) : 0;
       const corto = String(plan.product_name || "").trim() || nombreDe(plan);
-      return `<button class="tp-frascos__boton" type="button" data-hoja="${i}" data-tono="${tonoDe(plan)}" aria-label="${T.escapar(nombreDe(plan))}${pagado ? ", pagado" : ""}">`
+      const estado = e.liquidado ? "Pagado" : `Faltan ${T.dinero(e.pendiente)}`;
+      return `<button class="tp-frascos__boton${e.liquidado ? " is-pagado" : ""}" type="button" data-hoja="${i}" data-tono="${tonoDe(plan)}" style="--avance: ${avance.toFixed(3)}" aria-label="${T.escapar(`${nombreDe(plan)}, ${estado.toLowerCase()}`)}">`
         + `<span class="tp-frascos__foto">${foto ? `<img src="${T.escapar(foto)}" alt="" decoding="async">` : `<span aria-hidden="true">${T.escapar(corto.slice(0, 1))}</span>`}`
-        + `${pagado ? '<i class="ph ph-check tp-frascos__pagado" aria-hidden="true"></i>' : ""}</span>`
-        + `<span class="tp-frascos__nombre" aria-hidden="true"><span>${T.escapar(corto)}</span></span></button>`;
+        + `${e.liquidado ? '<i class="ph ph-check tp-frascos__pagado" aria-hidden="true"></i>' : ""}</span>`
+        + `<span class="tp-frascos__nombre" aria-hidden="true"><span><b>${T.escapar(corto)}</b><small>${T.escapar(estado)}</small></span></span></button>`;
     }).join("");
     return `<nav class="tp-frascos" aria-label="Elige un perfume">
         <button class="tp-frascos__flecha" type="button" data-paso="-1" aria-label="Perfume anterior"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
         <div class="tp-frascos__lista">${botones}</div>
         <button class="tp-frascos__flecha" type="button" data-paso="1" aria-label="Perfume siguiente"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+        <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>
       <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes"><div class="tp-carrusel__pista">${hojas}</div></div>
       <p class="tp-oculto" aria-live="polite" data-tp-anuncio></p>`;
@@ -334,12 +343,28 @@
     };
   }
 
-  /* La tabla del enlace y, si la clienta tiene más, las demás de su grupo (del panel) */
+  /* La tabla del enlace y, si la clienta tiene más, las demás de su grupo (del panel).
+     Orden: primero los perfumes que sigue pagando y al final los liquidados. El principal (el
+     que se ve al abrir) es el primero en curso, con cualquiera de sus enlaces. Si un perfume se
+     acaba de liquidar y todavía no lo ha visto, la página abre en él con su celebración y
+     después pasa sola al principal. */
   function mostrarTablas(datos) {
-    const grupo = (Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos]).filter((plan) => plan && Array.isArray(plan.installments));
-    if (!grupo.length) grupo.push(datos);
+    const recibidas = (Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos]).filter((plan) => plan && Array.isArray(plan.installments));
+    if (!recibidas.length) recibidas.push(datos);
+    const pagada = (plan) => T.calcular(plan).liquidado;
+    /* En curso, de la más antigua a la más nueva (como en el panel), si la tabla trae su fecha */
+    const antiguedad = (a, b) => String(a.created_at || "").localeCompare(String(b.created_at || ""));
+    const grupo = [...recibidas.filter((plan) => !pagada(plan)).sort(antiguedad), ...recibidas.filter(pagada)];
     const varias = grupo.length > 1;
-    const inicial = Math.max(0, grupo.findIndex((plan) => plan.token === token));
+    const enCurso = grupo.findIndex((plan) => !pagada(plan));
+    const delEnlace = Math.max(0, grupo.findIndex((plan) => plan.token === token));
+    const principal = enCurso >= 0 ? enCurso : delEnlace;
+    /* Recién liquidado: pagado y con abonos que no ha visto (o nunca había abierto su tabla) */
+    const recien = varias && enCurso >= 0
+      ? grupo.findIndex((plan) => pagada(plan) && vistas[plan.token || token] !== firmaDe(plan))
+      : -1;
+    const celebra = recien >= 0 && !reducido();
+    const inicial = celebra ? recien : principal;
     escena.classList.toggle("tp-escena--varias", varias);
     escena.innerHTML = varias ? carruselHTML(grupo) : T.pintar(grupo[0], opcionesDe(grupo[0]));
     const tablas = [...escena.querySelectorAll(".tp")];
@@ -355,6 +380,10 @@
     else if (apertura) { apertura.cancelar(); apertura = null; }
 
     let pasar = null;
+    let avisar = () => {};
+    /* Si la clienta toca, arrastra o cambia de perfume, la página ya no se mueve sola */
+    let tomoElControl = false;
+    let pasoAutomatico = false;
     if (varias) {
       const frascos = escena.querySelector(".tp-frascos");
       const botones = [...frascos.querySelectorAll("[data-hoja]")];
@@ -369,31 +398,70 @@
           lista.scrollTo({ left: botones[i].offsetLeft - (lista.clientWidth - botones[i].offsetWidth) / 2, behavior: "smooth" });
         }
       };
+      /* Aviso corto dentro de la misma pastilla: los frascos se desvanecen y aparece el texto */
+      let relojAviso = 0;
+      avisar = (mensaje, duracion = 2800) => {
+        frascos.querySelector(".tp-frascos__aviso span").textContent = mensaje;
+        anuncio.textContent = mensaje;
+        frascos.classList.add("is-avisa");
+        clearTimeout(relojAviso);
+        relojAviso = setTimeout(() => frascos.classList.remove("is-avisa"), duracion);
+      };
       pasar = carrusel(escena.querySelector(".tp-carrusel"), {
         inicial,
         alCambiar(i) {
+          if (!pasoAutomatico) tomoElControl = true;
           marcar(i);
           document.body.dataset.tono = tonoDe(grupo[i]);
-          anuncio.textContent = `Perfume ${i + 1} de ${grupo.length}: ${nombreDe(grupo[i])}`;
+          if (!frascos.classList.contains("is-avisa")) anuncio.textContent = `Perfume ${i + 1} de ${grupo.length}: ${nombreDe(grupo[i])}`;
           setTimeout(descargas[i], 1500);
         },
       });
       marcar(inicial);
       botones.forEach((boton, i) => boton.addEventListener("click", () => pasar.ir(i)));
       flechas.forEach((flecha) => flecha.addEventListener("click", () => pasar.ir(pasar.actual + Number(flecha.dataset.paso))));
+      escena.addEventListener("pointerdown", () => { tomoElControl = true; }, { once: true });
       /* Los otros perfumes ya tienen lista la parte de arriba; su saldo y su tarjeta se animan
-         cuando la clienta llega a ellos */
-      tablas.forEach((tabla, i) => { if (i !== inicial) T.montar(tabla, { entrada: conAnimacion, inicio: -4000 }); });
+         cuando la clienta llega a ellos. Con celebración, el principal se guarda su entrada
+         completa para cuando la página pase a él. */
+      tablas.forEach((tabla, i) => {
+        if (i !== inicial && !(celebra && i === principal)) T.montar(tabla, { entrada: conAnimacion, inicio: -4000 });
+      });
       if (conAnimacion) frascos.classList.add("tp-frascos--espera");
     }
 
     const tabla = tablas[inicial];
     abrir(() => tabla.querySelector(".tp-cabeza .tp-logo"), () => {
       T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
-      if (varias && conAnimacion) {
-        escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
-        /* Y el frasco de ese perfume, en la pastilla, destella una vez */
+      if (varias && conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
+      if (celebra) {
+        /* El sello se estampa y saltan las chispas (cerca de 3.5 s); entonces la pastilla avisa
+           y la página pasa sola al perfume que sigue, que entra con su animación */
         setTimeout(() => {
+          if (tomoElControl) {
+            T.montar(tablas[principal], { entrada: true, inicio: -4000 });
+            return;
+          }
+          avisar(`${cortoDe(grupo[recien])} pagado · Sigue ${cortoDe(grupo[principal])}`, 3200);
+          setTimeout(() => {
+            if (tomoElControl) {
+              T.montar(tablas[principal], { entrada: true, inicio: -4000 });
+              return;
+            }
+            T.montar(tablas[principal], { entrada: true, inicio: 350 });
+            pasoAutomatico = true;
+            pasar.ir(principal);
+            pasoAutomatico = false;
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }, 1100);
+        }, 3700);
+      } else if (recien >= 0) {
+        /* Movimiento reducido: sin celebración, solo el aviso sobre el perfume principal */
+        avisar(`${cortoDe(grupo[recien])} pagado · Sigue ${cortoDe(grupo[principal])}`, 4500);
+      } else if (varias && conAnimacion) {
+        /* Y el frasco del otro perfume, en la pastilla, destella una vez */
+        setTimeout(() => {
+          if (tomoElControl) return;
           const otro = pasar.asomar();
           const boton = escena.querySelector(`.tp-frascos__boton[data-hoja="${otro}"]`);
           if (!boton) return;
