@@ -483,16 +483,18 @@
    Cada perfume es una hoja y la clienta desliza de lado para pasar de una a otra (pagos.js).
    La pista se mueve con transform, no con scroll propio: la página baja como siempre. El
    carrusel llega de orilla a orilla para que ningún perfume se corte antes del borde. */
-.tp-pagina .tp-escena--varias { align-content: center; padding-inline: 0; }
+.tp-pagina .tp-escena--varias { align-content: start; padding-inline: 0; }
 /* hidden antes de clip: los navegadores que no conocen clip igual recortan las otras hojas */
-.tp-carrusel { --tp-hueco: 3rem; width: 100%; overflow: hidden; overflow: clip; touch-action: pan-y; }
+.tp-carrusel { --tp-hueco: 3rem; width: 100%; overflow: hidden; overflow-x: clip; overflow-y: visible; touch-action: pan-y; }
 .tp-carrusel__pista { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; column-gap: var(--tp-hueco); align-items: start; }
 .tp-hoja { min-width: 0; padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right)); }
 /* El logo y el título se quedan quietos arriba (encabezado compartido) y solo se desliza el
    perfume: cada hoja pierde su propio encabezado y empieza en el frasco */
-.tp.tp--cabecera { grid-template-areas: "cabeza"; padding-bottom: 0; overflow: visible; }
+.tp.tp--cabecera { grid-template-areas: "cabeza"; padding-top: 0.25rem; padding-bottom: 0; overflow: visible; }
 .tp-escena--varias .tp-hoja .tp-cabeza { display: none; }
-.tp-escena--varias .tp-hoja .tp { padding-top: 0.25rem; }
+/* Recorta solo a los lados (para que no se vea el perfume de junto): la marca de agua detrás
+   del frasco ("BOSS") sube detrás del título sin cortarse, como en la tabla de un perfume */
+.tp-escena--varias .tp-hoja .tp { padding-top: 0.25rem; overflow-x: clip; overflow-y: visible; }
 .tp-escena--varias .tp-hoja .tp-visual { margin-top: 0; }
 .tp-titulos { display: grid; }
 .tp-titulos__uno {
@@ -516,7 +518,7 @@
   top: 0;
   z-index: 2;
   width: 100%;
-  padding: max(1rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 1.5rem max(1.25rem, env(safe-area-inset-left));
+  padding: max(0.85rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 1rem max(1.25rem, env(safe-area-inset-left));
   background: linear-gradient(to bottom, var(--tp-papel) 58%, rgb(32 26 30 / 0));
   font-family: Urbanist, system-ui, sans-serif;
 }
@@ -580,7 +582,7 @@
    el texto ocupa su lugar unos segundos */
 .tp-frascos__aviso {
   position: absolute;
-  inset: max(1rem, env(safe-area-inset-top)) 1.25rem 1.5rem;
+  inset: max(0.85rem, env(safe-area-inset-top)) 1.25rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
