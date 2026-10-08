@@ -504,6 +504,45 @@
   transition: opacity 0.5s var(--tp-suave), filter 0.5s var(--tp-suave), transform 0.5s var(--tp-suave);
 }
 .tp-titulos__uno[data-titulo="liquidado"] .tp-titulo__a { justify-self: start; translate: 0.06em 0; }
+/* Pantallas anchas (computadora), varios perfumes: cada hoja conserva su acomodo de frasco a
+   la izquierda e información a la derecha, con el logo y el título arriba de la columna
+   derecha, junto al nombre del perfume. El encabezado compartido se pone encima de ese lugar
+   (misma cuadrícula, misma celda que el carrusel) y no se desliza; el de cada hoja guarda su
+   espacio pero no se ve. */
+@container (min-width: 62rem) {
+  /* Fila 1: el índice; fila 2: el carrusel y, encima, el encabezado (la consulta no puede
+     cambiar a .tp-escena, que es el contenedor, así que cada parte dice su fila) */
+  .tp-escena--varias > .tp-frascos { grid-row: 1; grid-column: 1; }
+  .tp-escena--varias > .tp-carrusel { grid-row: 2; grid-column: 1; }
+  .tp.tp--cabecera {
+    grid-row: 2;
+    grid-column: 1;
+    align-self: start;
+    z-index: 1;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 30rem);
+    grid-template-rows: auto;
+    grid-template-areas: ". cabeza";
+    column-gap: clamp(2rem, 5cqi, 5rem);
+    width: min(100% - 2 * max(0.5rem, env(safe-area-inset-left)), 74rem);
+    padding-block: 1.25rem 0;
+    pointer-events: none;
+  }
+  .tp-escena--varias .tp-hoja .tp-cabeza { display: grid; visibility: hidden; }
+  .tp-escena--varias .tp-hoja .tp { padding-top: 1.25rem; }
+}
+
+/* Computadora: el frasco acompaña al cliente mientras baja por su tabla (se queda fijo a la
+   vista en la columna izquierda hasta que termina la tabla) y la información va desde arriba */
+@container (min-width: 62rem) {
+  .tp:not(.tp--cabecera) {
+    grid-template-rows: repeat(6, auto) 1fr;
+    grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual .";
+    padding-bottom: 3rem;
+  }
+  .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
+  /* Con varios perfumes, debajo del índice de arriba */
+  .tp-escena--varias .tp:not(.tp--cabecera) .tp-visual { top: 6.25rem; --tp-alto: min(76svh, 42rem); }
+}
 .tp--cabecera[data-estado="en-curso"] [data-titulo="liquidado"],
 .tp--cabecera[data-estado="liquidado"] [data-titulo="en-curso"] { opacity: 0; filter: blur(6px); transform: translateY(0.25em); pointer-events: none; }
 .tp-carrusel.is-arrastrando { cursor: grabbing; -webkit-user-select: none; user-select: none; }
