@@ -264,6 +264,20 @@
     </article>`;
   }
 
+  /* Encabezado fijo para varios perfumes (pagos.js): el logo y el título se quedan quietos y
+     abajo se desliza cada perfume. Lleva los dos títulos encimados; data-estado dice cuál se ve
+     ("en-curso": Tabla de Pagos; "liquidado": Pago completo) y cambia con un desvanecido. */
+  function cabecera(estado = "en-curso") {
+    const letras = (palabra) => `<span class="tp-letras">${[...palabra].map((l) => `<span class="tp-letra">${l}</span>`).join("")}</span>`;
+    const titulo = (clave, a, b) => `<span class="tp-titulos__uno" data-titulo="${clave}"${clave === estado ? "" : ' aria-hidden="true"'}><span class="tp-titulo__a">${a}</span> <span class="tp-titulo__b">${letras(b)}</span></span>`;
+    return `<header class="tp tp--cabecera" data-estado="${estado === "liquidado" ? "liquidado" : "en-curso"}">
+      <div class="tp-cabeza">
+        ${logo()}
+        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}</h1>
+      </div>
+    </header>`;
+  }
+
   /* El marco dorado de la tarjeta se dibuja como dos trazos que salen del centro de arriba y
      se encuentran abajo; se recalcula cuando cambia el tamaño de la tarjeta */
   function marco(tabla) {
@@ -920,7 +934,7 @@
   }
 
   window.TablaPagos = {
-    TONOS, calcular, pintar, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
+    TONOS, calcular, pintar, cabecera, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
     dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar,
   };
 })();

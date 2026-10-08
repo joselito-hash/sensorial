@@ -146,7 +146,7 @@
      su número, su nombre, lo que falta (o "Pagado") y una línea dorada que se llena con lo
      pagado. El índice también da avisos cortos ("Sauvage pagado · Sigue Good Girl") en el mismo
      lugar, sin tapar la tabla. */
-  function carruselHTML(grupo) {
+  function carruselHTML(grupo, inicial) {
     const hojas = grupo.map((plan, i) => `<div class="tp-hoja" role="group" aria-roledescription="perfume" aria-label="${i + 1} de ${grupo.length}: ${T.escapar(nombreDe(plan))}">${T.pintar(plan, opcionesDe(plan))}</div>`).join("");
     const botones = grupo.map((plan, i) => {
       const e = T.calcular(plan);
@@ -161,6 +161,7 @@
         <div class="tp-frascos__lista">${botones}</div>
         <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>
+      ${T.cabecera(T.calcular(grupo[inicial]).liquidado ? "liquidado" : "en-curso")}
       <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes"><div class="tp-carrusel__pista">${hojas}</div></div>
       <p class="tp-oculto" aria-live="polite" data-tp-anuncio></p>`;
   }
@@ -362,8 +363,10 @@
     const celebra = recien >= 0 && !reducido();
     const inicial = celebra ? recien : principal;
     escena.classList.toggle("tp-escena--varias", varias);
-    escena.innerHTML = varias ? carruselHTML(grupo) : T.pintar(grupo[0], opcionesDe(grupo[0]));
-    const tablas = [...escena.querySelectorAll(".tp")];
+    escena.innerHTML = varias ? carruselHTML(grupo, inicial) : T.pintar(grupo[0], opcionesDe(grupo[0]));
+    /* Con varios perfumes, el logo y el título viven en el encabezado fijo, fuera de las hojas */
+    const cabecera = escena.querySelector(".tp--cabecera");
+    const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera)")];
     const descargas = tablas.map((tabla, i) => prepararDescarga(tabla, grupo[i]));
     const cliente = grupo[inicial].client_name;
     document.title = `${varias ? "Tablas" : "Tabla"} de pagos de ${cliente} | Sensorial Boutique`;
@@ -408,6 +411,10 @@
         alCambiar(i) {
           if (!pasoAutomatico) tomoElControl = true;
           marcar(i);
+          /* El título fijo cambia con un desvanecido: "Tabla de Pagos" o "Pago completo" */
+          const estado = T.calcular(grupo[i]).liquidado ? "liquidado" : "en-curso";
+          cabecera.dataset.estado = estado;
+          cabecera.querySelectorAll("[data-titulo]").forEach((t) => t.toggleAttribute("aria-hidden", t.dataset.titulo !== estado));
           document.body.dataset.tono = tonoDe(grupo[i]);
           if (!frascos.classList.contains("is-avisa")) anuncio.textContent = `Perfume ${i + 1} de ${grupo.length}: ${nombreDe(grupo[i])}`;
           setTimeout(descargas[i], 1500);
@@ -426,8 +433,9 @@
     }
 
     const tabla = tablas[inicial];
-    abrir(() => tabla.querySelector(".tp-cabeza .tp-logo"), () => {
-      T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
+    abrir(() => (cabecera || tabla).querySelector(".tp-cabeza .tp-logo"), () => {
+      if (cabecera) T.montar(cabecera, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
+      T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion && !cabecera });
       if (varias && conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
       if (celebra) {
         /* El sello se estampa y saltan las chispas (cerca de 3.5 s); entonces la pastilla avisa
