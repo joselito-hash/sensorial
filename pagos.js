@@ -152,7 +152,7 @@
       const e = T.calcular(plan);
       const avance = e.total > 0 ? Math.min(1, e.abonado / e.total) : 0;
       const estado = e.liquidado ? "Pagado" : `Faltan ${T.dinero(e.pendiente)}`;
-      return `<button class="tp-frascos__boton${e.liquidado ? " is-pagado" : ""}" type="button" data-hoja="${i}" style="--avance: ${avance.toFixed(3)}" aria-label="${T.escapar(`${nombreDe(plan)}, ${estado.toLowerCase()}`)}">`
+      return `<button class="tp-frascos__boton${e.liquidado ? " is-pagado" : ""}" type="button" data-hoja="${i}" data-avance="${avance.toFixed(3)}" aria-label="${T.escapar(`${nombreDe(plan)}, ${estado.toLowerCase()}`)}">`
         + `<span class="tp-frascos__num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>`
         + `<span class="tp-frascos__texto" aria-hidden="true"><b>${T.escapar(cortoDe(plan))}</b><small>${e.liquidado ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${T.escapar(estado)}</small></span>`
         + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
@@ -383,6 +383,9 @@
     if (varias) {
       const frascos = escena.querySelector(".tp-frascos");
       const botones = [...frascos.querySelectorAll("[data-hoja]")];
+      /* Lo pagado de cada perfume llena su línea. Se pone desde aquí y no con style="" en el
+         HTML: la política de seguridad de pagos.html (CSP) ignora los estilos escritos en línea */
+      botones.forEach((boton) => boton.style.setProperty("--avance", boton.dataset.avance));
       const lista = frascos.querySelector(".tp-frascos__lista");
       const anuncio = escena.querySelector("[data-tp-anuncio]");
       const marcar = (i) => {
