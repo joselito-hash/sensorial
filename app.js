@@ -1388,7 +1388,7 @@
       const perfumes = PERFUMES.filter((p) => p.familia === f.id);
       return `
         <section class="capitulo revelar" data-capitulo="${f.id}" aria-labelledby="capitulo-${f.id}"
-          style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id}); --n: ${Math.min(Math.max(perfumes.length, 1), 4)}">
+          style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id})">
           <div class="capitulo__cabecera">
             <img class="capitulo__muestra" src="${url(f.ingrediente, 240)}" alt="" width="68" height="68" loading="lazy">
             <div>
@@ -1593,8 +1593,10 @@
     caja.dataset.perfume = id;
     caja.style.setProperty("--campo", `var(--c-${f.id})`);
     caja.style.setProperty("--tono", `var(--t-${f.id})`);
+    /* La segunda foto del perfume (la primera de su galería); si no tiene, la principal */
+    const segunda = p.galeria?.[0]?.src;
     caja.innerHTML = `
-      <img class="busqueda__foto" src="${p.lamina || url(p.foto, 700)}" alt="">
+      <img class="busqueda__foto" src="${segunda || p.lamina || url(p.foto, 700)}" alt="">
       <div class="busqueda__info">
         <p class="busqueda__meta"><span>${f.nombre}</span>${p.casa} · ${p.origen}</p>
         <h3>${p.nombre}</h3>
@@ -1864,7 +1866,7 @@
       },
       ...(p.galeria || []),
     ];
-    const imagenes = fotos.map((foto, i) => `<img class="detalle__foto${i === 0 ? " es-activa" : ""}${foto.compuesta ? " detalle__foto--compuesta" : ""}"
+    const imagenes = fotos.map((foto, i) => `<img class="detalle__foto${i === 0 ? " es-activa" : ""}${foto.compuesta ? " detalle__foto--compuesta" : i === 0 ? " detalle__foto--frasco" : ""}"
       src="${foto.src}"${foto.srcset ? ` srcset="${foto.srcset}" sizes="(max-width: 40rem) 100vw, 45vw"` : ""}
       alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}>`).join("");
 

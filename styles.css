@@ -57,11 +57,14 @@
 
 .con-intro { --espera: 3100ms; }
 .intro-activa,
-.intro-activa body,
 .pagina-quieta,
+.filtros-abiertos { overflow: hidden; }
+/* En body, clip y no hidden: hidden lo vuelve un contenedor de scroll y la barra de arriba
+   (sticky) dejaba de pegarse a la pantalla; al buscar estando abajo, el buscador aparecía
+   arriba del documento, fuera de la vista */
+.intro-activa body,
 .pagina-quieta body,
-.filtros-abiertos,
-.filtros-abiertos body { overflow: hidden; }
+.filtros-abiertos body { overflow: clip; }
 
 *,
 *::before,
@@ -855,7 +858,9 @@ body.buscando .buscar i { transform: scale(1.12); }
 
 .fichas {
   display: grid;
-  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  /* Siempre cuatro columnas: una familia con uno o dos perfumes no estira sus tarjetas a todo
+     el ancho (con fotos verticales sin fondo quedaban enormes) */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(0.75rem, 1.4vw, 1.25rem);
   align-items: start;
   margin-top: 1.4rem;
@@ -1094,6 +1099,14 @@ html:has(.detalle[open]) { overflow: hidden; }
 }
 .detalle__foto.es-activa { opacity: 1; }
 .detalle__foto--compuesta { object-fit: contain; background: #fff; }
+/* Foto principal (el frasco, normalmente sin fondo): completa y con aire alrededor, con su
+   sombra y la luz de su familia detrás; las fotos de la galería siguen llenando el cuadro */
+.detalle__lamina { background: radial-gradient(62% 52% at 50% 46%, color-mix(in oklch, var(--campo) 26%, var(--papel-2)), var(--papel-2)); }
+.detalle__foto--frasco {
+  padding: clamp(1.5rem, 9%, 3.5rem);
+  object-fit: contain;
+  filter: drop-shadow(0 1.4rem 1.2rem rgb(10 6 9 / 0.5));
+}
 .detalle__carrusel {
   display: flex;
   align-items: center;
