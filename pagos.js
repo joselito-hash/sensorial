@@ -157,7 +157,8 @@
         + `<span class="tp-frascos__texto" aria-hidden="true"><b>${T.escapar(cortoDe(plan))}</b><small>${e.liquidado ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${T.escapar(estado)}</small></span>`
         + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     }).join("");
-    return `<nav class="tp-frascos" aria-label="Elige un perfume">
+    /* De cuatro en adelante, el índice va compacto (ver .tp-frascos--compacto) */
+    return `<nav class="tp-frascos${grupo.length > 3 ? " tp-frascos--compacto" : ""}" aria-label="Elige un perfume">
         <div class="tp-frascos__lista">${botones}</div>
         <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>

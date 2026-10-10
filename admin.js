@@ -1637,6 +1637,43 @@
     actualizarCifras();
   }
 
+  /* ---------- Fechas quincenales ----------
+     Con la fecha de un pago se calculan las demás, dos por mes en días fijos:
+     - el 15 o fin de mes (o el 30/31): 15 y fin de mes;
+     - del 1 al 14: ese día y 15 días después (si llega al 30, fin de mes), p. ej. 5 y 20;
+     - del 16 al 29: 15 días antes y ese día, p. ej. 3 y 18.
+     En meses cortos se usa su último día (30 de febrero → 28 o 29). */
+  const finDeMes = (anio, mes) => new Date(Date.UTC(anio, mes, 0)).getUTCDate(); // mes 1-12
+  function quincena(iso, pasos) {
+    if (!fechaValida(iso)) return "";
+    const [anio, mes, dia] = iso.split("-").map(Number);
+    const esFin = dia >= 30 || (dia >= 28 && dia === finDeMes(anio, mes));
+    let a, b;
+    if (esFin || dia === 15) { a = 15; b = "fin"; }
+    else if (dia < 15) { a = dia; b = dia + 15 >= 30 ? "fin" : dia + 15; }
+    else { a = dia - 15; b = dia; }
+    /* Posición de la fecha: 0 = primer día del par, 1 = segundo; se avanza (o retrocede) de a uno */
+    const lugar = (esFin ? 1 : dia === a ? 0 : 1) + pasos;
+    const meses = Math.floor(lugar / 2);
+    const segundo = ((lugar % 2) + 2) % 2 === 1;
+    const fecha = new Date(Date.UTC(anio, mes - 1 + meses, 1));
+    const [y, m] = [fecha.getUTCFullYear(), fecha.getUTCMonth() + 1];
+    const ultimo = finDeMes(y, m);
+    const d = segundo ? (b === "fin" ? ultimo : Math.min(b, ultimo)) : Math.min(a, ultimo);
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  /* Llena las fechas a partir del pago `desde`: las de después siempre se recalculan (así, si
+     cambias una fecha, se recorren las siguientes); las de antes, solo si están vacías */
+  function llenarFechas(desde) {
+    const base = state.plan.cuotas[desde]?.due;
+    if (!fechaValida(base)) return false;
+    state.plan.cuotas.forEach((c, i) => {
+      if (i > desde || (i < desde && !fechaValida(c.due))) c.due = quincena(base, i - desde);
+    });
+    return true;
+  }
+  const primeraConFecha = () => state.plan.cuotas.findIndex((c) => fechaValida(c.due));
+
   function repartir() {
     const total = Math.round(Number(planFields.total.value) * 100);
     const cuantos = Number(planFields.count.value);
@@ -1648,6 +1685,9 @@
     state.plan.cuotas = Array.from({ length: cuantos }, (_, i) => ({
       amount: (i === cuantos - 1 ? total - base * (cuantos - 1) : base) / 100, due: fechas[i] || "",
     }));
+    /* Si ya había una fecha, los pagos nuevos siguen cada quincena */
+    const conFecha = primeraConFecha();
+    if (conFecha >= 0) llenarFechas(conFecha);
     mensajePlan();
     marcarCambio();
     pintarCuotas();
@@ -1936,7 +1976,15 @@
     if (event.target.name === "brand" && !state.plan.aguaEditada) planFields.watermark.value = TP.marcaDeAgua(event.target.value);
     const campo = event.target.closest("[data-cuota]");
     if (campo) {
-      state.plan.cuotas[Number(campo.dataset.i)][campo.dataset.cuota] = campo.value;
+      const i = Number(campo.dataset.i);
+      state.plan.cuotas[i][campo.dataset.cuota] = campo.value;
+      /* Una fecha basta: las demás se calculan cada quincena (sin redibujar la lista, para no
+         perder el campo donde se está escribiendo) */
+      if (campo.dataset.cuota === "due" && llenarFechas(i)) {
+        $$("#plan-cuotas [data-cuota=due]").forEach((input) => {
+          if (input !== campo) input.value = state.plan.cuotas[Number(input.dataset.i)].due;
+        });
+      }
       actualizarCifras();
     }
     refrescarVista();
@@ -1969,7 +2017,8 @@
   });
   $("#plan-add-cuota").addEventListener("click", () => {
     if (state.plan.cuotas.length >= 24) { mensajePlan("El plan admite hasta 24 pagos."); return; }
-    state.plan.cuotas.push({ amount: state.plan.cuotas.at(-1)?.amount || "", due: "" });
+    /* El pago nuevo toma la quincena siguiente a la del último */
+    state.plan.cuotas.push({ amount: state.plan.cuotas.at(-1)?.amount || "", due: quincena(state.plan.cuotas.at(-1)?.due, 1) });
     marcarCambio();
     pintarCuotas();
     refrescarVista();
