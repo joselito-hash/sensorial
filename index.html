@@ -182,11 +182,17 @@
 
         <!-- Lo que dicen nuestros clientes: testimonios reales (se llenan en app.js, TESTIMONIOS) -->
         <section class="clientes contenedor" id="clientes" aria-labelledby="titulo-clientes" hidden>
+          <!-- A la izquierda el título, la calificación de la tienda y las flechas; a la derecha
+               las reseñas en una fila que se desliza -->
           <div class="clientes__cabecera revelar">
             <h2 id="titulo-clientes">Lo que dicen nuestros clientes</h2>
+            <div class="clientes__resumen" id="clientes-resumen" hidden></div>
+            <div class="clientes__flechas" id="clientes-flechas" hidden>
+              <button type="button" data-clientes-paso="-1" aria-label="Reseñas anteriores"><i class="ph ph-arrow-left" aria-hidden="true"></i></button>
+              <button type="button" data-clientes-paso="1" aria-label="Más reseñas"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+            </div>
           </div>
-          <ul class="clientes__pista" id="clientes-pista" aria-label="Testimonios"></ul>
-          <div class="clientes__puntos" id="clientes-puntos"></div>
+          <ul class="clientes__pista" id="clientes-pista" aria-label="Reseñas de clientes"></ul>
         </section>
       </div>
 

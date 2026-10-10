@@ -207,7 +207,7 @@
   if (Array.isArray(REMOTO.featuredReviews)) {
     TESTIMONIOS = REMOTO.featuredReviews.map((r) => ({
       texto: r.texto, nombre: r.nombre, ciudad: r.ciudad, perfume: r.perfume,
-      foto: r.foto, estrellas: r.estrellas, verificado: r.verified_purchase,
+      foto: r.foto, estrellas: r.estrellas, verificado: r.verified_purchase, fecha: r.published_at,
     }));
   }
   const RESENAS = Array.isArray(REMOTO.reviews) ? REMOTO.reviews : [];
@@ -218,6 +218,43 @@
 
   const CLAVE_LISTA = "sb-lista";
   const porId = new Map(PERFUMES.map((p) => [p.id, p]));
+
+  /* Calificación de cada perfume según sus reseñas publicadas: { promedio, total } */
+  const calificacionPorId = new Map();
+  RESENAS.forEach((r) => {
+    if (!r.rating || !r.perfume_id) return;
+    const c = calificacionPorId.get(r.perfume_id) || { suma: 0, total: 0 };
+    c.suma += r.rating;
+    c.total += 1;
+    calificacionPorId.set(r.perfume_id, c);
+  });
+  calificacionPorId.forEach((c) => { c.promedio = c.suma / c.total; });
+  /* 4.666 -> "4.7"; 5 -> "5" */
+  const cifraCalificacion = (n) => n.toFixed(1).replace(/\.0$/, "");
+  const textoResenas = (n) => (n === 1 ? "1 reseña" : `${n} reseñas`);
+
+  /* Estrellas de solo lectura; admite medias (4.5 llena la quinta a la mitad) */
+  const ESTRELLA = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2l2.59 6.44 6.92.47-5.33 4.45 1.7 6.73L12 16.4l-5.88 3.69 1.7-6.73-5.33-4.45 6.92-.47z"/></svg>';
+  const estrellasHTML = (n, clase = "") => {
+    const valor = Math.round(n * 2) / 2;
+    return `<span class="estrellas${clase ? ` ${clase}` : ""}" role="img" aria-label="${cifraCalificacion(n)} de 5 estrellas">${
+      [1, 2, 3, 4, 5].map((i) => (i - 0.5 === valor
+        ? `<span class="estrella es-media">${ESTRELLA}<span class="estrella__mitad">${ESTRELLA}</span></span>`
+        : `<span class="estrella${i <= valor ? " es-llena" : ""}">${ESTRELLA}</span>`)).join("")}</span>`;
+  };
+
+  /* "hace 3 días", "hace 2 semanas", "en marzo de 2026" */
+  const relativo = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+  function haceCuanto(fecha) {
+    const t = Date.parse(fecha);
+    if (!t) return "";
+    const dias = Math.round((Date.now() - t) / 86400000);
+    if (dias < 1) return "hoy";
+    if (dias < 7) return relativo.format(-dias, "day");
+    if (dias < 31) return relativo.format(-Math.round(dias / 7), "week");
+    if (dias < 365) return relativo.format(-Math.round(dias / 30.4), "month");
+    return `en ${new Date(t).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
+  }
   const familiaPorId = new Map(FAMILIAS.map((f) => [f.id, f]));
   /* La portada solo pasa por las familias que tienen foto grande y algún perfume publicado */
   const PORTADA = FAMILIAS.filter((f) => f.hero && PERFUMES.some((p) => p.familia === f.id));
@@ -1215,10 +1252,11 @@
   }
 
   /* ---------- Inicio: lo que dicen nuestros clientes ----------
-     Una tarjeta por testimonio (TESTIMONIOS): retrato en un círculo con hojas, comillas,
-     estrellas si las hay, la frase y quién la dijo. Con varios, se deslizan de lado y
-     unos puntos indican cuál se ve. Si la lista está vacía, la sección no se muestra; solo
-     en la vista previa local aparece una tarjeta de ejemplo para ver el diseño. */
+     A la izquierda: el título, la calificación de la tienda (promedio de todas las reseñas
+     publicadas) y flechas. A la derecha: una fila de tarjetas que se desliza, una por reseña
+     destacada (TESTIMONIOS); si no hay destacadas, las últimas publicadas. Cada tarjeta lleva
+     las estrellas, la frase, quién la dijo y el perfume, que abre su ficha. Si no hay
+     ninguna, la sección no se muestra; solo en la vista previa local aparece un ejemplo. */
 
   const enVistaPrevia = ["localhost", "127.0.0.1"].includes(location.hostname);
   const EJEMPLO_CLIENTE = {
@@ -1230,65 +1268,90 @@
     estrellas: 5,
   };
 
+  /* Todo lo que escribieron los clientes pasa por escaparHTML: nunca se inserta como HTML */
   function tarjetaCliente(t, i) {
     const p = t.perfume ? porId.get(t.perfume) : null;
     const f = p ? familiaPorId.get(p.familia) : null;
-    const imagen = t.foto || (p ? (p.lamina || url(p.foto, 500)) : "");
     const estrellas = t.estrellas ? Math.max(1, Math.min(5, Math.round(t.estrellas))) : 0;
+    const texto = String(t.texto || "").trim();
+    const nombre = String(t.nombre || "Cliente").trim();
+    const fecha = t.fecha ? haceCuanto(t.fecha) : "";
+    /* Las frases cortas se leen grandes; las largas, a tamaño de lectura y recortadas */
+    const largo = texto.length < 70 ? "corta" : texto.length > 220 ? "larga" : "media";
     return `
-      <li class="cliente${t.ejemplo ? " cliente--ejemplo" : ""}" data-indice="${i}"${f ? ` style="--campo: var(--c-${f.id})"` : ""}>
-        <div class="cliente__retrato" aria-hidden="true">
-          <i class="ph ph-leaf cliente__hoja cliente__hoja--1"></i>
-          <i class="ph ph-leaf cliente__hoja cliente__hoja--2"></i>
-          <i class="ph ph-leaf cliente__hoja cliente__hoja--3"></i>
-          <span class="cliente__circulo">${imagen ? `<img src="${imagen}" alt="" loading="lazy">` : `<span class="cliente__inicial"></span>`}</span>
-        </div>
-        <figure class="cliente__cuerpo">
-          <span class="cliente__comillas" aria-hidden="true">“</span>
-          ${estrellas ? `<p class="cliente__estrellas" role="img" aria-label="${estrellas} de 5 estrellas">${"★".repeat(estrellas)}<span>${"★".repeat(5 - estrellas)}</span></p>` : ""}
-          <blockquote class="cliente__texto"></blockquote>
-          <figcaption class="cliente__quien"><strong></strong><span></span></figcaption>
-          ${p ? `<button class="cliente__perfume" type="button" data-ficha="${p.id}">${t.verificado ? "Compró" : "Reseñó"} ${p.nombre}<i class="ph ph-arrow-up-right" aria-hidden="true"></i></button>` : ""}
-          ${t.ejemplo ? `<span class="cliente__aviso">Ejemplo de diseño, solo visible en tu computadora</span>` : ""}
+      <li class="voz voz--${largo}${t.ejemplo ? " voz--ejemplo" : ""}" data-indice="${i}"${f ? ` style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id})"` : ""}>
+        <figure>
+          <div class="voz__arriba">
+            ${estrellas ? estrellasHTML(estrellas) : "<span></span>"}
+            ${fecha ? `<time datetime="${escaparHTML(t.fecha)}">${fecha}</time>` : ""}
+          </div>
+          <blockquote class="voz__texto"><p>${escaparHTML(texto)}</p></blockquote>
+          <figcaption class="voz__quien">
+            <span class="voz__avatar" aria-hidden="true">${t.foto ? `<img src="${escaparHTML(t.foto)}" alt="" loading="lazy">` : escaparHTML(nombre.charAt(0).toUpperCase())}</span>
+            <span><strong>${escaparHTML(nombre)}</strong>${t.ciudad ? `<small>${escaparHTML(t.ciudad)}</small>` : ""}</span>
+          </figcaption>
         </figure>
+        ${p ? `<button class="voz__perfume" type="button" data-ficha="${p.id}">
+          <img src="${p.lamina || url(p.foto, 160)}" alt="" width="44" height="44" loading="lazy">
+          <span><small>${t.verificado ? "Compró" : "Reseñó"}</small>${p.nombre}</span>
+          <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+        </button>` : ""}
+        ${t.ejemplo ? `<span class="voz__aviso">Ejemplo de diseño, solo visible en tu computadora</span>` : ""}
       </li>`;
   }
+
+  /* Las reseñas publicadas (no destacadas) con la forma de TESTIMONIOS */
+  const comoTestimonio = (r) => ({
+    texto: r.body, nombre: r.author_name, ciudad: r.city, perfume: r.perfume_id,
+    estrellas: r.rating, fecha: r.published_at,
+  });
 
   function pintarClientes() {
     const seccion = $("#clientes");
     if (!seccion) return;
-    const lista = TESTIMONIOS.length ? TESTIMONIOS : enVistaPrevia ? [EJEMPLO_CLIENTE] : [];
+    const publicadas = RESENAS.filter((r) => r.body && (!r.rating || r.rating >= 4)).slice(0, 8).map(comoTestimonio);
+    const lista = TESTIMONIOS.length ? TESTIMONIOS : publicadas.length ? publicadas : enVistaPrevia ? [EJEMPLO_CLIENTE] : [];
     seccion.hidden = lista.length === 0;
     const pista = $("#clientes-pista");
     pista.innerHTML = lista.map(tarjetaCliente).join("");
-    /* Lo que escribieron los clientes se pone como texto, nunca como HTML */
-    $$(".cliente", pista).forEach((li, n) => {
-      const t = lista[n];
-      $(".cliente__texto", li).textContent = `“${t.texto}”`;
-      $(".cliente__quien strong", li).textContent = t.nombre || "Cliente";
-      $(".cliente__quien span", li).textContent = t.ciudad || "";
-      const inicial = $(".cliente__inicial", li);
-      if (inicial) inicial.textContent = (t.nombre || "C").trim().charAt(0).toUpperCase();
-    });
 
-    const puntos = $("#clientes-puntos");
-    puntos.hidden = lista.length < 2;
-    puntos.innerHTML = lista.length < 2 ? "" : lista.map((_, i) =>
-      `<button type="button" data-cliente-punto="${i}" aria-label="Ver testimonio ${i + 1} de ${lista.length}" aria-current="${i === 0}"></button>`).join("");
+    /* Calificación de la tienda: el promedio de todas las reseñas publicadas */
+    const calificadas = RESENAS.filter((r) => r.rating);
+    const resumen = $("#clientes-resumen");
+    resumen.hidden = calificadas.length === 0;
+    if (calificadas.length) {
+      const promedio = calificadas.reduce((suma, r) => suma + r.rating, 0) / calificadas.length;
+      resumen.innerHTML = `
+        <p class="clientes__nota"><strong>${cifraCalificacion(promedio)}</strong><span>de 5</span></p>
+        <div>${estrellasHTML(promedio, "estrellas--grandes")}<p>${textoResenas(calificadas.length)} de clientes</p></div>`;
+    }
+
+    /* Flechas: solo si las tarjetas no caben; se apagan en cada extremo */
+    const flechas = $("#clientes-flechas");
+    const ajustarFlechas = () => {
+      const max = pista.scrollWidth - pista.clientWidth;
+      flechas.hidden = max <= 4;
+      const [antes, despues] = $$("button", flechas);
+      antes.disabled = pista.scrollLeft <= 4;
+      despues.disabled = pista.scrollLeft >= max - 4;
+    };
     let pendiente = 0;
-    pista.addEventListener("scroll", () => {
+    const alMover = () => {
       if (pendiente) return;
-      pendiente = window.requestAnimationFrame(() => {
-        pendiente = 0;
-        const actual = Math.round(pista.scrollLeft / Math.max(pista.clientWidth, 1));
-        $$("[data-cliente-punto]", puntos).forEach((b, i) => b.setAttribute("aria-current", String(i === actual)));
-      });
-    }, { passive: true });
+      pendiente = window.requestAnimationFrame(() => { pendiente = 0; ajustarFlechas(); });
+    };
+    pista.addEventListener("scroll", alMover, { passive: true });
+    window.addEventListener("resize", alMover, { passive: true });
+    ajustarFlechas();
   }
 
-  function verCliente(indice) {
+  /* Avanza o regresa una tarjeta */
+  function moverClientes(paso) {
     const pista = $("#clientes-pista");
-    pista.scrollTo({ left: indice * pista.clientWidth, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    const tarjeta = $(".voz", pista);
+    if (!tarjeta) return;
+    const salto = tarjeta.getBoundingClientRect().width + parseFloat(getComputedStyle(pista).columnGap || 0);
+    pista.scrollBy({ left: paso * salto, behavior: menosMovimiento.matches ? "auto" : "smooth" });
   }
 
   /* ---------- Catálogo: hoja de filtros en el teléfono ----------
@@ -1350,6 +1413,15 @@
 
   /* ---------- Catálogo ---------- */
 
+  /* Calificación de la tarjeta: una pastilla arriba de la foto, solo si el perfume ya tiene
+     reseñas publicadas */
+  function calificacionFicha(p) {
+    const cal = calificacionPorId.get(p.id);
+    if (!cal) return "";
+    return `<span class="ficha__calif" role="img" aria-label="${cifraCalificacion(cal.promedio)} de 5 estrellas, ${textoResenas(cal.total)}">`
+      + `<span class="estrella es-llena">${ESTRELLA}</span><strong>${cifraCalificacion(cal.promedio)}</strong><span>(${cal.total})</span></span>`;
+  }
+
   function ficha(p) {
     const imagen = p.lamina
       ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" loading="lazy" width="1080" height="1080">`
@@ -1357,7 +1429,7 @@
     return `
       <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}${NOVEDADES.includes(p.id) ? '<span class="ficha__nuevo">Nuevo</span>' : ""}</span>
+          <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}${NOVEDADES.includes(p.id) ? '<span class="ficha__nuevo">Nuevo</span>' : ""}${calificacionFicha(p)}</span>
         </button>
         <div class="ficha__cuerpo">
           <div class="ficha__cabeza">
@@ -1811,7 +1883,6 @@
   const CLAVE_CLIENTE = "sb-cliente";
   const CLAVE_RESENADOS = "sb-resenados";
   const CALIFICACIONES = ["", "No me gustó", "Regular", "Está bien", "Me gustó", "Me encantó"];
-  const ESTRELLA = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2l2.59 6.44 6.92.47-5.33 4.45 1.7 6.73L12 16.4l-5.88 3.69 1.7-6.73-5.33-4.45 6.92-.47z"/></svg>';
 
   function idCliente() {
     try {
@@ -1845,13 +1916,12 @@
     }
   }
 
-  const estrellasHTML = (n) => `<span class="estrellas" role="img" aria-label="${n} de 5 estrellas">${
-    [1, 2, 3, 4, 5].map((i) => `<span class="estrella${i <= n ? " es-llena" : ""}">${ESTRELLA}</span>`).join("")}</span>`;
-
-  const resenaHechaHTML = (titulo) => `
+  /* Solo se ve justo después de enviar; al volver a abrir la ficha ya no aparece ni el aviso
+     ni el formulario de ese perfume */
+  const resenaHechaHTML = () => `
     <div class="resena__hecha" role="status">
       <i class="ph ph-check-circle" aria-hidden="true"></i>
-      <div><strong>${titulo}</strong><span>Solo se puede dejar una reseña por perfume. La publicamos en cuanto la revisemos.</span></div>
+      <div><strong>Ya dejaste tu reseña de este perfume.</strong><span>Se publicará cuando la revisemos.</span></div>
     </div>`;
 
   function cargarCaptcha() {
@@ -1933,10 +2003,10 @@
     quitarCaptcha();
     const f = familiaPorId.get(p.familia);
     const otros = PERFUMES.filter((o) => o.familia === p.familia && o.id !== p.id).slice(0, 3);
-    const todasResenas = RESENAS.filter((r) => r.perfume_id === p.id);
-    const resenas = todasResenas.slice(0, 5);
-    const calificadas = todasResenas.filter((r) => r.rating);
-    const promedio = calificadas.length ? calificadas.reduce((suma, r) => suma + r.rating, 0) / calificadas.length : 0;
+    const resenas = RESENAS.filter((r) => r.perfume_id === p.id).slice(0, 6);
+    const cal = calificacionPorId.get(p.id);
+    /* Cuántas reseñas hay de cada calificación, de 5 a 1 estrellas */
+    const reparto = [5, 4, 3, 2, 1].map((n) => [n, RESENAS.filter((r) => r.perfume_id === p.id && r.rating === n).length]);
     const puedeEnviar = Boolean(SUPABASE.url && SUPABASE.publishableKey && SUPABASE.turnstileSiteKey);
     const yaResenado = perfumesResenados().includes(p.id);
     const texto = `Hola ${CONFIG.marca}, me interesa ${nombreCompleto(p)}. ¿Me pasan precio y disponibilidad?`;
@@ -1968,6 +2038,7 @@
         <div class="detalle__info">
           <p class="detalle__meta" style="--i: 0"><span class="detalle__etiqueta">${f.nombre}</span><span>${p.casa} · ${p.origen}</span>${p.version ? `<span class="detalle__version">${p.version}</span>` : ""}</p>
           <h2 id="detalle-nombre" style="--i: 1">${p.nombre}</h2>
+          ${cal ? `<button class="detalle__calif" type="button" data-ir-resenas style="--i: 1">${estrellasHTML(cal.promedio)}<strong>${cifraCalificacion(cal.promedio)}</strong><span>${textoResenas(cal.total)}</span></button>` : ""}
           <p class="detalle__huele" style="--i: 2">${hueleA(p)}</p>
           <p class="detalle__familia" style="--i: 3"><strong>Familia ${f.nombre.toLowerCase()}.</strong> ${f.larga}</p>
           ${notasPrincipales(p).length ? `<div class="detalle__momentos" style="--i: 4">
@@ -2006,20 +2077,26 @@
             </ul>
           </div>` : ""}
           <section class="detalle__resenas" aria-labelledby="resenas-titulo" style="--i: 9">
-            <div class="resenas__cabecera">
-              <h3 id="resenas-titulo">Reseñas</h3>
-              ${calificadas.length ? `<p class="resenas__promedio"><strong>${promedio.toFixed(1).replace(".0", "")}</strong>${estrellasHTML(Math.round(promedio))}<span>${todasResenas.length === 1 ? "1 reseña" : `${todasResenas.length} reseñas`}</span></p>` : ""}
-            </div>
+            <h3 id="resenas-titulo">Reseñas de clientes</h3>
+            ${cal ? `<div class="resenas__resumen">
+              <p class="resenas__nota"><strong>${cifraCalificacion(cal.promedio)}</strong><span>de 5</span></p>
+              <div class="resenas__base">${estrellasHTML(cal.promedio, "estrellas--grandes")}<span>${textoResenas(cal.total)}</span></div>
+              ${cal.total >= 3 ? `<ul class="resenas__reparto" aria-label="Reparto de calificaciones">${reparto.map(([n, cuantas]) => `
+                <li><span>${n}</span><span class="resenas__barra"><span style="--parte: ${cuantas / cal.total}"></span></span><span class="oculto">${n} estrellas: ${cuantas}</span></li>`).join("")}
+              </ul>` : ""}
+            </div>` : ""}
             ${resenas.length ? `<ul class="resenas__lista">${resenas.map((r) => `
-              <li>
-                <div class="resena__cabecera">
-                  <span class="resena__inicial" aria-hidden="true">${escaparHTML((r.author_name || "?").trim().charAt(0).toUpperCase())}</span>
-                  <p><strong>${escaparHTML(r.author_name)}</strong>${r.city ? `<small>${escaparHTML(r.city)}</small>` : ""}</p>
-                  ${r.rating ? estrellasHTML(r.rating) : ""}
+              <li class="resena">
+                <div class="resena__arriba">
+                  ${r.rating ? estrellasHTML(r.rating) : "<span></span>"}
+                  ${r.published_at ? `<time datetime="${escaparHTML(r.published_at)}">${haceCuanto(r.published_at)}</time>` : ""}
                 </div>
                 <p class="resena__texto">${escaparHTML(r.body)}</p>
-              </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía nadie ha reseñado este perfume. ${puedeEnviar && !yaResenado ? "Si ya lo usaste, cuéntanos qué te pareció." : ""}</p>`}
-            ${puedeEnviar && yaResenado ? resenaHechaHTML("Ya dejaste tu reseña de este perfume.") : ""}
+                <p class="resena__autor">
+                  <span class="resena__inicial" aria-hidden="true">${escaparHTML((r.author_name || "?").trim().charAt(0).toUpperCase())}</span>
+                  <strong>${escaparHTML(r.author_name)}</strong>${r.city ? `<span>${escaparHTML(r.city)}</span>` : ""}
+                </p>
+              </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía nadie ha reseñado este perfume.${puedeEnviar && !yaResenado ? " Si ya lo usaste, cuéntanos qué te pareció." : ""}</p>`}
             ${puedeEnviar && !yaResenado ? `<form class="resena__form" data-resena-perfume="${p.id}">
               <fieldset class="calificar">
                 <legend>¿Ya lo usaste? Califícalo</legend>
@@ -2155,10 +2232,10 @@
       const boton = $("button[type='submit']", form);
       const perfumeId = form.dataset.resenaPerfume;
       /* Termina la reseña: el formulario se cambia por el aviso de que ya está hecha */
-      const terminar = (titulo) => {
+      const terminar = () => {
         marcarResenado(perfumeId);
         quitarCaptcha();
-        form.insertAdjacentHTML("beforebegin", resenaHechaHTML(titulo));
+        form.insertAdjacentHTML("beforebegin", resenaHechaHTML());
         const vacio = $(".resenas__vacio", detalle);
         if (vacio) vacio.textContent = "Todavía no hay reseñas publicadas de este perfume.";
         form.remove();
@@ -2194,12 +2271,9 @@
           }),
         });
         const resultado = await respuesta.json().catch(() => ({}));
-        if (respuesta.status === 409) {
-          terminar("Ya habías dejado una reseña de este perfume.");
-          return;
-        }
-        if (!respuesta.ok) throw new Error(resultado.error || "No se pudo enviar la reseña");
-        terminar("¡Gracias! Recibimos tu reseña.");
+        /* 409: el servidor ya tenía una reseña suya de este perfume; se avisa igual */
+        if (!respuesta.ok && respuesta.status !== 409) throw new Error(resultado.error || "No se pudo enviar la reseña");
+        terminar();
       } catch (error) {
         estado.classList.add("es-error");
         estado.textContent = error.message || "No se pudo enviar la reseña. Inténtalo de nuevo.";
@@ -2327,8 +2401,8 @@
       else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
         irA({ vista: "catalogo", paso: "familia", origen: rutaActual.origen, familia: "todas" });
       }
-    } else if (boton.dataset.clientePunto) {
-      verCliente(Number(boton.dataset.clientePunto));
+    } else if (boton.dataset.clientesPaso) {
+      moverClientes(Number(boton.dataset.clientesPaso));
     } else if (boton.id === "abrir-filtros") {
       abrirFiltros();
     } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
@@ -2354,6 +2428,8 @@
       if (boton.closest(".barra")) cerrarPanelLista();
       const tarjeta = boton.closest(".ficha, .vendidos__tarjeta, .vendido, .pedido__item, .destacado, .novedad");
       abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta) : null);
+    } else if ("irResenas" in boton.dataset) {
+      $(".detalle__resenas", detalle)?.scrollIntoView({ behavior: menosMovimiento.matches ? "auto" : "smooth", block: "start" });
     } else if (boton.classList.contains("detalle__cerrar")) {
       cerrarDetalle();
     } else if (boton.classList.contains("selector__btn")) {
