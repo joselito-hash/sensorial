@@ -263,19 +263,27 @@
               <h2 id="filtros-titulo">Filtros</h2>
               <button class="filtros__cerrar" type="button" id="cerrar-filtros" aria-label="Cerrar filtros"><i class="ph ph-x" aria-hidden="true"></i></button>
             </div>
-            <div class="filtros__grupo" role="group" aria-labelledby="filtro-familia">
+            <!-- Origen: un control segmentado; la pastilla clara se desliza a la opción elegida -->
+            <div class="filtros__grupo filtros__grupo--origen" role="group" aria-labelledby="filtro-origen">
+              <span class="filtros__titulo" id="filtro-origen">Origen</span>
+              <div class="segmento">
+                <span class="segmento__marca" aria-hidden="true"></span>
+                <button class="chip" type="button" data-grupo="origen" data-valor="todos" aria-pressed="true">Todos</button>
+                <button class="chip" type="button" data-grupo="origen" data-valor="Diseñador" aria-pressed="false">Diseñador</button>
+                <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
+              </div>
+            </div>
+            <div class="filtros__resultado">
+              <p class="filtros__conteo" id="conteo" aria-live="polite"></p>
+              <button class="enlace filtros__limpiar" type="button" data-limpiar-filtros hidden><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Limpiar</button>
+            </div>
+            <!-- Familia: cada botón lleva el color de su familia y cuántos perfumes tiene -->
+            <div class="filtros__grupo filtros__grupo--familia" role="group" aria-labelledby="filtro-familia">
               <span class="filtros__titulo" id="filtro-familia">Familia</span>
-              <button class="chip" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true">Todas</button>
+              <button class="chip chip--familia chip--todas" type="button" data-grupo="familia" data-valor="todas" aria-pressed="true"><span class="chip__punto" aria-hidden="true"></span>Todas<span class="chip__n" data-n="todas"></span></button>
               <!-- Un botón por familia: app.js los crea a partir de FAMILIAS -->
               <span class="chips-familia" id="chips-familia" style="display: contents"></span>
             </div>
-            <div class="filtros__grupo" role="group" aria-labelledby="filtro-origen">
-              <span class="filtros__titulo" id="filtro-origen">Origen</span>
-              <button class="chip" type="button" data-grupo="origen" data-valor="todos" aria-pressed="true">Todos</button>
-              <button class="chip" type="button" data-grupo="origen" data-valor="Diseñador" aria-pressed="false">Diseñador</button>
-              <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
-            </div>
-            <p class="filtros__conteo" id="conteo" aria-live="polite"></p>
             <div class="filtros__pie">
               <button class="enlace" type="button" id="limpiar-filtros">Limpiar</button>
               <button class="btn btn--claro" type="button" id="aplicar-filtros">Ver<span id="conteo-boton">perfumes</span></button>

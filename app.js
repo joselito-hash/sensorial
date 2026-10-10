@@ -333,7 +333,9 @@
       btn.setAttribute("aria-pressed", String(enLista));
       $("i", btn).className = enLista ? "ph ph-check" : "ph ph-plus";
       const etiqueta = $("span", btn);
-      if (etiqueta) etiqueta.textContent = enLista ? "En tu lista" : ("largo" in btn.dataset ? "Agregar a mi lista" : "Agregar");
+      /* " a mi lista" va aparte: en el teléfono se oculta para que los dos botones fijos de la
+         ficha quepan lado a lado (el aria-label conserva la frase completa) */
+      if (etiqueta) etiqueta.innerHTML = enLista ? "En tu lista" : ("largo" in btn.dataset ? 'Agregar<span class="agregar__largo"> a mi lista</span>' : "Agregar");
       btn.setAttribute("aria-label", `${enLista ? "Quitar" : "Agregar"} ${nombreCompleto(p)} ${enLista ? "de" : "a"} tu lista`);
     });
   }
@@ -1377,7 +1379,7 @@
     const caja = $("#chips-familia");
     if (!caja) return;
     caja.innerHTML = FAMILIAS.map((f) =>
-      `<button class="chip" type="button" data-grupo="familia" data-valor="${f.id}" aria-pressed="false">${f.nombre}</button>`).join("");
+      `<button class="chip chip--familia" type="button" data-grupo="familia" data-valor="${f.id}" aria-pressed="false" style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id})"><span class="chip__punto" aria-hidden="true"></span>${f.nombre}<span class="chip__n" data-n="${f.id}"></span></button>`).join("");
   }
 
   /* Un capítulo de color por familia, con sus perfumes dentro */
@@ -1420,7 +1422,17 @@
     $$(".chip").forEach((chip) => {
       chip.setAttribute("aria-pressed", String(estado.filtros[chip.dataset.grupo] === chip.dataset.valor));
     });
-    $("#conteo").textContent = textoPerfumes(visibles);
+    /* Cada familia dice cuántos perfumes tiene con el origen elegido; las que no tienen
+       ninguno se apagan (salvo la elegida) para no llevar a un catálogo vacío */
+    const delOrigen = PERFUMES.filter((p) => origen === "todos" || p.origen === origen);
+    $$(".chip__n").forEach((n) => {
+      const cuantos = n.dataset.n === "todas" ? delOrigen.length : delOrigen.filter((p) => p.familia === n.dataset.n).length;
+      n.textContent = String(cuantos);
+      const chip = n.closest(".chip");
+      chip.disabled = cuantos === 0 && chip.getAttribute("aria-pressed") !== "true";
+    });
+    $("#conteo").innerHTML = `<strong>${visibles}</strong> ${visibles === 1 ? "perfume" : "perfumes"}`;
+    $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos"; });
     resumirFiltros(visibles);
     $("#vacio").hidden = visibles > 0;
     const titulo = $("#titulo-catalogo");
@@ -1790,6 +1802,57 @@
   let diapositivaDetalle = 0;
   let captchaWidget = null;
   let captchaCarga = null;
+  let captchaToken = "";
+
+  /* ---------- Reseñas ----------
+     Una por cliente y perfume. Sin cuentas, el navegador guarda un identificador anónimo
+     (el servidor solo guarda su huella) y la lista de perfumes que ya reseñó; el servidor
+     además rechaza el mismo nombre en el mismo perfume. */
+  const CLAVE_CLIENTE = "sb-cliente";
+  const CLAVE_RESENADOS = "sb-resenados";
+  const CALIFICACIONES = ["", "No me gustó", "Regular", "Está bien", "Me gustó", "Me encantó"];
+  const ESTRELLA = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2l2.59 6.44 6.92.47-5.33 4.45 1.7 6.73L12 16.4l-5.88 3.69 1.7-6.73-5.33-4.45 6.92-.47z"/></svg>';
+
+  function idCliente() {
+    try {
+      let id = localStorage.getItem(CLAVE_CLIENTE);
+      if (!id || !/^[A-Za-z0-9-]{16,64}$/.test(id)) {
+        id = crypto.randomUUID ? crypto.randomUUID()
+          : [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+        localStorage.setItem(CLAVE_CLIENTE, id);
+      }
+      return id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function perfumesResenados() {
+    try {
+      const lista = JSON.parse(localStorage.getItem(CLAVE_RESENADOS) || "[]");
+      return Array.isArray(lista) ? lista : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function marcarResenado(id) {
+    try {
+      const lista = perfumesResenados();
+      if (!lista.includes(id)) localStorage.setItem(CLAVE_RESENADOS, JSON.stringify([...lista, id]));
+    } catch {
+      /* sin almacenamiento: el servidor sigue rechazando la segunda reseña */
+    }
+  }
+
+  const estrellasHTML = (n) => `<span class="estrellas" role="img" aria-label="${n} de 5 estrellas">${
+    [1, 2, 3, 4, 5].map((i) => `<span class="estrella${i <= n ? " es-llena" : ""}">${ESTRELLA}</span>`).join("")}</span>`;
+
+  const resenaHechaHTML = (titulo) => `
+    <div class="resena__hecha" role="status">
+      <i class="ph ph-check-circle" aria-hidden="true"></i>
+      <div><strong>${titulo}</strong><span>Solo se puede dejar una reseña por perfume. La publicamos en cuanto la revisemos.</span></div>
+    </div>`;
 
   function cargarCaptcha() {
     if (window.turnstile) return Promise.resolve();
@@ -1807,22 +1870,39 @@
   function quitarCaptcha() {
     if (captchaWidget !== null && window.turnstile) window.turnstile.remove(captchaWidget);
     captchaWidget = null;
+    captchaToken = "";
   }
 
+  /* La verificación se carga hasta que el cliente elige sus estrellas, y es invisible:
+     Cloudflare solo muestra una casilla si de verdad duda de que sea una persona */
   async function prepararCaptcha() {
     const caja = $(".resena__captcha", detalle);
-    if (!caja) return;
+    if (!caja || captchaWidget !== null) return;
     try {
       await cargarCaptcha();
       if (!window.turnstile) throw new Error("Turnstile no disponible");
-      if (caja.isConnected) captchaWidget = window.turnstile.render(caja, {
+      if (caja.isConnected && captchaWidget === null) captchaWidget = window.turnstile.render(caja, {
         sitekey: SUPABASE.turnstileSiteKey,
         theme: "dark",
+        size: "flexible",
+        appearance: "interaction-only",
+        callback: (token) => { captchaToken = token; },
+        "expired-callback": () => { captchaToken = ""; },
+        "error-callback": () => { captchaToken = ""; },
       });
     } catch {
       const estado = $(".resena__estado", detalle);
       if (estado) estado.textContent = "No se pudo cargar la verificación. Actualiza la página para intentarlo.";
     }
+  }
+
+  /* Espera unos segundos a que la verificación invisible entregue su token */
+  async function tokenCaptcha() {
+    await prepararCaptcha();
+    for (let i = 0; i < 40 && !captchaToken; i += 1) {
+      await new Promise((listo) => { window.setTimeout(listo, 250); });
+    }
+    return captchaToken;
   }
 
   function mostrarDiapositiva(indice) {
@@ -1853,8 +1933,12 @@
     quitarCaptcha();
     const f = familiaPorId.get(p.familia);
     const otros = PERFUMES.filter((o) => o.familia === p.familia && o.id !== p.id).slice(0, 3);
-    const resenas = RESENAS.filter((r) => r.perfume_id === p.id).slice(0, 5);
+    const todasResenas = RESENAS.filter((r) => r.perfume_id === p.id);
+    const resenas = todasResenas.slice(0, 5);
+    const calificadas = todasResenas.filter((r) => r.rating);
+    const promedio = calificadas.length ? calificadas.reduce((suma, r) => suma + r.rating, 0) / calificadas.length : 0;
     const puedeEnviar = Boolean(SUPABASE.url && SUPABASE.publishableKey && SUPABASE.turnstileSiteKey);
+    const yaResenado = perfumesResenados().includes(p.id);
     const texto = `Hola ${CONFIG.marca}, me interesa ${nombreCompleto(p)}. ¿Me pasan precio y disponibilidad?`;
     const enlace = `https://wa.me/${CONFIG.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`;
     const fotos = [
@@ -1900,10 +1984,6 @@
               <ul>${chipsDeNotas(p.notas.fondo)}</ul>
             </div>
           </div>` : ""}
-          <div class="detalle__acciones" style="--i: 5">
-            <button class="agregar" type="button" data-id="${p.id}" data-largo aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar a mi lista</span></button>
-            <a class="btn" href="${enlace}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp</a>
-          </div>
           ${p.acordes && p.acordes.length ? `
           <div class="detalle__bloque" style="--i: 6">
             <h3>Acordes principales</h3>
@@ -1925,29 +2005,51 @@
               ${otros.map((o) => `<li><button class="otro" type="button" data-ficha="${o.id}"><img src="${o.lamina || url(o.foto, 160)}" alt="" width="40" height="40">${o.nombre}</button></li>`).join("")}
             </ul>
           </div>` : ""}
-          <section class="detalle__resenas" aria-label="Reseñas de ${escaparHTML(p.nombre)}" style="--i: 9">
-            <h3>Reseñas de clientes</h3>
+          <section class="detalle__resenas" aria-labelledby="resenas-titulo" style="--i: 9">
+            <div class="resenas__cabecera">
+              <h3 id="resenas-titulo">Reseñas</h3>
+              ${calificadas.length ? `<p class="resenas__promedio"><strong>${promedio.toFixed(1).replace(".0", "")}</strong>${estrellasHTML(Math.round(promedio))}<span>${todasResenas.length === 1 ? "1 reseña" : `${todasResenas.length} reseñas`}</span></p>` : ""}
+            </div>
             ${resenas.length ? `<ul class="resenas__lista">${resenas.map((r) => `
               <li>
-                <div class="resena__cabecera"><strong>${escaparHTML(r.author_name)}</strong>${r.rating ? `<span aria-label="${r.rating} de 5 estrellas">${"★".repeat(r.rating)}</span>` : ""}</div>
-                ${r.city ? `<small>${escaparHTML(r.city)}</small>` : ""}
-                <p>${escaparHTML(r.body)}</p>
-              </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía no hay reseñas publicadas de este perfume.</p>`}
-            ${puedeEnviar ? `<form class="resena__form" data-resena-perfume="${p.id}">
-              <h4>Cuéntanos qué te pareció</h4>
-              <div class="resena__campos">
-                <label>Tu nombre<input name="nombre" maxlength="80" minlength="2" required autocomplete="name"></label>
-                <label>Ciudad (opcional)<input name="ciudad" minlength="2" maxlength="80" autocomplete="address-level2"></label>
+                <div class="resena__cabecera">
+                  <span class="resena__inicial" aria-hidden="true">${escaparHTML((r.author_name || "?").trim().charAt(0).toUpperCase())}</span>
+                  <p><strong>${escaparHTML(r.author_name)}</strong>${r.city ? `<small>${escaparHTML(r.city)}</small>` : ""}</p>
+                  ${r.rating ? estrellasHTML(r.rating) : ""}
+                </div>
+                <p class="resena__texto">${escaparHTML(r.body)}</p>
+              </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía nadie ha reseñado este perfume. ${puedeEnviar && !yaResenado ? "Si ya lo usaste, cuéntanos qué te pareció." : ""}</p>`}
+            ${puedeEnviar && yaResenado ? resenaHechaHTML("Ya dejaste tu reseña de este perfume.") : ""}
+            ${puedeEnviar && !yaResenado ? `<form class="resena__form" data-resena-perfume="${p.id}">
+              <fieldset class="calificar">
+                <legend>¿Ya lo usaste? Califícalo</legend>
+                <div class="calificar__fila">
+                  <div class="calificar__estrellas">
+                    ${[1, 2, 3, 4, 5].map((n) => `<label class="calificar__op"><input type="radio" name="estrellas" value="${n}" required><span class="oculto">${n} de 5 estrellas: ${CALIFICACIONES[n]}</span>${ESTRELLA}</label>`).join("")}
+                  </div>
+                  <span class="calificar__texto" aria-hidden="true"></span>
+                </div>
+              </fieldset>
+              <div class="resena__resto">
+                <div class="resena__resto-dentro">
+                  <label>Tu nombre<input name="nombre" maxlength="80" minlength="2" required autocomplete="given-name" placeholder="Como quieres que aparezca"></label>
+                  <label>Tu reseña<textarea name="texto" minlength="15" maxlength="1500" rows="3" required placeholder="¿Cómo huele en ti, cuánto te dura, te lo han chuleado?"></textarea></label>
+                  <div class="resena__captcha"></div>
+                  <div class="resena__pie">
+                    <button class="btn btn--claro" type="submit"><span>Publicar reseña</span></button>
+                    <p>Al enviarla aceptas que publiquemos tu nombre y tu reseña cuando la revisemos.</p>
+                  </div>
+                </div>
               </div>
-              <label>Tu calificación<select name="estrellas" required><option value="">Elige una opción</option><option value="5">5 estrellas</option><option value="4">4 estrellas</option><option value="3">3 estrellas</option><option value="2">2 estrellas</option><option value="1">1 estrella</option></select></label>
-              <label>Tu reseña<textarea name="texto" minlength="15" maxlength="1500" rows="4" required></textarea></label>
-              <label class="resena__consentimiento"><input type="checkbox" name="publicar" required> Acepto que se publique mi nombre y reseña después de la revisión.</label>
-              <div class="resena__captcha"></div>
-              <p class="resena__estado" role="status" aria-live="polite">Tu reseña aparecerá cuando la revisemos.</p>
-              <button class="btn btn--claro" type="submit">Enviar reseña</button>
+              <p class="resena__estado" role="status" aria-live="polite"></p>
             </form>` : ""}
           </section>
           ${p.fuente ? `<p class="detalle__fuente" style="--i: 9">Datos aromáticos según <a href="${p.fuente}" target="_blank" rel="noopener">${escaparHTML(p.fuenteNombre || "Fragrantica")}</a>.</p>` : ""}
+          <!-- Fijos al pie de la ficha: siempre a la vista mientras se desliza -->
+          <div class="detalle__acciones">
+            <button class="agregar" type="button" data-id="${p.id}" data-largo aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar a mi lista</span></button>
+            <a class="btn" href="${enlace}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Pedir por WhatsApp</a>
+          </div>
         </div>
       </div>`;
     pintarBotones();
@@ -2013,7 +2115,6 @@
       detalle.scrollTop = 0;
       observarBloques();
       iniciarCarruselDetalle();
-      prepararCaptcha();
       return;
     }
     tarjetaOrigen = document.activeElement;
@@ -2023,7 +2124,6 @@
     observarBloques();
     volarImagen(desde);
     iniciarCarruselDetalle();
-    prepararCaptcha();
   }
 
   function cerrarDetalle() {
@@ -2053,36 +2153,75 @@
       evento.preventDefault();
       const estado = $(".resena__estado", form);
       const boton = $("button[type='submit']", form);
-      const widget = captchaWidget;
-      const token = widget !== null && window.turnstile ? window.turnstile.getResponse(widget) : "";
-      if (!token) {
-        estado.textContent = "Completa la verificación antes de enviar.";
-        return;
-      }
+      const perfumeId = form.dataset.resenaPerfume;
+      /* Termina la reseña: el formulario se cambia por el aviso de que ya está hecha */
+      const terminar = (titulo) => {
+        marcarResenado(perfumeId);
+        quitarCaptcha();
+        form.insertAdjacentHTML("beforebegin", resenaHechaHTML(titulo));
+        const vacio = $(".resenas__vacio", detalle);
+        if (vacio) vacio.textContent = "Todavía no hay reseñas publicadas de este perfume.";
+        form.remove();
+      };
       const datos = new FormData(form);
       boton.disabled = true;
+      form.classList.add("es-enviando");
+      estado.classList.remove("es-error");
       estado.textContent = "Enviando reseña…";
+      const token = await tokenCaptcha();
+      if (!form.isConnected) return;
+      if (!token) {
+        boton.disabled = false;
+        form.classList.remove("es-enviando");
+        estado.classList.add("es-error");
+        estado.textContent = $(".resena__captcha iframe", form)
+          ? "Marca la casilla de verificación y vuelve a enviar."
+          : "No pudimos verificar el envío. Revisa tu conexión e inténtalo de nuevo.";
+        return;
+      }
+      const widget = captchaWidget;
       try {
         const urlFuncion = new URL("/functions/v1/submit-review", SUPABASE.url);
         const respuesta = await fetch(urlFuncion, {
           method: "POST",
           headers: { apikey: SUPABASE.publishableKey, "Content-Type": "application/json" },
           body: JSON.stringify({
-            perfumeId: form.dataset.resenaPerfume,
-            nombre: datos.get("nombre"), ciudad: datos.get("ciudad"),
+            perfumeId,
+            nombre: datos.get("nombre"),
             estrellas: datos.get("estrellas"), texto: datos.get("texto"),
-            publicationConsent: datos.get("publicar") === "on", token,
+            clienteId: idCliente(),
+            publicationConsent: true, token,
           }),
         });
-        const resultado = await respuesta.json();
+        const resultado = await respuesta.json().catch(() => ({}));
+        if (respuesta.status === 409) {
+          terminar("Ya habías dejado una reseña de este perfume.");
+          return;
+        }
         if (!respuesta.ok) throw new Error(resultado.error || "No se pudo enviar la reseña");
-        form.reset();
-        estado.textContent = resultado.message;
+        terminar("¡Gracias! Recibimos tu reseña.");
       } catch (error) {
+        estado.classList.add("es-error");
         estado.textContent = error.message || "No se pudo enviar la reseña. Inténtalo de nuevo.";
-      } finally {
+        captchaToken = "";
         if (window.turnstile && widget !== null && widget === captchaWidget) window.turnstile.reset(widget);
         boton.disabled = false;
+        form.classList.remove("es-enviando");
+      }
+    });
+    /* Al elegir estrellas: se nombra la calificación, se abre el resto del formulario y se
+       prepara la verificación invisible */
+    detalle.addEventListener("change", (evento) => {
+      const estrella = evento.target.closest(".calificar__op input");
+      if (!estrella) return;
+      const form = estrella.closest(".resena__form");
+      $(".calificar__texto", form).textContent = CALIFICACIONES[Number(estrella.value)];
+      const primeraVez = !form.classList.contains("es-abierta");
+      form.classList.add("es-abierta");
+      if (primeraVez) {
+        prepararCaptcha();
+        /* En el teléfono no: abriría el teclado encima de las estrellas recién tocadas */
+        if (enEscritorio.matches) window.setTimeout(() => $("input[name='nombre']", form)?.focus({ preventScroll: true }), 380);
       }
     });
     /* Esc cierra con la misma animación; un clic fuera de la ficha también */
@@ -2194,7 +2333,7 @@
       abrirFiltros();
     } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
       cerrarFiltros();
-    } else if (boton.id === "limpiar-filtros") {
+    } else if (boton.id === "limpiar-filtros" || "limpiarFiltros" in boton.dataset) {
       estado.filtros = { familia: "todas", origen: "todos" };
       aplicarFiltros();
       sincronizarDireccion();
