@@ -182,6 +182,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .editor-fields .check input{width:auto;accent-color:#a9cbb8}
 .editor-footer{border-top:1px solid #564951}
 .editor-spacer{flex:1}
+/* Pie de la ficha de perfume: cómo está ahora y los dos botones de guardado */
+.button--outline{border-color:#6d5f68;background:transparent;color:#f8f4f5}
+.button--outline:hover{border-color:#f8f4f5;background:rgb(255 255 255/.04)}
+.editor-estado{display:inline-flex;align-items:center;gap:9px;margin:0;color:#cbbfc6;font-size:.9rem;font-weight:600}
+.editor-estado__punto{width:9px;height:9px;border-radius:50%;background:#8a7c85;box-shadow:0 0 0 4px rgb(138 124 133/.18)}
+.editor-estado[data-estado="publicado"] .editor-estado__punto{background:#add4bd;box-shadow:0 0 0 4px rgb(173 212 189/.2)}
+.editor-estado[data-estado="borrador"] .editor-estado__punto{background:#eac28f;box-shadow:0 0 0 4px rgb(234 194 143/.18)}
 @media(max-width:1000px){.dashboard{grid-template-columns:190px minmax(0,1fr)}
 .sidebar{padding:22px 10px}
 .overview-grid{grid-template-columns:1fr}
@@ -207,6 +214,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .editor-cover{position:static;display:none}
 .editor-header,.editor-footer{padding:16px}
 .editor-footer{flex-wrap:wrap}
+.editor-estado{flex-basis:100%}
+.editor-footer #save-draft,.editor-footer #save-publish{flex:1}
 .editor-footer .button{padding:10px 12px}
 .catalog-toolbar{flex-wrap:wrap}
 .catalog-toolbar select{width:100%}

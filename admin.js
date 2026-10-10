@@ -284,6 +284,21 @@
     $("#family-choice").innerHTML = state.data.families.map((f) => `<option value="${escapeHTML(f.id)}">${escapeHTML(f.name)}</option>`).join("");
   }
 
+  /* El pie de la ficha dice cómo está ahora y nombra los botones según eso:
+     nueva o borrador -> "Guardar borrador" / "Publicar";
+     publicada        -> "Pasar a borrador" / "Guardar cambios" (sigue publicada) */
+  function pintarEstadoFicha(estado) {
+    const textos = {
+      nuevo: "Nuevo · aún sin guardar",
+      borrador: "Borrador · no se ve en la tienda",
+      publicado: "Publicado · visible en la tienda",
+    };
+    $("#editor-estado").dataset.estado = estado;
+    $("#editor-estado-texto").textContent = textos[estado];
+    $("#save-draft").textContent = estado === "publicado" ? "Pasar a borrador" : "Guardar borrador";
+    $("#save-publish").textContent = estado === "publicado" ? "Guardar cambios" : "Publicar";
+  }
+
   function openEditor(id = null) {
     fillSelects();
     const form = $("#perfume-form");
@@ -292,7 +307,7 @@
     state.idEdited = Boolean(id);
     $("#new-brand-wrap").hidden = true;
     fields.new_brand.required = false;
-    $("#archive-perfume").hidden = true;
+    pintarEstadoFicha(id ? (state.data.perfumes.find((item) => item.id === id)?.is_published ? "publicado" : "borrador") : "nuevo");
     $("#importar-estado").className = "importar__estado";
     $("#importar-estado").textContent = "";
     $("#importar-resultados").innerHTML = "";
@@ -307,8 +322,6 @@
       const names = ["id", "name", "family_id", "origin", "concentration", "edition", "audience", "release_year", "description", "primary_image", "collage_image", "best_seller_rank", "new_arrival_rank"];
       names.forEach((name) => { fields[name].value = p[name] ?? ""; });
       fields.brand_choice.value = p.brand_id;
-      fields.is_published.checked = Boolean(p.is_published);
-      $("#archive-perfume").hidden = !p.is_published;
       fields.images.value = state.data.images.filter((row) => row.perfume_id === id)
         .sort((a, b) => a.position - b.position)
         .map((row) => `${row.image_url}${row.alt_text ? ` | ${row.alt_text}` : ""}`).join("\n");
@@ -359,7 +372,7 @@
     return value.split(",").map((item) => item.trim()).filter(Boolean);
   }
 
-  function collectPerfume() {
+  function collectPerfume(publicar) {
     const brandChoice = fields.brand_choice.value;
     const brandName = brandChoice === "__new" ? nonempty(fields.new_brand.value)
       : state.data.brands.find((b) => b.id === brandChoice)?.name || "";
@@ -414,7 +427,7 @@
       release_year: numberOrNull(fields.release_year.value), audience: fields.audience.value,
       primary_image: nonempty(fields.primary_image.value), collage_image: nonempty(fields.collage_image.value),
       best_seller_rank: numberOrNull(fields.best_seller_rank.value), new_arrival_rank: numberOrNull(fields.new_arrival_rank.value),
-      is_published: fields.is_published.checked,
+      is_published: publicar,
       images, notes: { salida: parseNotes(fields.notes_salida.value), corazon: parseNotes(fields.notes_corazon.value), fondo: parseNotes(fields.notes_fondo.value) },
       accords, usage, variants,
       primary_source: sourcePublisher ? { publisher: sourcePublisher, source_url: nonempty(fields.source_url.value),
@@ -1221,36 +1234,35 @@
     pintarResultados();
   }
 
+  /* "Publicar" / "Guardar cambios" guarda la ficha visible en la tienda; "Guardar borrador" /
+     "Pasar a borrador" la guarda sin que se vea */
   async function savePerfume(event) {
     event.preventDefault();
-    const button = $("#save-perfume");
+    const button = event.submitter;
+    if (!button) return;
+    const publicar = button.value === "publicar";
+    const estaba = $("#editor-estado").dataset.estado;
+    if (!publicar && estaba === "publicado" && !window.confirm(`¿Pasar ${nonempty(fields.name.value) || "este perfume"} a borrador? Dejará de verse en la tienda.`)) return;
+    const botones = [$("#save-draft"), $("#save-publish")];
     const label = button.textContent;
-    button.disabled = true;
-    button.textContent = "Guardando…";
+    botones.forEach((b) => { b.disabled = true; });
+    button.textContent = publicar ? "Publicando…" : "Guardando…";
     try {
-      const payload = collectPerfume();
+      const payload = collectPerfume(publicar);
       await uploadSelectedImages(payload);
       await request("rpc/sensorial_admin_save_perfume", { method: "POST", body: { p: payload } });
       $("#editor-dialog").close();
       await loadData();
       showTab("perfumes");
-      notify(payload.is_published ? "Perfume guardado y publicado." : "Borrador guardado.");
+      notify(publicar
+        ? (estaba === "publicado" ? "Cambios guardados. Sigue publicado." : "Perfume publicado en la tienda.")
+        : (estaba === "publicado" ? "Perfume pasado a borrador: ya no se ve en la tienda." : "Borrador guardado."));
     } catch (error) {
       notify(error.message, true);
-    } finally { button.disabled = false; button.textContent = label; }
-  }
-
-  async function archivePerfume() {
-    const current = state.data.perfumes.find((p) => p.id === state.editorId);
-    if (!current || !window.confirm(`¿Ocultar ${current.name} de la tienda? La ficha seguirá guardada como borrador.`)) return;
-    try {
-      await request(`perfumes?id=eq.${encodeURIComponent(current.id)}`, {
-        method: "PATCH", body: { is_published: false, updated_at: new Date().toISOString() },
-      });
-      $("#editor-dialog").close();
-      await loadData();
-      notify("Perfume ocultado de la tienda.");
-    } catch (error) { notify(error.message, true); }
+    } finally {
+      botones.forEach((b) => { b.disabled = false; });
+      button.textContent = label;
+    }
   }
 
   /* ---------- Tablas de pagos (apartados en abonos) ----------
@@ -2166,7 +2178,10 @@
     const boton = event.target.closest("[data-importar]");
     if (boton) usarFragrantica(Number(boton.dataset.importar));
   });
-  $("#archive-perfume").addEventListener("click", archivePerfume);
+  /* Enter en un campo de la ficha no guarda: hay que elegir borrador o publicar */
+  $("#perfume-form").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") event.preventDefault();
+  });
   $("#close-editor").addEventListener("click", () => $("#editor-dialog").close());
   $("#cancel-editor").addEventListener("click", () => $("#editor-dialog").close());
   $("#editor-dialog").addEventListener("click", (event) => {
