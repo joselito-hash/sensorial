@@ -872,21 +872,23 @@ body.buscando .buscar i { transform: scale(1.12); }
   color: var(--tinta);
   transition: transform 500ms var(--suave);
 }
+/* El fondo empieza más abajo que la foto (--asoma): el frasco sin fondo sobresale por arriba
+   de la tarjeta, como parado sobre ella */
+.ficha { --asoma: 2.25rem; }
 .ficha::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: var(--asoma) 0 0;
   border-radius: 1.6rem;
   background: #30272d;
-  box-shadow: 0 18px 32px -22px rgb(0 0 0 / 0.65);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 18px 32px -22px rgb(0 0 0 / 0.65);
   transition: box-shadow 500ms var(--suave);
 }
 .ficha > *,
 .ficha__cuerpo > * { position: relative; }
 .ficha[hidden] { display: none; }
-.ficha:hover { transform: translateY(-4px); }
 .ficha:hover::before {
-  box-shadow: 0 24px 38px -22px rgb(0 0 0 / 0.72);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 38px -22px rgb(0 0 0 / 0.72);
 }
 
 /* En rejilla, cada tarjeta comparte las filas de sus vecinas (subgrid): imagen, nombre y
@@ -900,7 +902,7 @@ body.buscando .buscar i { transform: scale(1.12); }
       row-gap: 0;
       padding: 0;
     }
-    .ficha::before { position: static; grid-column: 1; grid-row: 1 / 4; }
+    .ficha::before { position: static; grid-column: 1; grid-row: 1 / 4; margin-top: var(--asoma); }
     .ficha .ficha__cuerpo { display: contents; }
     .ficha .ficha__abrir { grid-column: 1; grid-row: 1; width: auto; margin: 0.5rem 0.5rem 0; }
     .ficha .ficha__cabeza { grid-column: 1; grid-row: 2; margin: 0.9rem 1.05rem 0; }
@@ -918,22 +920,56 @@ body.buscando .buscar i { transform: scale(1.12); }
   background: none;
   cursor: pointer;
 }
+/* Vitrina para fotos sin fondo (PNG recortado): el frasco completo, sin recortar, de pie sobre
+   un "piso" con su sombra y con la luz del color de su familia detrás. Al pasar el mouse el
+   frasco flota un poco y su sombra se encoge. */
 .ficha__lamina {
-  display: block;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 1.15rem;
-  background: var(--papel-2);
+  display: grid;
+  place-items: end center;
+  aspect-ratio: 4 / 5;
+  isolation: isolate;
+  padding-bottom: 1.35rem;
+}
+.ficha__lamina::before {
+  content: "";
+  position: absolute;
+  inset: 16% 6% 4%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--campo) 30%, transparent), transparent);
+  opacity: 0.8;
+  transition: opacity 700ms var(--suave), transform 1100ms var(--suave);
+}
+.ficha__lamina::after {
+  content: "";
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 0.85rem;
+  height: 1.1rem;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(10 6 9 / 0.75), transparent);
+  transition: transform 900ms var(--suave), opacity 900ms var(--suave);
 }
 .ficha__lamina img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 1100ms var(--suave);
+  width: 88%;
+  height: 94%;
+  border-radius: 0.9rem;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 1.1rem 0.9rem rgb(10 6 9 / 0.45));
+  transition: transform 900ms var(--suave);
 }
-.ficha__lamina--compuesta { background: oklch(1 0 0); }
-.ficha__lamina--compuesta img { object-fit: contain; }
-.ficha:hover .ficha__lamina img { transform: scale(1.05); }
+.ficha:hover .ficha__lamina img { transform: translateY(-0.6rem) scale(1.03); }
+.ficha:hover .ficha__lamina::before { opacity: 1; transform: scale(1.06); }
+.ficha:hover .ficha__lamina::after { transform: scaleX(0.78); opacity: 0.55; }
+/* Lámina compuesta (frasco rodeado de sus notas): cuadro blanco completo, sin vitrina */
+.ficha__lamina--compuesta { display: block; aspect-ratio: 1; padding: 0; overflow: hidden; border-radius: 1.15rem; background: oklch(1 0 0); }
+.ficha__lamina--compuesta::before,
+.ficha__lamina--compuesta::after { content: none; }
+.ficha__lamina--compuesta img { width: 100%; height: 100%; border-radius: 0; filter: none; }
+.ficha:hover .ficha__lamina--compuesta img { transform: scale(1.04); }
 
 .ficha__cuerpo {
   display: flex;
@@ -1540,7 +1576,7 @@ html:has(.detalle[open]) { overflow: hidden; }
 .ficha__nuevo {
   position: absolute;
   left: 0.65rem;
-  top: 0.65rem;
+  top: calc(var(--asoma, 0rem) + 0.65rem);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   background: var(--tinta);
