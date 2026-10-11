@@ -993,9 +993,9 @@ body.buscando .buscar i { transform: scale(1.12); }
   color: var(--tinta);
   transition: transform 500ms var(--suave);
 }
-/* El fondo empieza más abajo que la foto (--asoma): el frasco sin fondo sobresale por arriba
-   de la tarjeta, como parado sobre ella */
-.ficha { --asoma: 2.25rem; }
+/* --asoma: cuánto empieza el fondo más abajo que la foto. En 0, el frasco queda completo
+   dentro de su tarjeta, sin sobresalir por arriba */
+.ficha { --asoma: 0rem; }
 .ficha::before {
   content: "";
   position: absolute;
@@ -1087,16 +1087,17 @@ img[data-recortar].es-lista { animation: foto-lista 450ms ease both; }
    área igual, sean altos o anchos */
 .ficha__lamina img {
   position: absolute;
-  inset: 4% 6% 1.35rem;
-  width: 88%;
-  height: calc(96% - 1.35rem);
+  inset: 9% 10% 1.6rem;
+  width: 80%;
+  height: calc(91% - 1.6rem);
   border-radius: 0.9rem;
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 1.1rem 0.9rem rgb(10 6 9 / 0.45));
   transition: transform 900ms var(--suave);
 }
-.ficha:hover .ficha__lamina img { transform: translateY(-0.6rem) scale(1.03); }
+/* Al pasar el mouse el frasco solo sube un poco, sin crecer ni salirse de la tarjeta */
+.ficha:hover .ficha__lamina img { transform: translateY(-0.35rem); }
 .ficha:hover .ficha__lamina::before { opacity: 1; transform: scale(1.06); }
 .ficha:hover .ficha__lamina::after { transform: scaleX(0.78); opacity: 0.55; }
 /* Lámina compuesta (frasco rodeado de sus notas): cuadro blanco completo, sin vitrina */

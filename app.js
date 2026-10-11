@@ -709,7 +709,10 @@
 
   const conVideos = () => !menosMovimiento.matches && !(navigator.connection && navigator.connection.saveData);
 
-  function crearVideo(capa, f) {
+  /* dominio: primero youtube-nocookie (sin cookies); si el reproductor no responde o da
+     error (como el "Error 153" de navegadores que quitan el Referer, p. ej. Brave con
+     Shields), se intenta una vez con youtube.com antes de quedarse con la foto */
+  function crearVideo(capa, f, dominio = "www.youtube-nocookie.com") {
     const { id, inicio, titulo } = f.video;
     const marco = document.createElement("div");
     marco.className = "hero__video";
@@ -717,10 +720,10 @@
     const parametros = new URLSearchParams({
       autoplay: "1", mute: "1", controls: "0", loop: "1", playlist: id, playsinline: "1", rel: "0",
       iv_load_policy: "3", disablekb: "1", fs: "0", modestbranding: "1", start: String(inicio || 0),
-      enablejsapi: "1", origin: location.origin,
+      enablejsapi: "1", origin: location.origin, widget_referrer: location.origin + location.pathname,
     });
     const iframe = document.createElement("iframe");
-    iframe.src = `https://www.youtube-nocookie.com/embed/${id}?${parametros}`;
+    iframe.src = `https://${dominio}/embed/${id}?${parametros}`;
     iframe.title = titulo;
     iframe.tabIndex = -1;
     iframe.allow = "autoplay; encrypted-media; picture-in-picture";
@@ -732,15 +735,25 @@
        hasta entonces se sigue viendo la foto (así no aparece el negro del arranque). Si el
        video falla (por ejemplo, la marca lo quitó), se retira y queda la foto. */
     const mostrar = () => marco.classList.add("es-visible");
+    let respondio = false;
+    const otroIntento = () => {
+      quitarVideo(capa);
+      if (dominio !== "www.youtube.com" && capa.classList.contains("es-activa") && vistaActual === "inicio") {
+        crearVideo(capa, f, "www.youtube.com");
+      }
+    };
     iframe.addEventListener("load", () => {
       try { iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: f.id }), "*"); } catch { /* sin acceso */ }
     });
+    /* Un reproductor sano manda mensajes al poco de cargar; si en 8 s no dijo nada, falló */
+    window.setTimeout(() => { if (!respondio && marco.isConnected) otroIntento(); }, 8000);
     marco.escuchar = (evento) => {
       if (evento.source !== iframe.contentWindow) return;
+      respondio = true;
       try {
         const datos = typeof evento.data === "string" ? JSON.parse(evento.data) : evento.data;
         const info = datos && datos.info;
-        if (datos.event === "onError") { quitarVideo(capa); return; }
+        if (datos.event === "onError") { otroIntento(); return; }
         const estadoVideo = datos.event === "onStateChange" ? info : info && info.playerState;
         if (estadoVideo === 1) mostrar();
         /* Si el navegador lo pausa (al cambiar de app, por ejemplo), se pide que siga y,
