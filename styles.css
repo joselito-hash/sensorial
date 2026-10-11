@@ -1076,6 +1076,12 @@ body.buscando .buscar i { transform: scale(1.12); }
   background: radial-gradient(closest-side, rgb(10 6 9 / 0.75), transparent);
   transition: transform 900ms var(--suave), opacity 900ms var(--suave);
 }
+/* Fotos que se recortan al llegar: no se muestran hasta estar listas y entran con un fundido
+   (sin el salto de tamaño). app.js las muestra igual si el recorte tarda de más. */
+img[data-recortar]:not(.es-lista) { opacity: 0; }
+img[data-recortar].es-lista { animation: foto-lista 450ms ease both; }
+@keyframes foto-lista { from { opacity: 0; } }
+
 /* La foto ocupa un área fija dentro del cuadro (de pie sobre el piso) y se ajusta adentro sin
    recortarse: con los márgenes transparentes ya quitados, todos los frascos llenan esa
    área igual, sean altos o anchos */

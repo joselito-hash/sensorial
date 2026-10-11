@@ -85,6 +85,22 @@
             <div class="lote__progreso" id="lote-progreso" hidden><div class="lote__barra" aria-hidden="true"><span id="lote-barra"></span></div><p id="lote-estado" class="lote__estado" role="status" aria-live="polite"></p></div>
             <ol class="lote__lista" id="lote-lista"></ol>
           </section>
+          <!-- Fotos ligeras: optimiza de una vez las fotos que ya están subidas -->
+          <section class="lote" id="fotos-lote" aria-labelledby="fotos-titulo">
+            <div class="lote__cabeza">
+              <div>
+                <p class="eyebrow">VELOCIDAD</p>
+                <h2 id="fotos-titulo">Optimizar fotos</h2>
+                <p class="lote__texto">Convierte las fotos subidas a WebP y las achica al tamaño que usa la tienda, para que carguen mucho más rápido. A la foto principal también le quita el margen transparente, así todos los frascos se ven del mismo tamaño. Las fotos nuevas se optimizan solas al subirlas.</p>
+                <p class="lote__resumen" id="fotos-resumen"></p>
+              </div>
+              <div class="lote__acciones">
+                <button class="button button--primary" type="button" id="fotos-iniciar">Optimizar</button>
+                <button class="button button--subtle" type="button" id="fotos-detener" hidden>Detener</button>
+              </div>
+            </div>
+            <div class="lote__progreso" id="fotos-progreso" hidden><div class="lote__barra" aria-hidden="true"><span id="fotos-barra"></span></div><p id="fotos-estado" class="lote__estado" role="status" aria-live="polite"></p></div>
+          </section>
           <div class="catalog-toolbar"><label class="search-label"><span aria-hidden="true">⌕</span><input id="perfume-search" type="search" placeholder="Buscar por perfume, casa o familia" aria-label="Buscar perfumes"></label><select id="perfume-filter" aria-label="Filtrar por publicación"><option value="all">Todos</option><option value="published">Publicados</option><option value="draft">Borradores</option></select></div>
           <div id="perfume-list" class="perfume-grid"></div>
           <p id="perfume-empty" class="empty" hidden>No hay perfumes con ese filtro.</p>

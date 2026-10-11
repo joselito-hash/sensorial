@@ -211,6 +211,7 @@
     renderReviews();
     renderPlans();
     pintarLote();
+    pintarFotos();
   }
 
   function renderPerfumes() {
@@ -438,10 +439,190 @@
 
   const imageExtensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
 
+  /* ---------- Fotos ligeras ----------
+     Antes de subir una foto se optimiza en el navegador: se achica a un tamaño suficiente
+     para la tienda y se guarda como WebP (de ~1 MB en PNG pasa a ~80 KB). A la foto principal
+     además se le quita el margen transparente, para que todos los frascos se vean del mismo
+     tamaño en el catálogo. Los archivos optimizados llevan "-opt-" en el nombre. */
+  const TAMANOS = { principal: 1000, lamina: 1400, galeria: 1600 };
+  const esOptimizada = (url) => /-opt-[^/]+\.webp$/i.test(String(url || ""));
+
+  /* Caja con dibujo (sin el margen transparente), en fracciones de la imagen */
+  function cajaConDibujo(imagen) {
+    const escala = Math.min(1, 240 / Math.max(imagen.width, imagen.height));
+    const w = Math.max(1, Math.round(imagen.width * escala));
+    const h = Math.max(1, Math.round(imagen.height * escala));
+    const lienzo = document.createElement("canvas");
+    lienzo.width = w;
+    lienzo.height = h;
+    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(imagen, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        if (data[(y * w + x) * 4 + 3] > 20) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return { x: 0, y: 0, w: 1, h: 1 };
+    const x = Math.max(0, (x0 - 1) / w);
+    const yy = Math.max(0, (y0 - 1) / h);
+    return { x, y: yy, w: Math.min(1 - x, (x1 - x0 + 3) / w), h: Math.min(1 - yy, (y1 - y0 + 3) / h) };
+  }
+
+  /* Devuelve la foto optimizada como archivo WebP (o la original si no se pudo mejorar) */
+  async function optimizarFoto(archivo, tipo) {
+    if (!archivo.type.startsWith("image/")) return archivo;
+    let imagen;
+    try {
+      imagen = await createImageBitmap(archivo);
+    } catch {
+      return archivo;
+    }
+    const caja = tipo === "principal" ? cajaConDibujo(imagen) : { x: 0, y: 0, w: 1, h: 1 };
+    const sx = Math.round(caja.x * imagen.width);
+    const sy = Math.round(caja.y * imagen.height);
+    const sw = Math.max(1, Math.round(caja.w * imagen.width));
+    const sh = Math.max(1, Math.round(caja.h * imagen.height));
+    const lado = Math.min(1, (TAMANOS[tipo] || 1400) / Math.max(sw, sh));
+    const lienzo = document.createElement("canvas");
+    lienzo.width = Math.round(sw * lado);
+    lienzo.height = Math.round(sh * lado);
+    const ctx = lienzo.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(imagen, sx, sy, sw, sh, 0, 0, lienzo.width, lienzo.height);
+    imagen.close?.();
+    const blob = await new Promise((listo) => lienzo.toBlob(listo, "image/webp", 0.82));
+    if (!blob || blob.type !== "image/webp") return archivo;
+    /* Si recortar no cambió nada y el original ya pesaba menos, se queda el original */
+    const recortada = caja.w < 0.98 || caja.h < 0.98;
+    if (!recortada && lado === 1 && blob.size >= archivo.size) return archivo;
+    return new File([blob], `${(archivo.name || "foto").replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
+  }
+
   async function uploadImage(file, perfumeId, kind) {
     if (!imageExtensions[file.type]) throw new Error("Las fotos deben ser JPG, PNG, WebP o AVIF.");
     if (file.size > 5 * 1024 * 1024) throw new Error(`La foto ${file.name} supera los 5 MB.`);
-    return uploadToBucket(file, `perfumes/${perfumeId}/${kind}-${crypto.randomUUID()}.${imageExtensions[file.type]}`);
+    const lista = await optimizarFoto(file, kind);
+    const marca = lista !== file ? "-opt" : "";
+    return uploadToBucket(lista, `perfumes/${perfumeId}/${kind}${marca}-${crypto.randomUUID()}.${imageExtensions[lista.type]}`);
+  }
+
+  /* ---------- Optimizar las fotos que ya están subidas ----------
+     Recorre las fotos del almacenamiento que aún no están optimizadas (principal, lámina y
+     carrusel), sube la versión ligera como archivo nuevo y cambia la ficha para que la use.
+     La foto original se queda en el almacenamiento por si acaso. Dos a la vez. */
+  const CLAVE_FOTOS_LISTAS = "sensorial-admin-fotos-listas";
+  const fotosLote = { corriendo: false, detener: false };
+  const fotosListas = () => {
+    try { return new Set(JSON.parse(localStorage.getItem(CLAVE_FOTOS_LISTAS) || "[]")); } catch { return new Set(); }
+  };
+  const marcarFotoLista = (url) => {
+    try {
+      const listas = fotosListas();
+      listas.add(url);
+      localStorage.setItem(CLAVE_FOTOS_LISTAS, JSON.stringify([...listas].slice(-2000)));
+    } catch { /* sin almacenamiento: se volverá a revisar la próxima vez */ }
+  };
+
+  function fotosPorOptimizar() {
+    if (!apiBase) return [];
+    const prefijo = new URL("/storage/v1/object/public/sensorial-perfumes/", apiBase).href;
+    const listas = fotosListas();
+    const pendiente = (url) => String(url || "").startsWith(prefijo) && !esOptimizada(url) && !listas.has(url);
+    const fotos = [];
+    state.data.perfumes.forEach((p) => {
+      if (pendiente(p.primary_image)) fotos.push({ tipo: "principal", perfume: p.id, url: p.primary_image });
+      if (pendiente(p.collage_image)) fotos.push({ tipo: "lamina", perfume: p.id, url: p.collage_image });
+    });
+    state.data.images.forEach((i) => {
+      if (pendiente(i.image_url)) fotos.push({ tipo: "galeria", perfume: i.perfume_id, posicion: i.position, url: i.image_url });
+    });
+    return fotos;
+  }
+
+  function pintarFotos() {
+    if (!$("#fotos-lote") || fotosLote.corriendo) return;
+    const n = fotosPorOptimizar().length;
+    $("#fotos-resumen").textContent = n ? `${n === 1 ? "1 foto" : `${n} fotos`} por optimizar.` : "Todas las fotos subidas ya están optimizadas.";
+    $("#fotos-iniciar").disabled = n === 0;
+  }
+
+  async function optimizarUna(foto) {
+    const respuesta = await fetch(foto.url);
+    if (!respuesta.ok) throw new Error(`No se pudo leer una foto de ${foto.perfume}.`);
+    const original = await respuesta.blob();
+    const archivo = new File([original], foto.url.split("/").pop(), { type: original.type || "image/png" });
+    const ligera = await optimizarFoto(archivo, foto.tipo);
+    if (ligera === archivo) {
+      marcarFotoLista(foto.url);
+      return { antes: original.size, despues: original.size };
+    }
+    const nueva = await uploadToBucket(ligera, `perfumes/${foto.perfume}/${foto.tipo}-opt-${crypto.randomUUID()}.webp`);
+    if (foto.tipo === "galeria") {
+      await request(`perfume_images?perfume_id=eq.${encodeURIComponent(foto.perfume)}&position=eq.${foto.posicion}`, {
+        method: "PATCH", body: { image_url: nueva },
+      });
+      const fila = state.data.images.find((i) => i.perfume_id === foto.perfume && i.position === foto.posicion);
+      if (fila) fila.image_url = nueva;
+    } else {
+      const campo = foto.tipo === "principal" ? "primary_image" : "collage_image";
+      await request(`perfumes?id=eq.${encodeURIComponent(foto.perfume)}`, {
+        method: "PATCH", body: { [campo]: nueva, updated_at: new Date().toISOString() },
+      });
+      const p = state.data.perfumes.find((x) => x.id === foto.perfume);
+      if (p) p[campo] = nueva;
+    }
+    return { antes: original.size, despues: ligera.size };
+  }
+
+  async function optimizarFotosSubidas() {
+    if (fotosLote.corriendo) return;
+    const fotos = fotosPorOptimizar();
+    if (!fotos.length) { notify("Todas las fotos ya están optimizadas."); return; }
+    Object.assign(fotosLote, { corriendo: true, detener: false });
+    $("#fotos-iniciar").disabled = true;
+    $("#fotos-detener").hidden = false;
+    $("#fotos-detener").disabled = false;
+    $("#fotos-progreso").hidden = false;
+    let hechas = 0;
+    let fallidas = 0;
+    let antes = 0;
+    let despues = 0;
+    const mb = (bytes) => (bytes / 1048576).toFixed(1);
+    const avance = () => {
+      $("#fotos-barra").style.width = `${Math.round((hechas / fotos.length) * 100)}%`;
+      $("#fotos-estado").textContent = `${hechas} de ${fotos.length} fotos · de ${mb(antes)} MB a ${mb(despues)} MB${fallidas ? ` · ${fallidas} con error` : ""}`;
+    };
+    avance();
+    let siguiente = 0;
+    const obrero = async () => {
+      while (!fotosLote.detener && siguiente < fotos.length) {
+        const foto = fotos[siguiente++];
+        try {
+          const r = await optimizarUna(foto);
+          antes += r.antes;
+          despues += r.despues;
+        } catch {
+          fallidas += 1;
+        }
+        hechas += 1;
+        avance();
+      }
+    };
+    try {
+      await Promise.all([obrero(), obrero()]);
+      notify(fotosLote.detener ? "Optimización detenida. Puedes seguir después." : `Listo: ${hechas - fallidas} fotos optimizadas, de ${mb(antes)} MB a ${mb(despues)} MB.`, fallidas > 0);
+    } finally {
+      fotosLote.corriendo = false;
+      $("#fotos-detener").hidden = true;
+      pintarFotos();
+    }
   }
 
   async function uploadToBucket(file, path, retry = true) {
@@ -2131,6 +2312,11 @@
   $("#perfume-form").addEventListener("submit", savePerfume);
   $("#importar-buscar").addEventListener("click", buscarFragrantica);
   $("#lote-iniciar").addEventListener("click", completarBorradores);
+  $("#fotos-iniciar").addEventListener("click", optimizarFotosSubidas);
+  $("#fotos-detener").addEventListener("click", () => {
+    fotosLote.detener = true;
+    $("#fotos-detener").disabled = true;
+  });
   $("#lote-detener").addEventListener("click", () => {
     lote.detener = true;
     $("#lote-detener").disabled = true;

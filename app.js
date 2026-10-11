@@ -323,9 +323,11 @@
      al volver a pintar una tarjeta o abrir una ficha. */
   const recortes = new Map();
   const esDelAlmacen = (src) => Boolean(SUPABASE.url) && String(src).startsWith(`${SUPABASE.url}/storage/`);
-  /* Atributos para una foto que debe recortarse (vacío si no es del almacén) */
-  const recortable = (src) => (esDelAlmacen(src) ? ' data-recortar crossorigin="anonymous"' : "");
-  let colaRecortes = Promise.resolve();
+  /* Las fotos que el panel ya optimizó (llevan "-opt-") vienen recortadas y ligeras: no se tocan */
+  const yaOptimizada = (src) => /-opt-[^/]+\.webp$/i.test(String(src));
+  /* Atributos para una foto que debe recortarse (vacío si no hace falta). Mientras se recorta
+     no se ve (aparece con un fundido ya recortada), así no salta de tamaño frente al cliente */
+  const recortable = (src) => (esDelAlmacen(src) && !yaOptimizada(src) ? ' data-recortar crossorigin="anonymous"' : "");
 
   function medirDibujo(img) {
     const escala = Math.min(1, 200 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -382,23 +384,24 @@
       }
       const recortada = await recortes.get(original);
       if (recortada && img.isConnected) {
-        img.src = recortada;
-        img.classList.add("es-recortada");
+        await new Promise((listo) => {
+          img.addEventListener("load", listo, { once: true });
+          img.addEventListener("error", listo, { once: true });
+          img.src = recortada;
+        });
       }
     } catch {
       /* Si la foto no se puede leer, se queda como estaba */
     }
+    img.classList.add("es-lista");
   }
 
-  /* Las fotos se procesan una tras otra, cuando el navegador está libre */
-  const enCalma = window.requestIdleCallback
-    ? (fn) => window.requestIdleCallback(fn, { timeout: 800 })
-    : (fn) => window.setTimeout(fn, 16);
+  /* Cada foto se procesa en cuanto llega (medirla toma unos milisegundos) */
   function encolarRecorte(img) {
     if (img.dataset.recortada) return;
-    colaRecortes = colaRecortes.then(() => new Promise((listo) => {
-      enCalma(() => { recortarFoto(img).finally(listo); });
-    }));
+    /* Respaldo: si el recorte no termina en 2.5 s, la foto se muestra como venga */
+    window.setTimeout(() => img.classList.add("es-lista"), 2500);
+    recortarFoto(img);
   }
   document.addEventListener("load", (evento) => {
     const img = evento.target;
@@ -411,6 +414,7 @@
     if (img.tagName !== "IMG" || !img.hasAttribute("data-recortar") || img.src.startsWith("blob:")) return;
     img.removeAttribute("data-recortar");
     img.removeAttribute("crossorigin");
+    img.classList.add("es-lista");
     img.src = img.dataset.original || img.src;
   }, true);
   /* Las que ya cargaron antes de pintar (desde la caché) */
@@ -628,14 +632,17 @@
   function pintarHero() {
     const capas = $("#capas");
     if (!capas) return;
-    PORTADA.slice(1).forEach((f) => {
-      capas.insertAdjacentHTML("beforeend", `
-        <div class="hero__capa" data-familia="${f.id}">
-          <img class="hero__foto" data-parallax="0.09" data-profundidad="-10" alt="${f.heroAlt}"
+    if (!PORTADA.some((f) => f.id === estado.familia) && PORTADA.length) estado.familia = PORTADA[0].id;
+    /* La primera foto se pide de inmediato y con prioridad; las demás, cuando hagan falta */
+    capas.innerHTML = PORTADA.map((f) => {
+      const primera = f.id === estado.familia;
+      return `
+        <div class="hero__capa${primera ? " es-activa" : ""}" data-familia="${f.id}">
+          <img class="hero__foto" data-parallax="0.09" data-profundidad="-10" alt="${escaparHTML(f.heroAlt || "")}"
             src="${url(f.hero, 1600)}" srcset="${srcset(f.hero, [900, 1600, 2400])}" sizes="100vw"
-            loading="lazy" style="object-position: ${f.heroPos}">
-        </div>`);
-    });
+            ${primera ? 'fetchpriority="high"' : 'loading="lazy"'} style="object-position: ${f.heroPos || "50% 50%"}">
+        </div>`;
+    }).join("");
 
     $("#selector").innerHTML = PORTADA.map((f) => `
       <button class="selector__btn" type="button" data-familia="${f.id}" aria-pressed="${f.id === estado.familia}">${f.nombre}</button>`).join("");

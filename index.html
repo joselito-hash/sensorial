@@ -123,14 +123,9 @@
       <div class="pestana" id="vista-inicio" data-vista="inicio" tabindex="-1">
         <section class="hero" data-marco aria-labelledby="titulo-hero">
           <div class="hero__marco" data-marco>
-            <div class="hero__capas" id="capas">
-              <div class="hero__capa es-activa" data-familia="frescos">
-                <img class="hero__foto" data-parallax="0.09" data-profundidad="-10"
-                  src="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600"
-                  srcset="https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=900 900w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=1600 1600w, https://images.unsplash.com/photo-1747916148863-7164d8920b57?auto=format&fit=crop&q=80&w=2400 2400w"
-                  sizes="100vw" alt="Frasco de Dior Sauvage iluminado con luz azul" fetchpriority="high" style="object-position: 50% 46%">
-              </div>
-            </div>
+            <!-- Una capa por familia, con la foto que tenga en Supabase (app.js las pinta todas,
+                 también la primera, para que un cambio en el panel se vea aquí) -->
+            <div class="hero__capas" id="capas"></div>
             <div class="hero__velo" aria-hidden="true"></div>
 
             <div class="selector" id="selector" role="group" aria-label="Elegir familia olfativa"></div>
