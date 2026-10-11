@@ -211,7 +211,7 @@
     renderReviews();
     renderPlans();
     pintarLote();
-    pintarFotos();
+    pintarLoteFotos();
   }
 
   function renderPerfumes() {
@@ -546,7 +546,7 @@
     return fotos;
   }
 
-  function pintarFotos() {
+  function pintarLoteFotos() {
     if (!$("#fotos-lote") || fotosLote.corriendo) return;
     const n = fotosPorOptimizar().length;
     $("#fotos-resumen").textContent = n ? `${n === 1 ? "1 foto" : `${n} fotos`} por optimizar.` : "Todas las fotos subidas ya están optimizadas.";
@@ -621,7 +621,7 @@
     } finally {
       fotosLote.corriendo = false;
       $("#fotos-detener").hidden = true;
-      pintarFotos();
+      pintarLoteFotos();
     }
   }
 
