@@ -611,6 +611,8 @@ body.buscando .buscar i { transform: scale(1.12); }
 .selector__btn:hover { background: oklch(1 0 0 / 0.14); }
 .selector__btn[aria-pressed="true"] { background: var(--blanco); color: var(--papel); }
 .selector__btn:focus-visible { outline-color: var(--blanco); }
+/* El rótulo de la familia activa solo existe en el teléfono (ver más abajo) */
+.hero__familia { display: none; }
 
 .hero__texto {
   position: absolute;
@@ -676,6 +678,12 @@ body.buscando .buscar i { transform: scale(1.12); }
   cursor: pointer;
 }
 .destacado__abrir img { transition: transform 700ms var(--suave); }
+/* Foto de frasco sin fondo: completa dentro del cuadrito, con la luz de su familia detrás */
+.destacado__foto--frasco {
+  padding: 0.55rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0.4rem 0.4rem rgb(10 6 9 / 0.45));
+}
 .destacado__abrir:hover img { transform: scale(1.06); }
 .destacado__texto { min-width: 0; padding-right: 0.4rem; }
 .destacado__nombre { font-size: 1.1rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
@@ -688,6 +696,8 @@ body.buscando .buscar i { transform: scale(1.12); }
   line-height: 1.35;
 }
 .destacado.cambia > * { animation: entra-suave 600ms var(--suave) both; }
+/* Si la familia no tiene un perfume destacado publicado, no queda una tarjeta vacía */
+.destacado[hidden] { display: none; }
 
 @keyframes entra-suave {
   from { opacity: 0; translate: 0 0.5rem; }
@@ -1040,6 +1050,9 @@ body.buscando .buscar i { transform: scale(1.12); }
   aspect-ratio: 4 / 5;
   isolation: isolate;
   padding-bottom: 1.35rem;
+  /* El cuadro mide siempre 4:5 por su ancho; la foto (ya recortada, a veces muy alta) no
+     puede estirarlo */
+  contain: size;
 }
 .ficha__lamina::before {
   content: "";
@@ -1063,9 +1076,14 @@ body.buscando .buscar i { transform: scale(1.12); }
   background: radial-gradient(closest-side, rgb(10 6 9 / 0.75), transparent);
   transition: transform 900ms var(--suave), opacity 900ms var(--suave);
 }
+/* La foto ocupa un área fija dentro del cuadro (de pie sobre el piso) y se ajusta adentro sin
+   recortarse: con los márgenes transparentes ya quitados, todos los frascos llenan esa
+   área igual, sean altos o anchos */
 .ficha__lamina img {
+  position: absolute;
+  inset: 4% 6% 1.35rem;
   width: 88%;
-  height: 94%;
+  height: calc(96% - 1.35rem);
   border-radius: 0.9rem;
   object-fit: contain;
   object-position: center bottom;
@@ -1079,7 +1097,7 @@ body.buscando .buscar i { transform: scale(1.12); }
 .ficha__lamina--compuesta { display: block; aspect-ratio: 1; padding: 0; overflow: hidden; border-radius: 1.15rem; background: oklch(1 0 0); }
 .ficha__lamina--compuesta::before,
 .ficha__lamina--compuesta::after { content: none; }
-.ficha__lamina--compuesta img { width: 100%; height: 100%; border-radius: 0; filter: none; }
+.ficha__lamina--compuesta img { position: static; width: 100%; height: 100%; border-radius: 0; filter: none; }
 .ficha:hover .ficha__lamina--compuesta img { transform: scale(1.04); }
 
 .ficha__cuerpo {
@@ -1108,6 +1126,21 @@ body.buscando .buscar i { transform: scale(1.12); }
 }
 .ficha__titulo:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .ficha__casa { margin-top: 0.1rem; color: var(--tinta-2); font-size: 0.9375rem; }
+/* Concentración (EDP, EDT, Body Mist…): etiqueta pequeña junto a la casa */
+.ficha__conc {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid color-mix(in oklch, var(--campo) 45%, transparent);
+  border-radius: 0.35rem;
+  color: var(--campo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  vertical-align: 0.1em;
+  white-space: nowrap;
+}
 
 .ficha .agregar {
   flex: none;
@@ -1758,6 +1791,37 @@ html:has(.detalle[open]) { overflow: hidden; }
 }
 .novedad.es-activa .novedad__foto img { filter: none; transform: none; }
 .novedad__foto:hover img { transform: scale(1.03); }
+/* Frasco sin fondo: sin el cuadro gris, de pie sobre su sombra y con un halo suave del
+   color de su familia detrás */
+.novedad--frasco .novedad__foto { overflow: visible; background: none; }
+.novedad--frasco .novedad__foto::before {
+  content: "";
+  position: absolute;
+  inset: 12% 8% 10%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--campo) 22%, transparent), transparent);
+  pointer-events: none;
+}
+.novedad--frasco .novedad__foto::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 3%;
+  height: 4%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(10 6 9 / 0.8), transparent);
+  pointer-events: none;
+}
+.novedad--frasco .novedad__foto img {
+  position: relative;
+  z-index: 1;
+  padding: 4% 8% 6%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: brightness(0.6) saturate(0.7) drop-shadow(0 1.6rem 1.4rem rgb(10 6 9 / 0.55));
+}
+.novedad--frasco.es-activa .novedad__foto img { filter: drop-shadow(0 1.6rem 1.4rem rgb(10 6 9 / 0.55)); }
 
 /* El texto sobre cada foto solo se usa en pantallas chicas (tarjetas apiladas) */
 .novedad__pie { display: none; }
@@ -2901,6 +2965,12 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   }
   .novedad__foto { position: absolute; inset: 0; height: 100%; border-radius: 0; }
   .novedad__foto img { filter: none; transform: none; }
+  /* En el teléfono la tarjeta conserva su fondo (tapa a la de atrás al apilarse); el frasco
+     queda arriba del texto, completo */
+  .novedad--frasco .novedad__foto img,
+  .novedad--frasco.es-activa .novedad__foto img { padding: 1.5rem 14% 11rem; filter: drop-shadow(0 1.2rem 1rem rgb(10 6 9 / 0.55)); }
+  .novedad--frasco .novedad__foto::before { inset: 4% 6% 32%; }
+  .novedad--frasco .novedad__foto::after { display: none; }
   .novedad__pie {
     position: absolute;
     inset: auto 0 0 0;
@@ -2984,14 +3054,68 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
       linear-gradient(to bottom, oklch(0.14 0.02 270 / 0.45), transparent 24%);
   }
 
+  /* Selector en el teléfono: con ocho familias las pastillas no cabían. Ahora es una fila de
+     barritas, como historias: la activa se llena mientras se ve (y pasa sola a la
+     siguiente), las anteriores quedan llenas. Cada barrita se toca para ir a esa familia,
+     y abajo va el nombre de la familia activa. */
   .selector {
-    left: 0.6rem;
-    right: 0.6rem;
-    top: 0.6rem;
-    overflow-x: auto;
-    scrollbar-width: none;
+    left: 0.9rem;
+    right: 0.9rem;
+    top: 0.55rem;
+    gap: 0.3rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
-  .selector__btn { flex: 1 0 auto; padding-inline: 0.5rem; font-size: 0.8125rem; }
+  .selector__btn {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 1.75rem;
+    padding: 0;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0;
+  }
+  .selector__btn:hover,
+  .selector__btn[aria-pressed="true"] { background: none; color: transparent; }
+  .selector__btn::before,
+  .selector__btn::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 1.5px);
+    height: 3px;
+    border-radius: 999px;
+  }
+  .selector__btn::before { background: rgb(255 255 255 / 0.3); }
+  .selector__btn::after { background: var(--blanco); transform: scaleX(0); transform-origin: left; }
+  .selector__btn:has(~ [aria-pressed="true"])::after { transform: none; }
+  .selector__btn[aria-pressed="true"]::after { animation: selector-llena var(--duracion, 6500ms) linear forwards; }
+  .selector.es-quieto .selector__btn[aria-pressed="true"]::after { animation: none; transform: none; }
+  @keyframes selector-llena { to { transform: none; } }
+
+  .hero__familia {
+    position: absolute;
+    left: 1.1rem;
+    right: 1.1rem;
+    top: 2.45rem;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    color: var(--blanco);
+    text-shadow: 0 1px 12px rgb(0 0 0 / 0.55);
+    pointer-events: none;
+  }
+  .hero__familia strong { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+  .hero__familia span { overflow: hidden; color: var(--blanco-2); font-size: 0.8125rem; text-overflow: ellipsis; white-space: nowrap; }
+  .hero__familia.cambia { animation: entra-suave 500ms var(--suave) both; }
 
   .hero__texto { left: 1.1rem; right: 1.1rem; bottom: 1.25rem; max-width: none; }
   .hero__texto .btn { width: 100%; }
@@ -3026,7 +3150,9 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .capitulo__desc { display: none; }
   .fichas {
     display: flex;
-    align-items: flex-start;
+    /* Todas las tarjetas de la fila miden lo mismo: las notas se van al fondo de cada una,
+       aunque el nombre ocupe una o dos líneas o el perfume tenga menos notas */
+    align-items: stretch;
     gap: 0.75rem;
     margin-inline: calc(var(--relleno) * -1);
     padding-inline: var(--relleno);
@@ -3037,6 +3163,8 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   }
   .fichas::-webkit-scrollbar { display: none; }
   .ficha { flex: 0 0 82%; scroll-snap-align: start; }
+  .ficha__principales { margin-top: auto; padding-top: 1rem; }
+  .ficha__principales li { justify-content: flex-start; }
 
   /* La ficha del perfume sube desde abajo como una hoja */
   .detalle {
@@ -3082,10 +3210,8 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
 
   /* Rendimiento en el teléfono: sin vidrio esmerilado sobre contenido que se desliza
      (cuesta mucho redibujarlo) y sin capas reservadas para el parallax, que aquí no corre */
-  .selector,
   .barra__fila,
   .barra__panel { -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .selector { background: rgb(28 23 27 / 0.82); }
   .barra__fila { background: rgb(43 35 40 / 0.97); }
   .barra__panel { background: rgb(43 35 40); }
   .hero__foto,

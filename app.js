@@ -314,6 +314,112 @@
 
   const menosMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  /* ---------- Frascos del mismo tamaño ----------
+     Las fotos sin fondo traen distinto margen transparente: en unas el frasco ocupa casi
+     todo y en otras queda chiquito al centro. Al cargar, cada foto marcada con data-recortar
+     se mide (en una copia pequeña) y se recorta a lo que de verdad tiene dibujo; así todos
+     los frascos llenan su cuadro igual. Solo con fotos del almacenamiento de Supabase, que
+     permite leerlas (por eso llevan crossorigin). Los recortes se guardan para no repetirlos
+     al volver a pintar una tarjeta o abrir una ficha. */
+  const recortes = new Map();
+  const esDelAlmacen = (src) => Boolean(SUPABASE.url) && String(src).startsWith(`${SUPABASE.url}/storage/`);
+  /* Atributos para una foto que debe recortarse (vacío si no es del almacén) */
+  const recortable = (src) => (esDelAlmacen(src) ? ' data-recortar crossorigin="anonymous"' : "");
+  let colaRecortes = Promise.resolve();
+
+  function medirDibujo(img) {
+    const escala = Math.min(1, 200 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * escala));
+    const h = Math.max(1, Math.round(img.naturalHeight * escala));
+    const lienzo = document.createElement("canvas");
+    lienzo.width = w;
+    lienzo.height = h;
+    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        if (data[(y * w + x) * 4 + 3] > 20) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return null;
+    /* Un pixel de holgura para no cortar el borde suave del frasco */
+    return {
+      x: Math.max(0, (x0 - 1) / w), y: Math.max(0, (y0 - 1) / h),
+      w: Math.min(1, (x1 - x0 + 3) / w), h: Math.min(1, (y1 - y0 + 3) / h),
+    };
+  }
+
+  async function recortarFoto(img) {
+    const original = img.dataset.original || img.currentSrc || img.src;
+    if (img.dataset.recortada || original.startsWith("blob:")) return;
+    img.dataset.original = original;
+    img.dataset.recortada = "1";
+    try {
+      if (!recortes.has(original)) {
+        recortes.set(original, (async () => {
+          const caja = medirDibujo(img);
+          /* Sin transparencia alrededor (o casi nada que quitar): se deja como está */
+          if (!caja || (caja.w > 0.96 && caja.h > 0.96)) return null;
+          const sx = Math.round(caja.x * img.naturalWidth);
+          const sy = Math.round(caja.y * img.naturalHeight);
+          const sw = Math.round(caja.w * img.naturalWidth);
+          const sh = Math.round(caja.h * img.naturalHeight);
+          const lado = Math.min(1, 1400 / Math.max(sw, sh));
+          const lienzo = document.createElement("canvas");
+          lienzo.width = Math.round(sw * lado);
+          lienzo.height = Math.round(sh * lado);
+          lienzo.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, lienzo.width, lienzo.height);
+          const blob = await new Promise((listo) => lienzo.toBlob(listo, "image/webp", 0.92));
+          return blob ? URL.createObjectURL(blob) : null;
+        })());
+      }
+      const recortada = await recortes.get(original);
+      if (recortada && img.isConnected) {
+        img.src = recortada;
+        img.classList.add("es-recortada");
+      }
+    } catch {
+      /* Si la foto no se puede leer, se queda como estaba */
+    }
+  }
+
+  /* Las fotos se procesan una tras otra, cuando el navegador está libre */
+  const enCalma = window.requestIdleCallback
+    ? (fn) => window.requestIdleCallback(fn, { timeout: 800 })
+    : (fn) => window.setTimeout(fn, 16);
+  function encolarRecorte(img) {
+    if (img.dataset.recortada) return;
+    colaRecortes = colaRecortes.then(() => new Promise((listo) => {
+      enCalma(() => { recortarFoto(img).finally(listo); });
+    }));
+  }
+  document.addEventListener("load", (evento) => {
+    const img = evento.target;
+    if (img.tagName === "IMG" && img.hasAttribute("data-recortar")) encolarRecorte(img);
+  }, true);
+  /* Si una foto no carga en modo crossorigin (por ejemplo, por una copia vieja en la caché
+     del navegador), se vuelve a pedir normal y se muestra sin recortar */
+  document.addEventListener("error", (evento) => {
+    const img = evento.target;
+    if (img.tagName !== "IMG" || !img.hasAttribute("data-recortar") || img.src.startsWith("blob:")) return;
+    img.removeAttribute("data-recortar");
+    img.removeAttribute("crossorigin");
+    img.src = img.dataset.original || img.src;
+  }, true);
+  /* Las que ya cargaron antes de pintar (desde la caché) */
+  const recortarListas = (raiz = document) => {
+    raiz.querySelectorAll("img[data-recortar]").forEach((img) => {
+      if (img.complete && img.naturalWidth) encolarRecorte(img);
+    });
+  };
+
   const estado = {
     familia: "frescos",
     familiaElegida: false,
@@ -533,6 +639,19 @@
 
     $("#selector").innerHTML = PORTADA.map((f) => `
       <button class="selector__btn" type="button" data-familia="${f.id}" aria-pressed="${f.id === estado.familia}">${f.nombre}</button>`).join("");
+    /* En el teléfono el selector son barritas (como historias) y el nombre de la familia
+       activa va debajo; en escritorio este rótulo no se muestra */
+    if (!$("#hero-familia")) $("#selector").insertAdjacentHTML("afterend", '<p class="hero__familia" id="hero-familia" aria-hidden="true"></p>');
+  }
+
+  function rotularFamilia() {
+    const rotulo = $("#hero-familia");
+    const f = familiaPorId.get(estado.familia);
+    if (!rotulo || !f) return;
+    rotulo.innerHTML = `<strong>${f.nombre}</strong><span>${f.desc || ""}</span>`;
+    rotulo.classList.remove("cambia");
+    void rotulo.offsetWidth;
+    rotulo.classList.add("cambia");
   }
 
   function pintarDestacado() {
@@ -544,7 +663,7 @@
     caja.hidden = false;
     caja.innerHTML = `
       <button class="destacado__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-        <img class="destacado__foto" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="" width="216" height="216">
+        <img class="destacado__foto${esUnsplash(p.foto) ? "" : " destacado__foto--frasco"}" src="${url(p.foto, 400)}" srcset="${srcset(p.foto, [200, 400])}" sizes="7rem" alt="" width="216" height="216"${recortable(p.foto)}>
       </button>
       <div class="destacado__texto">
         <h2 class="destacado__nombre"><button type="button" data-ficha="${p.id}">${nombreCompleto(p)}</button></h2>
@@ -570,6 +689,7 @@
       selector.scrollTo({ left: activo.offsetLeft - (selector.clientWidth - activo.offsetWidth) / 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
     }
     pintarDestacado();
+    rotularFamilia();
     actualizarPedido();
     ponerVideoHero();
   }
@@ -679,23 +799,35 @@
      Con videos, cada familia se queda más tiempo para que el anuncio alcance a verse. */
   function iniciarCarrusel() {
     const hero = $(".hero");
-    if (menosMovimiento.matches || !hero) return;
+    const selector = $("#selector");
+    if (menosMovimiento.matches || !hero) {
+      /* Sin avance automático, las barritas del teléfono no se llenan con el tiempo */
+      selector?.classList.add("es-quieto");
+      return;
+    }
     let enVista = true;
     let encima = false;
     let detenido = false;
+    const espera = conVideos() ? 14000 : 6500;
+    /* La barrita de la familia activa se llena en lo que tarda en pasar a la siguiente */
+    selector?.style.setProperty("--duracion", `${espera}ms`);
+    const detener = () => {
+      detenido = true;
+      selector?.classList.add("es-quieto");
+    };
 
     new IntersectionObserver(([entrada]) => { enVista = entrada.isIntersecting; }, { threshold: 0.4 }).observe(hero);
-    hero.addEventListener("pointerenter", () => { encima = true; });
+    hero.addEventListener("pointerenter", (evento) => { if (evento.pointerType === "mouse") encima = true; });
     hero.addEventListener("pointerleave", () => { encima = false; });
-    hero.addEventListener("focusin", () => { detenido = true; });
-    hero.addEventListener("click", () => { detenido = true; });
+    hero.addEventListener("focusin", detener);
+    hero.addEventListener("click", detener);
 
     const reloj = window.setInterval(() => {
       if (detenido) { window.clearInterval(reloj); return; }
       if (!enVista || encima || document.hidden) return;
       const i = PORTADA.findIndex((f) => f.id === estado.familia);
       activarFamilia(PORTADA[(i + 1) % PORTADA.length].id, false);
-    }, conVideos() ? 14000 : 6500);
+    }, espera);
   }
 
   /* ---------- Pestañas ----------
@@ -1174,10 +1306,13 @@
     $("#novedades-lista").innerHTML = NOVEDADES.map((id, i) => {
       const p = porId.get(id);
       const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [700, 1100, 1600])}" sizes="(max-width: 56rem) 92vw, 52vw"` : "";
+      /* Las fotos de frasco (sin fondo) van sueltas, sin el cuadro gris detrás, con la luz
+         de su familia; las fotos de ambiente siguen llenando el cuadro */
+      const frasco = !esUnsplash(p.foto);
       return `
-      <li class="novedad" data-indice="${i}">
+      <li class="novedad${frasco ? " novedad--frasco" : ""}" data-indice="${i}" style="--campo: var(--c-${p.familia})">
         <button class="novedad__foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <img src="${url(p.foto, 1100)}"${juego} alt="" loading="lazy">
+          <img src="${url(p.foto, 1100)}"${juego} alt="" loading="lazy"${recortable(p.foto)}>
         </button>
         ${texto(p, familiaPorId.get(p.familia), "novedad__pie", i)}
       </li>`;
@@ -1413,6 +1548,24 @@
 
   /* ---------- Catálogo ---------- */
 
+  /* Concentración en corto para la tarjeta: "Eau de Parfum" -> "EDP", "Body Mist" se queda.
+     Si el nombre ya la dice (como "Moonlight Body Mist"), no se repite. */
+  const SIGLAS = [
+    [/^extrait/, "Extrait"], [/eau de parfum|^edp$/, "EDP"], [/eau de toilette|^edt$/, "EDT"],
+    [/eau de cologne|^colonia|^cologne|^edc$/, "EDC"], [/eau fraiche/, "Eau Fraîche"],
+    [/^parfum|^perfume/, "Parfum"], [/^elixir/, "Elixir"], [/body mist|^mist/, "Body Mist"],
+    [/hair mist/, "Hair Mist"], [/aceite|oil/, "Aceite"],
+  ];
+  function concentracionCorta(p) {
+    if (!p.version) return "";
+    const corta = p.version.split("/").map((parte) => {
+      const limpia = sinAcentos(parte.trim());
+      const hallada = SIGLAS.find(([patron]) => patron.test(limpia));
+      return hallada ? hallada[1] : parte.trim();
+    }).filter((v, i, todas) => v && todas.indexOf(v) === i).join(" · ");
+    return sinAcentos(p.nombre).includes(sinAcentos(corta)) ? "" : corta;
+  }
+
   /* Calificación de la tarjeta: una pastilla arriba de la foto, solo si el perfume ya tiene
      reseñas publicadas */
   function calificacionFicha(p) {
@@ -1425,7 +1578,7 @@
   function ficha(p) {
     const imagen = p.lamina
       ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" loading="lazy" width="1080" height="1080">`
-      : `<img src="${url(p.foto, 800)}" srcset="${srcset(p.foto, [500, 800, 1200])}" sizes="(max-width: 40rem) 80vw, (max-width: 72rem) 45vw, 24rem" alt="${nombreCompleto(p)}" loading="lazy">`;
+      : `<img src="${url(p.foto, 800)}" srcset="${srcset(p.foto, [500, 800, 1200])}" sizes="(max-width: 40rem) 80vw, (max-width: 72rem) 45vw, 24rem" alt="${nombreCompleto(p)}" loading="lazy"${recortable(p.foto)}>`;
     return `
       <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
@@ -1435,7 +1588,7 @@
           <div class="ficha__cabeza">
             <div>
               <h4 class="ficha__nombre"><button class="ficha__titulo" type="button" data-ficha="${p.id}">${p.nombre}</button></h4>
-              <p class="ficha__casa">${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+              <p class="ficha__casa">${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}${concentracionCorta(p) ? `<span class="ficha__conc" title="${escaparHTML(p.version)}">${concentracionCorta(p)}</span>` : ""}</p>
             </div>
             <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
           </div>
@@ -2022,7 +2175,7 @@
     ];
     const imagenes = fotos.map((foto, i) => `<img class="detalle__foto${i === 0 ? " es-activa" : ""}${foto.compuesta ? " detalle__foto--compuesta" : i === 0 ? " detalle__foto--frasco" : ""}"
       src="${foto.src}"${foto.srcset ? ` srcset="${foto.srcset}" sizes="(max-width: 40rem) 100vw, 45vw"` : ""}
-      alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}>`).join("");
+      alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}${i === 0 && !foto.compuesta ? recortable(foto.src) : ""}>`).join("");
 
     detalle.style.setProperty("--campo", `var(--c-${f.id})`);
     detalle.style.setProperty("--tono", `var(--t-${f.id})`);
@@ -2538,9 +2691,11 @@
   aplicarFiltros();
   iniciarPestanas();
   pintarDestacado();
+  rotularFamilia();
   pintarLista(null);
   actualizarPedido();
   observarRevelados();
+  recortarListas();
   iniciarParallax();
   iniciarDeslizarHero();
   /* El video entra cuando la página ya cargó, para no retrasar la carga ni la intro */
