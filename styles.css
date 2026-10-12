@@ -1069,6 +1069,11 @@ body.buscando .buscar i { transform: scale(1.12); }
   .capitulo--nicho:not(.en-pantalla) .nichos__cinta-pista { animation-play-state: paused; }
 }
 @keyframes nichos-cinta { to { transform: translateX(-50%); } }
+/* Con una ficha abierta encima, lo que se mueve en la sala se detiene: el velo borroso de la
+   ficha no tiene que volver a difuminarse en cada cuadro y la ficha se desliza fluida */
+.con-ficha .nichos__cinta-pista,
+.con-ficha .capitulo--nicho .aura span,
+.con-ficha .capitulo--nicho::before { animation-play-state: paused; }
 /* Un destello recorre despacio el filete de arriba, como luz sobre un mostrador */
 .capitulo--nicho::before {
   content: "";
@@ -1147,9 +1152,12 @@ body.buscando .buscar i { transform: scale(1.12); }
   flex-direction: column;
   overflow: hidden;
   border-radius: 1.25rem;
-  background: linear-gradient(155deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.035));
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  backdrop-filter: blur(20px) saturate(150%);
+  /* Vidrio sin backdrop-filter: el fondo ya es luz difusa, así que basta un relleno
+     translúcido para que se vea a través. El desenfoque real obligaba al navegador a
+     volver a difuminar cada tarjeta en cada cuadro (el fondo nunca está quieto) */
+  background:
+    linear-gradient(155deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.035)),
+    rgb(24 18 21 / 0.7);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.07),
     inset 0 1px 0 rgb(255 255 255 / 0.16),
@@ -1187,9 +1195,6 @@ body.buscando .buscar i { transform: scale(1.12); }
     inset 0 0 0 1px rgb(255 255 255 / 0.1),
     inset 0 1px 0 rgb(255 255 255 / 0.22),
     0 40px 70px -40px rgb(0 0 0 / 0.95);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .nicho { background: linear-gradient(155deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03)), #1d171a; }
 }
 /* La pieza principal ocupa dos columnas a lo ancho: frasco a la izquierda y su texto a la
    derecha, como página de revista */
@@ -1316,7 +1321,8 @@ body.buscando .buscar i { transform: scale(1.12); }
   background:
     radial-gradient(85% 60% at 30% 22%, rgb(var(--tinte-a) / 0.32), transparent 70%),
     radial-gradient(75% 65% at 88% 100%, rgb(var(--tinte-b) / 0.3), transparent 70%),
-    linear-gradient(155deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.035));
+    linear-gradient(155deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.035)),
+    rgb(24 18 21 / 0.7);
 }
 .nicho.con-tinte .nicho__escena { background: radial-gradient(55% 50% at 50% 40%, rgb(var(--tinte-a) / 0.42), transparent 72%); }
 .nicho.con-tinte.es-principal .nicho__escena { background: radial-gradient(60% 55% at 50% 45%, rgb(var(--tinte-a) / 0.45), transparent 72%); }
@@ -1357,22 +1363,28 @@ body.buscando .buscar i { transform: scale(1.12); }
 .fondo-nicho__hilos { position: absolute; left: 0; top: -6%; width: 100%; height: 112%; overflow: visible; }
 .hilo { fill: none; stroke: rgb(230 213 184 / 0.2); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .hilo--brillo { stroke: rgb(244 228 198 / 0.8); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 0.07 0.93; stroke-dashoffset: 1; }
-body:not(.modo-nicho) .fondo-nicho * { animation-play-state: paused !important; }
+/* Fuera de los nichos, o con una ficha abierta, todo el fondo se queda quieto */
+body:not(.modo-nicho) .fondo-nicho *,
+.con-ficha .fondo-nicho * { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: no-preference) {
-  /* Al entrar, los hilos se dibujan; después ondulan y un destello corre por cada uno */
+  /* Al entrar, los hilos se dibujan una sola vez */
   .modo-nicho .hilo:not(.hilo--brillo) { stroke-dasharray: 1; animation: hilo-traza 2600ms var(--suave) both; }
-  .fondo-nicho__hilos g { animation: hilo-onda calc(14s + var(--h) * 3.5s) ease-in-out infinite alternate; }
-  .hilo--brillo { animation: hilo-brillo calc(8s + var(--h) * 2.6s) linear infinite; animation-delay: calc(var(--h) * -2.1s); }
+  /* El vaivén mueve la capa completa (lo hace la tarjeta gráfica, sin volver a dibujar) */
+  .fondo-nicho__hilos { will-change: transform; animation: hilo-onda 18s ease-in-out infinite alternate; }
+  /* El destello corre por un hilo a la vez y solo un momento: el resto del tiempo el dibujo
+     no cambia y no hay nada que repintar */
+  .hilo--brillo { animation: hilo-brillo 12s linear infinite; animation-delay: calc(var(--h) * -3s); }
 }
 @keyframes hilo-traza { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes hilo-onda { to { transform: translateY(calc(14px + var(--h) * 6px)); } }
-@keyframes hilo-brillo { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes hilo-onda { to { transform: translateY(22px); } }
+@keyframes hilo-brillo { 0%, 76% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
 
 /* La hoja de la página se vuelve transparente para que el fondo vivo se vea en todo */
 .hoja { transition: background-color 900ms ease, box-shadow 900ms ease; }
 .modo-nicho .hoja { background-color: transparent; box-shadow: none; }
 /* Con el ambiente puesto, la sala deja de ser una caja: los nichos flotan sobre el fondo */
-.modo-nicho .nav { background: rgb(22 17 20 / 0.8); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: background-color 600ms; }
+/* Menú casi opaco, sin desenfoque: difuminar el fondo animado detrás costaba en cada cuadro */
+.modo-nicho .nav { background: rgb(22 17 20 / 0.94); transition: background-color 600ms; }
 .modo-nicho .capitulo--nicho { overflow: visible; padding-inline: 0; background: none; box-shadow: none; }
 .modo-nicho .capitulo--nicho > .aura,
 .modo-nicho .capitulo--nicho::before,
@@ -1457,7 +1469,7 @@ body:not(.modo-nicho) .fondo-nicho * { animation-play-state: paused !important; 
     scrollbar-width: none;
   }
   .nichos__lista::-webkit-scrollbar { display: none; }
-  .nicho { flex: 0 0 82%; scroll-snap-align: start; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+  .nicho { flex: 0 0 82%; scroll-snap-align: start; }
   .aura span { width: 120%; }
   .nicho.es-principal { display: flex; min-height: 0; }
   .nicho.es-principal .nicho__escena { height: auto; aspect-ratio: 1 / 1.05; }

@@ -2645,6 +2645,9 @@
     }
     tarjetaOrigen = document.activeElement;
     detalle.classList.remove("es-cerrando");
+    /* Con la ficha abierta, el fondo de atrás se queda quieto: si siguiera moviéndose, el
+       velo borroso de la ficha tendría que volver a difuminarse en cada cuadro */
+    document.body.classList.add("con-ficha");
     if (typeof detalle.showModal === "function") detalle.showModal();
     else detalle.setAttribute("open", "");
     observarBloques();
@@ -2659,6 +2662,7 @@
     const cerrar = () => {
       quitarCaptcha();
       detalle.classList.remove("es-cerrando");
+      document.body.classList.remove("con-ficha");
       if (typeof detalle.close === "function") detalle.close();
       else detalle.removeAttribute("open");
       if (tarjetaOrigen && tarjetaOrigen.focus) tarjetaOrigen.focus();
@@ -2752,6 +2756,8 @@
       evento.preventDefault();
       cerrarDetalle();
     });
+    /* Se cierre como se cierre, el fondo vuelve a moverse */
+    detalle.addEventListener("close", () => document.body.classList.remove("con-ficha"));
     detalle.addEventListener("click", (evento) => {
       if (evento.target === detalle) cerrarDetalle();
     });
