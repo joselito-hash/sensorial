@@ -28,7 +28,8 @@
   <link rel="preconnect" href="https://www.youtube-nocookie.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300..800;1,300..800&display=swap">
+  <!-- Cormorant Garamond solo se usa en la colección nicho (títulos y nombres) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Urbanist:ital,wght@0,300..800;1,300..800&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -196,7 +197,7 @@
         <!-- Paso 1: diseñador o árabes -->
         <section class="paso contenedor" id="paso-origen" aria-labelledby="titulo-origen">
           <div class="paso__cabecera">
-            <h1 id="titulo-origen">Diseñador y árabes, en un mismo lugar.</h1>
+            <h1 id="titulo-origen" data-con-nicho="Diseñador, árabes y nicho, en un mismo lugar.">Diseñador y árabes, en un mismo lugar.</h1>
             <p>¿Qué quieres explorar primero?</p>
           </div>
 
@@ -222,6 +223,17 @@
                 <span class="opcion__desc">Casas de Emiratos como Lattafa, Armaf, Afnan y Rasasi. Aromas intensos, con mucho oud, vainilla y especias.</span>
                 <span class="opcion__conteo" data-conteo-origen="Árabe"></span>
               </span>
+            </button>
+            <!-- Nicho: solo aparece si hay perfumes de nicho publicados. app.js pone sus frascos -->
+            <button class="opcion opcion--nicho" type="button" data-elegir-origen="Nicho" style="--i: 2" hidden>
+              <span class="aura" aria-hidden="true"><span></span><span></span><span></span></span>
+              <span class="opcion__texto">
+                <span class="opcion__marca"><span class="nichos__rombo" aria-hidden="true"></span>Colección privada</span>
+                <span class="opcion__titulo">Nicho<i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+                <span class="opcion__desc">Perfumería de autor: casas independientes, producciones pequeñas y materias primas poco comunes. Fragancias que casi nadie más lleva.</span>
+                <span class="opcion__conteo" data-conteo-origen="Nicho"></span>
+              </span>
+              <span class="opcion__vitrina" id="vitrina-nicho" aria-hidden="true"></span>
             </button>
           </div>
 
@@ -272,6 +284,7 @@
                 <button class="chip" type="button" data-grupo="origen" data-valor="todos" aria-pressed="true">Todos</button>
                 <button class="chip" type="button" data-grupo="origen" data-valor="Diseñador" aria-pressed="false">Diseñador</button>
                 <button class="chip" type="button" data-grupo="origen" data-valor="Árabe" aria-pressed="false">Árabes</button>
+                <button class="chip" type="button" data-grupo="origen" data-valor="Nicho" aria-pressed="false" hidden>Nicho</button>
               </div>
             </div>
             <div class="filtros__resultado">

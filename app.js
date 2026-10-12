@@ -717,8 +717,10 @@
     const marco = document.createElement("div");
     marco.className = "hero__video";
     marco.setAttribute("aria-hidden", "true");
+    /* Sin loop ni playlist: con ellos YouTube agrega botones de anterior y siguiente. La
+       página lo repite sola (ver reiniciar) */
     const parametros = new URLSearchParams({
-      autoplay: "1", mute: "1", controls: "0", loop: "1", playlist: id, playsinline: "1", rel: "0",
+      autoplay: "1", mute: "1", controls: "0", playsinline: "1", rel: "0",
       iv_load_policy: "3", disablekb: "1", fs: "0", modestbranding: "1", start: String(inicio || 0),
       enablejsapi: "1", origin: location.origin, widget_referrer: location.origin + location.pathname,
     });
@@ -731,10 +733,38 @@
     marco.append(iframe);
     capa.append(marco);
 
-    /* El reproductor avisa por mensajes cuándo el video de verdad empieza a reproducirse;
-       hasta entonces se sigue viendo la foto (así no aparece el negro del arranque). Si el
-       video falla (por ejemplo, la marca lo quitó), se retira y queda la foto. */
-    const mostrar = () => marco.classList.add("es-visible");
+    /* El reproductor avisa por mensajes cuándo el video de verdad se reproduce. Al arrancar
+       (y al volver a empezar) YouTube muestra unos segundos sus botones de pausa encima del
+       video y no se pueden ocultar desde la página, así que el video aparece hasta que ya
+       llevan ese tiempo reproduciéndose; mientras tanto se ve la foto. Si el video falla
+       (por ejemplo, la marca lo quitó), se retira y queda la foto. */
+    const ESPERA_BOTONES = 3200;
+    let relojMostrar = 0;
+    let estadoPrevio = null;
+    let reiniciando = false;
+    const mostrar = () => {
+      window.clearTimeout(relojMostrar);
+      relojMostrar = window.setTimeout(() => marco.classList.add("es-visible"), ESPERA_BOTONES);
+    };
+    const ocultar = () => {
+      window.clearTimeout(relojMostrar);
+      marco.classList.remove("es-visible");
+    };
+    const ordenar = (func, args = []) => {
+      try { iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), "*"); } catch { /* sin acceso */ }
+    };
+    /* Un poco antes del final se oculta y vuelve al inicio (sin la pantalla final de YouTube) */
+    const reiniciar = () => {
+      if (reiniciando) return;
+      reiniciando = true;
+      ocultar();
+      window.setTimeout(() => {
+        ordenar("seekTo", [inicio || 0, true]);
+        ordenar("playVideo");
+        reiniciando = false;
+        estadoPrevio = null;
+      }, 700);
+    };
     let respondio = false;
     const otroIntento = () => {
       quitarVideo(capa);
@@ -755,12 +785,16 @@
         const info = datos && datos.info;
         if (datos.event === "onError") { otroIntento(); return; }
         const estadoVideo = datos.event === "onStateChange" ? info : info && info.playerState;
-        if (estadoVideo === 1) mostrar();
-        /* Si el navegador lo pausa (al cambiar de app, por ejemplo), se pide que siga y,
-           mientras tanto, vuelve a verse la foto en lugar del botón de reproducir */
-        if (estadoVideo === 2) {
-          marco.classList.remove("es-visible");
-          iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+        if (info && typeof info.currentTime === "number" && info.duration > 2
+          && info.currentTime > info.duration - 0.9) reiniciar();
+        /* Los avisos se repiten varias veces por segundo: solo cuenta cuando cambia el estado */
+        if (typeof estadoVideo === "number" && estadoVideo !== estadoPrevio && !reiniciando) {
+          estadoPrevio = estadoVideo;
+          if (estadoVideo === 1) mostrar();
+          else ocultar();
+          /* Terminó: vuelve a empezar. Pausado (al cambiar de app, por ejemplo): que siga */
+          if (estadoVideo === 0) reiniciar();
+          if (estadoVideo === 2) ordenar("playVideo");
         }
       } catch { /* mensaje ajeno */ }
     };
@@ -828,7 +862,8 @@
     let enVista = true;
     let encima = false;
     let detenido = false;
-    const espera = conVideos() ? 14000 : 6500;
+    /* Con videos cada familia dura más: el video tarda unos segundos en aparecer */
+    const espera = conVideos() ? 17000 : 6500;
     /* La barrita de la familia activa se llena en lo que tarda en pasar a la siguiente */
     selector?.style.setProperty("--duracion", `${espera}ms`);
     const detener = () => {
@@ -865,8 +900,10 @@
     catalogo: "Catálogo | Sensorial Boutique",
     pedido: "Tu pedido | Sensorial Boutique",
   };
-  const ORIGEN_URL = { "Diseñador": "disenador", "Árabe": "arabe" };
-  const ORIGEN_DE_URL = { disenador: "Diseñador", arabe: "Árabe" };
+  const ORIGEN_URL = { "Diseñador": "disenador", "Árabe": "arabe", "Nicho": "nicho" };
+  const ORIGEN_DE_URL = { disenador: "Diseñador", arabe: "Árabe", nicho: "Nicho" };
+  /* "de diseñador", "árabes", "de nicho": cómo se nombra cada origen en un título */
+  const ORIGEN_EN_TITULO = { "Diseñador": "de diseñador", "Árabe": "árabes", "Nicho": "de nicho" };
   const contenedorVistas = $(".vistas");
   const recorrido = $("#vista-catalogo");
   let vistaActual = null;
@@ -921,7 +958,7 @@
 
   function tituloCatalogo({ origen, familia }) {
     const fam = familia !== "todas" ? familiaPorId.get(familia).nombre : null;
-    const ori = origen === "Árabe" ? "árabes" : origen === "Diseñador" ? "de diseñador" : null;
+    const ori = ORIGEN_EN_TITULO[origen] || null;
     if (fam && ori) return `${fam} ${ori}`;
     if (fam) return `Perfumes ${fam.toLowerCase()}`;
     if (ori) return `Perfumes ${ori}`;
@@ -948,7 +985,7 @@
       </li>`;
     }).join("");
 
-    const etiqueta = origen === "Árabe" ? "árabes" : "de diseñador";
+    const etiqueta = ORIGEN_EN_TITULO[origen] || "";
     $("#familia-sub").textContent = `Tenemos ${textoPerfumes(contar(origen, "todas"))} ${etiqueta}. Elige la familia que más te llame.`;
   }
 
@@ -1210,7 +1247,7 @@
       <li class="vendido${i === 0 ? " es-activo" : ""}" data-indice="${i}" style="--campo: var(--c-${f.id})">
         <div class="vendido__info">
           <h3 class="vendido__nombre"><button type="button" data-ficha="${p.id}">${p.nombre}</button></h3>
-          <p class="vendido__meta"><span>${f.nombre}</span>${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+          <p class="vendido__meta"><span>${f.nombre}</span>${p.casa}${p.origen !== "Diseñador" ? ` · ${p.origen}` : ""}</p>
         </div>
         <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
       </li>`;
@@ -1311,7 +1348,7 @@
 
     const texto = (p, f, clase, i) => `
       <div class="${clase}" data-indice="${i}" style="--campo: var(--c-${f.id})">
-        <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}</p>
+        <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen !== "Diseñador" ? ` · ${p.origen}` : ""}</p>
         <h3 class="novedad__nombre">${p.nombre}</h3>
         <p class="novedad__desc">${hueleA(p)} ${f.larga}</p>
         <ul class="novedad__notas" aria-label="Notas principales">
@@ -1556,7 +1593,7 @@
     const { familia, origen } = estado.filtros;
     const partes = [];
     if (familia !== "todas") partes.push(familiaPorId.get(familia).nombre);
-    if (origen !== "todos") partes.push(origen === "Árabe" ? "Árabes" : "Diseñador");
+    if (origen !== "todos") partes.push({ "Árabe": "Árabes", "Nicho": "Nicho" }[origen] || "Diseñador");
     const resumen = $("#filtros-resumen");
     if (!resumen) return;
     resumen.textContent = partes.length ? partes.join(" · ") : "Todo el catálogo";
@@ -1608,7 +1645,7 @@
           <div class="ficha__cabeza">
             <div>
               <h4 class="ficha__nombre"><button class="ficha__titulo" type="button" data-ficha="${p.id}">${p.nombre}</button></h4>
-              <p class="ficha__casa">${p.casa}${p.origen === "Árabe" ? " · Árabe" : ""}${concentracionCorta(p) ? `<span class="ficha__conc" title="${escaparHTML(p.version)}">${concentracionCorta(p)}</span>` : ""}</p>
+              <p class="ficha__casa">${p.casa}${p.origen !== "Diseñador" ? ` · ${p.origen}` : ""}${concentracionCorta(p) ? `<span class="ficha__conc" title="${escaparHTML(p.version)}">${concentracionCorta(p)}</span>` : ""}</p>
             </div>
             <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
           </div>
@@ -1627,12 +1664,121 @@
       `<button class="chip chip--familia" type="button" data-grupo="familia" data-valor="${f.id}" aria-pressed="false" style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id})"><span class="chip__punto" aria-hidden="true"></span>${f.nombre}<span class="chip__n" data-n="${f.id}"></span></button>`).join("");
   }
 
-  /* Un capítulo de color por familia, con sus perfumes dentro */
+  /* ---------- Colección nicho ----------
+     Los perfumes de nicho no van en los capítulos de color: tienen su propia sala al inicio
+     del catálogo, más oscura y sobria, con cada frasco en su vitrina iluminada. Sin colores
+     de familia: la familia va escrita junto al número. */
+  const NICHO = PERFUMES.filter((p) => p.origen === "Nicho")
+    .sort((a, b) => a.casa.localeCompare(b.casa, "es") || a.nombre.localeCompare(b.nombre, "es"));
+
+  function fichaNicho(p, i) {
+    const f = familiaPorId.get(p.familia);
+    const notas = notasPrincipales(p).map(mayuscula);
+    const conc = concentracionCorta(p);
+    return `
+      <li class="nicho" data-familia="${p.familia}" data-origen="${p.origen}" style="--i: ${i}">
+        <button class="nicho__escena" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
+          <img src="${p.lamina || url(p.foto, 800)}" alt="${nombreCompleto(p)}" loading="lazy"${p.lamina ? "" : recortable(p.foto)}>
+          ${calificacionFicha(p)}
+        </button>
+        <div class="nicho__cuerpo">
+          <p class="nicho__indice"><span class="nicho__num">${String(i + 1).padStart(2, "0")}</span>${f ? `<span>${f.nombre}</span>` : ""}</p>
+          <p class="nicho__casa">${p.casa}</p>
+          <h4 class="nicho__nombre"><button class="nicho__titulo" type="button" data-ficha="${p.id}">${p.nombre}</button></h4>
+          ${notas.length ? `<p class="nicho__notas">${notas.join('<span aria-hidden="true"> · </span>')}</p>` : ""}
+          <div class="nicho__pie">
+            ${conc ? `<span class="nicho__conc" title="${escaparHTML(p.version)}">${conc}</span>` : "<span></span>"}
+            <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
+          </div>
+        </div>
+      </li>`;
+  }
+
+  function salaNicho() {
+    if (!NICHO.length) return "";
+    return `
+      <section class="capitulo capitulo--nicho revelar" data-capitulo="nicho" aria-labelledby="capitulo-nicho">
+        <div class="aura" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="nichos__cabecera">
+          <div>
+            <p class="nichos__marca"><span class="nichos__rombo" aria-hidden="true"></span>Colección nicho</p>
+            <h3 class="nichos__titulo" id="capitulo-nicho">Perfumería <em>de autor</em></h3>
+          </div>
+          <div class="nichos__lado">
+            <p class="nichos__texto">Casas independientes que crean en producciones pequeñas, con materias primas poco comunes. Fragancias que casi nadie más lleva.</p>
+            <span class="capitulo__conteo"></span>
+          </div>
+        </div>
+        <div class="nichos__cinta" aria-hidden="true"><div class="nichos__cinta-pista">${
+          Array.from({ length: 2 }, () => ["Perfumería de autor", "Ediciones limitadas", "Casas independientes", "Materias primas raras", "Para quien no quiere oler como todos"]
+            .map((t) => `<span>${t}</span>`).join("")).join("")}</div></div>
+        <ul class="nichos__lista">${NICHO.map(fichaNicho).join("")}</ul>
+      </section>`;
+  }
+
+  /* La sala nicho cobra vida solo mientras se ve: el fondo de luz se mueve (en pausa fuera de
+     pantalla) y, con mouse, cada vitrina se inclina hacia el puntero, su borde se ilumina
+     donde está el cursor y el frasco se desplaza un poco, como si tuviera profundidad. */
+  function iniciarSalaNicho() {
+    const sala = $(".capitulo--nicho");
+    if (!sala) return;
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(([entrada]) => sala.classList.toggle("en-pantalla", entrada.isIntersecting)).observe(sala);
+    } else {
+      sala.classList.add("en-pantalla");
+    }
+    if (menosMovimiento.matches || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let pendiente = 0;
+    let ultimo = null;
+    const soltar = (tarjeta) => {
+      ["--rx", "--ry", "--px", "--py"].forEach((v) => tarjeta.style.removeProperty(v));
+    };
+    sala.addEventListener("pointermove", (evento) => {
+      ultimo = evento;
+      if (pendiente) return;
+      pendiente = window.requestAnimationFrame(() => {
+        pendiente = 0;
+        const s = sala.getBoundingClientRect();
+        sala.style.setProperty("--sx", `${ultimo.clientX - s.left}px`);
+        sala.style.setProperty("--sy", `${ultimo.clientY - s.top}px`);
+        const tarjeta = ultimo.target.closest?.(".nicho");
+        if (!tarjeta) return;
+        const r = tarjeta.getBoundingClientRect();
+        const x = (ultimo.clientX - r.left) / r.width;
+        const y = (ultimo.clientY - r.top) / r.height;
+        tarjeta.style.setProperty("--x", `${Math.round(x * r.width)}px`);
+        tarjeta.style.setProperty("--y", `${Math.round(y * r.height)}px`);
+        tarjeta.style.setProperty("--rx", `${((0.5 - y) * 5).toFixed(2)}deg`);
+        tarjeta.style.setProperty("--ry", `${((x - 0.5) * 6).toFixed(2)}deg`);
+        tarjeta.style.setProperty("--px", (x - 0.5).toFixed(3));
+        tarjeta.style.setProperty("--py", (y - 0.5).toFixed(3));
+      });
+    });
+    sala.addEventListener("pointerout", (evento) => {
+      const tarjeta = evento.target.closest?.(".nicho");
+      if (tarjeta && !tarjeta.contains(evento.relatedTarget)) soltar(tarjeta);
+    });
+  }
+
+  /* Paso 1: la opción "Nicho" solo aparece si hay perfumes de nicho, con algunos de sus frascos */
+  function pintarOpcionNicho() {
+    const opcion = $("[data-elegir-origen='Nicho']");
+    if (!opcion) return;
+    opcion.hidden = NICHO.length === 0;
+    const titulo = $("#titulo-origen");
+    if (titulo && NICHO.length) titulo.textContent = titulo.dataset.conNicho;
+    $("#vitrina-nicho").innerHTML = NICHO.slice(0, 3).map((p) =>
+      `<img src="${p.lamina || url(p.foto, 500)}" alt="" loading="lazy"${p.lamina ? "" : recortable(p.foto)}>`).join("");
+    $$("[data-grupo='origen'][data-valor='Nicho']").forEach((b) => { b.hidden = NICHO.length === 0; });
+  }
+
+  /* Un capítulo de color por familia, con sus perfumes dentro (los de nicho van en su sala) */
   function pintarCatalogo() {
     if (!$("#capitulos")) return;
     pintarChipsFamilia();
-    $("#capitulos").innerHTML = FAMILIAS.map((f) => {
-      const perfumes = PERFUMES.filter((p) => p.familia === f.id);
+    pintarOpcionNicho();
+    $("#capitulos").innerHTML = salaNicho() + FAMILIAS.map((f) => {
+      const perfumes = PERFUMES.filter((p) => p.familia === f.id && p.origen !== "Nicho");
       return `
         <section class="capitulo revelar" data-capitulo="${f.id}" aria-labelledby="capitulo-${f.id}"
           style="--campo: var(--c-${f.id}); --tono: var(--t-${f.id})">
@@ -1653,17 +1799,36 @@
     if (!$("#capitulos")) return;
     const { familia, origen } = estado.filtros;
     let visibles = 0;
-    $$(".ficha").forEach((ficha) => {
+    $$(".ficha, .nicho").forEach((ficha) => {
       const pasa = (familia === "todas" || ficha.dataset.familia === familia)
         && (origen === "todos" || ficha.dataset.origen === origen);
       ficha.hidden = !pasa;
       if (pasa) visibles += 1;
     });
     $$(".capitulo").forEach((capitulo) => {
-      const n = $$(".ficha:not([hidden])", capitulo).length;
+      const n = $$(":is(.ficha, .nicho):not([hidden])", capitulo).length;
       capitulo.hidden = n === 0;
-      $(".capitulo__conteo", capitulo).textContent = n === 1 ? "1 perfume" : `${n} perfumes`;
+      const nicho = capitulo.classList.contains("capitulo--nicho");
+      $(".capitulo__conteo", capitulo).textContent = nicho
+        ? (n === 1 ? "1 fragancia" : `${n} fragancias`)
+        : (n === 1 ? "1 perfume" : `${n} perfumes`);
     });
+    /* La numeración de la sala nicho sigue a lo que se ve: 01, 02… sin saltos */
+    /* y la primera que se ve es la principal: ocupa el doble, como pieza de vitrina */
+    $$(".nicho").forEach((nicho) => nicho.classList.remove("es-principal"));
+    $$(".nicho:not([hidden])").forEach((nicho, i) => {
+      $(".nicho__num", nicho).textContent = `${String(i + 1).padStart(2, "0")}`;
+      nicho.classList.toggle("es-principal", i === 0);
+    });
+    const sala = $(".capitulo--nicho");
+    if (sala) sala.dataset.cuantos = String($$(".nicho:not([hidden])").length);
+    /* El control de origen: la marca clara mide lo que una opción y se mueve a la elegida */
+    const segmento = $(".segmento");
+    if (segmento) {
+      const opciones = $$(".chip:not([hidden])", segmento);
+      segmento.style.setProperty("--opciones", opciones.length);
+      segmento.style.setProperty("--elegida", Math.max(0, opciones.findIndex((b) => b.dataset.valor === origen)));
+    }
     $$(".chip").forEach((chip) => {
       chip.setAttribute("aria-pressed", String(estado.filtros[chip.dataset.grupo] === chip.dataset.valor));
     });
@@ -2545,9 +2710,9 @@
     if (!boton) {
       /* Tocar cualquier parte de una tarjeta de perfume (no solo la foto) abre su ficha;
          los botones de dentro, como "Agregar", siguen haciendo lo suyo */
-      const tarjeta = evento.target.closest(".ficha, .vendidos__tarjeta, .vendido, .destacado, .pedido__item, .novedad");
+      const tarjeta = evento.target.closest(".ficha, .nicho, .vendidos__tarjeta, .vendido, .destacado, .pedido__item, .novedad");
       const abrir = tarjeta && !evento.target.closest("a") ? $("[data-ficha]", tarjeta) : null;
-      if (abrir) abrirDetalle(abrir.dataset.ficha, $(".ficha__lamina, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta));
+      if (abrir) abrirDetalle(abrir.dataset.ficha, $(".ficha__lamina, .nicho__escena, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta));
       return;
     }
 
@@ -2599,8 +2764,8 @@
       alternar(boton.dataset.id);
     } else if (boton.dataset.ficha) {
       if (boton.closest(".barra")) cerrarPanelLista();
-      const tarjeta = boton.closest(".ficha, .vendidos__tarjeta, .vendido, .pedido__item, .destacado, .novedad");
-      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta) : null);
+      const tarjeta = boton.closest(".ficha, .nicho, .vendidos__tarjeta, .vendido, .pedido__item, .destacado, .novedad");
+      abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .nicho__escena, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta) : null);
     } else if ("irResenas" in boton.dataset) {
       $(".detalle__resenas", detalle)?.scrollIntoView({ behavior: menosMovimiento.matches ? "auto" : "smooth", block: "start" });
     } else if (boton.classList.contains("detalle__cerrar")) {
@@ -2708,6 +2873,7 @@
   pintarNovedades();
   pintarClientes();
   pintarCatalogo();
+  iniciarSalaNicho();
   aplicarFiltros();
   iniciarPestanas();
   pintarDestacado();

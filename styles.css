@@ -873,14 +873,14 @@ body.buscando .buscar i { transform: scale(1.12); }
   top: 0.25rem;
   bottom: 0.25rem;
   left: 0.25rem;
-  width: calc((100% - 0.5rem) / 3);
+  /* app.js pone cuántas opciones hay (3, o 4 con Nicho) y cuál está elegida */
+  width: calc((100% - 0.5rem) / var(--opciones, 3));
   border-radius: 999px;
   background: var(--tinta);
   box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.6);
+  translate: calc(var(--elegida, 0) * 100%) 0;
   transition: translate 480ms var(--suave);
 }
-.segmento:has(> [data-valor="Diseñador"][aria-pressed="true"]) .segmento__marca { translate: 100% 0; }
-.segmento:has(> [data-valor="Árabe"][aria-pressed="true"]) .segmento__marca { translate: 200% 0; }
 .segmento .chip {
   position: relative;
   min-height: 2.35rem;
@@ -970,6 +970,373 @@ body.buscando .buscar i { transform: scale(1.12); }
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Colección nicho ----------
+   Una sala aparte dentro del catálogo: más oscura que el resto, con filetes champán de un
+   pixel, títulos en serif (Cormorant Garamond) y cada frasco en su vitrina iluminada desde
+   arriba. Sin colores de familia: la sobriedad es lo que la hace sentir exclusiva. */
+:root {
+  --champan: #e6d5b8;
+  --champan-linea: rgb(230 213 184 / 0.14);
+  --noir: #161114;
+  --serif: "Cormorant Garamond", "Cormorant", Georgia, serif;
+}
+.nichos__rombo {
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  border: 1px solid var(--champan);
+  transform: rotate(45deg);
+}
+
+.capitulo--nicho {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  border-radius: var(--r-hoja);
+  /* Con mouse, una luz tenue sigue al puntero por toda la sala (--sx, --sy desde app.js) */
+  background:
+    radial-gradient(38rem circle at var(--sx, 50%) var(--sy, 0%), rgb(230 213 184 / 0.06), transparent 60%),
+    var(--noir);
+  box-shadow: inset 0 0 0 1px var(--champan-linea), 0 50px 90px -60px rgb(0 0 0 / 0.9);
+}
+/* Grano fino de película, fijo (no se anima): le quita lo "digital" al negro */
+.capitulo--nicho::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Fondo vivo: tres luces difusas (champán, vino y humo) que flotan muy despacio detrás de
+   las vitrinas de vidrio. Son degradados radiales que solo se trasladan (sin filtros), y se
+   pausan cuando la sala no está en pantalla. */
+.aura {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aura span {
+  position: absolute;
+  width: 75%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  will-change: transform;
+}
+.aura span:nth-child(1) { left: -18%; top: -35%; background: radial-gradient(closest-side, rgb(230 213 184 / 0.17), transparent); }
+.aura span:nth-child(2) { right: -22%; top: 5%; background: radial-gradient(closest-side, rgb(118 34 56 / 0.34), transparent); }
+.aura span:nth-child(3) { left: 18%; bottom: -45%; background: radial-gradient(closest-side, rgb(64 78 108 / 0.3), transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .aura span:nth-child(1) { animation: aura-a 26s ease-in-out infinite alternate; }
+  .aura span:nth-child(2) { animation: aura-b 33s ease-in-out infinite alternate; }
+  .aura span:nth-child(3) { animation: aura-c 39s ease-in-out infinite alternate; }
+  .capitulo--nicho:not(.en-pantalla) .aura span { animation-play-state: paused; }
+}
+@keyframes aura-a { to { transform: translate(38%, 30%) scale(1.18); } }
+@keyframes aura-b { to { transform: translate(-42%, 22%) scale(0.86); } }
+@keyframes aura-c { to { transform: translate(24%, -38%) scale(1.12); } }
+
+/* Cinta de texto en serif cursiva que corre lento bajo el título */
+.nichos__cinta {
+  margin-top: clamp(1.1rem, 2.4vw, 1.6rem);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.nichos__cinta-pista { display: flex; width: max-content; }
+.nichos__cinta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.25rem;
+  padding-right: 2.25rem;
+  color: rgb(230 213 184 / 0.42);
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  font-style: italic;
+  white-space: nowrap;
+}
+.nichos__cinta span::after { content: ""; width: 0.35rem; height: 0.35rem; border: 1px solid currentColor; transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .nichos__cinta-pista { animation: nichos-cinta 46s linear infinite; }
+  .capitulo--nicho:not(.en-pantalla) .nichos__cinta-pista { animation-play-state: paused; }
+}
+@keyframes nichos-cinta { to { transform: translateX(-50%); } }
+/* Un destello recorre despacio el filete de arriba, como luz sobre un mostrador */
+.capitulo--nicho::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -30%;
+  z-index: 1;
+  width: 30%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(230 213 184 / 0.75), transparent);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .capitulo--nicho::before { animation: nicho-destello 9s cubic-bezier(0.45, 0, 0.2, 1) infinite; }
+  .capitulo--nicho.vista .nicho { animation: sube 900ms var(--suave) both; animation-delay: calc(var(--i, 0) * 80ms + 150ms); }
+}
+@keyframes nicho-destello {
+  0% { transform: translateX(0); }
+  55%, 100% { transform: translateX(560%); }
+}
+
+.nichos__cabecera {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 1.25rem 3rem;
+  padding-bottom: clamp(1.4rem, 3vw, 2.25rem);
+  border-bottom: 1px solid var(--champan-linea);
+}
+.nichos__marca {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--champan);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.nichos__titulo {
+  margin-top: 0.85rem;
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 5vw, 4.25rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.02;
+}
+.nichos__titulo em { color: var(--champan); font-style: italic; }
+.nichos__lado { display: grid; justify-items: start; gap: 1rem; }
+.nichos__texto { max-width: 46ch; color: var(--tinta-2); line-height: 1.65; }
+.capitulo--nicho .capitulo__conteo {
+  margin-left: 0;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--champan-linea);
+  background: none;
+  color: var(--champan);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* La primera fragancia es la pieza principal (doble); las demás, en vitrinas iguales */
+.nichos__lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: clamp(0.9rem, 1.8vw, 1.4rem);
+  margin-top: clamp(1.4rem, 3vw, 2.25rem);
+}
+/* Vitrinas de vidrio esmerilado: dejan ver, borrosas, las luces que se mueven detrás.
+   Canto de luz arriba (refracción), borde que se ilumina donde está el cursor (--x, --y) y
+   una leve inclinación hacia el puntero (--rx, --ry), todo calculado en app.js. */
+.nicho {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: linear-gradient(155deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.035));
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.07),
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 30px 60px -40px rgb(0 0 0 / 0.85);
+  transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 700ms var(--suave), box-shadow 600ms var(--suave);
+}
+.nicho[hidden] { display: none; }
+.nicho::before,
+.nicho::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 450ms ease;
+}
+/* El filo del vidrio se enciende bajo el cursor */
+.nicho::before {
+  padding: 1px;
+  background: radial-gradient(18rem circle at var(--x, 50%) var(--y, 0%), rgb(230 213 184 / 0.7), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+/* y un reflejo suave cruza el cristal */
+.nicho::after { background: radial-gradient(26rem circle at var(--x, 50%) var(--y, 0%), rgb(255 246 230 / 0.07), transparent 55%); }
+.nicho:hover::before,
+.nicho:hover::after { opacity: 1; }
+.nicho:hover {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 40px 70px -40px rgb(0 0 0 / 0.95);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nicho { background: linear-gradient(155deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03)), #1d171a; }
+}
+/* La pieza principal ocupa dos columnas a lo ancho: frasco a la izquierda y su texto a la
+   derecha, como página de revista */
+.nicho.es-principal {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-height: 26rem;
+}
+.capitulo--nicho[data-cuantos="1"] .nicho.es-principal { grid-column: 1 / -1; }
+
+/* La vitrina: luz cálida desde arriba y una línea de pedestal bajo el frasco */
+.nicho__escena {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1.05;
+  padding: 0;
+  border: 0;
+  background: radial-gradient(58% 52% at 50% 36%, rgb(230 213 184 / 0.11), transparent 72%);
+  cursor: pointer;
+  contain: size;
+}
+.nicho.es-principal .nicho__escena { aspect-ratio: auto; height: 100%; }
+.nicho.es-principal .nicho__cuerpo {
+  justify-content: flex-end;
+  padding: clamp(1.5rem, 2.6vw, 2.25rem);
+  border-top: 0;
+  border-left: 1px solid rgb(230 213 184 / 0.08);
+}
+.nicho.es-principal .nicho__notas { font-size: 0.9375rem; }
+.nicho__escena::after {
+  content: "";
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(230 213 184 / 0.4), transparent);
+}
+.nicho__escena img {
+  position: absolute;
+  inset: 9% 16% calc(8% + 1px);
+  width: 68%;
+  height: calc(83% - 1px);
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 1.3rem 1.1rem rgb(0 0 0 / 0.6));
+  /* El frasco se desplaza un poco más que el vidrio al inclinarse: parece estar dentro */
+  translate: calc(var(--px, 0) * 14px) calc(var(--py, 0) * 10px);
+  transition: transform 1000ms var(--suave), translate 700ms var(--suave);
+}
+.nicho:hover .nicho__escena img { transform: translateY(-0.35rem); }
+.nicho__escena .ficha__calif { top: 0.8rem; right: 0.8rem; }
+
+.nicho__cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.1rem 1.25rem 1.15rem;
+  border-top: 1px solid rgb(230 213 184 / 0.08);
+}
+.nicho__indice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: var(--champan);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.nicho__indice span + span { color: var(--tinta-2); }
+/* El número de pieza va precedido de un filete fino: "— 02" */
+.nicho__num { display: inline-flex; align-items: center; gap: 0.5rem; }
+.nicho__num::before { content: ""; width: 1.1rem; height: 1px; background: currentColor; opacity: 0.7; }
+.nicho__casa {
+  margin-top: 0.5rem;
+  color: var(--tinta-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.nicho__nombre { font-family: var(--serif); font-size: 1.75rem; font-weight: 500; line-height: 1.05; }
+.nicho.es-principal .nicho__nombre { font-size: clamp(2.2rem, 3vw, 2.9rem); }
+.nicho__titulo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nicho__titulo:hover { text-decoration: underline; text-decoration-color: var(--champan-linea); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+.nicho__notas { margin-top: 0.15rem; color: var(--tinta-2); font-size: 0.875rem; line-height: 1.45; }
+.nicho__pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgb(230 213 184 / 0.08);
+}
+.nicho__notas { margin-bottom: 0.75rem; }
+.nicho__conc { color: var(--champan); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.18em; }
+.nicho .agregar {
+  border: 1px solid rgb(230 213 184 / 0.35);
+  background: transparent;
+  color: var(--champan);
+  transition: background-color 300ms, color 300ms, border-color 300ms, transform 250ms var(--suave);
+}
+.nicho .agregar:hover,
+.nicho .agregar[aria-pressed="true"] { border-color: var(--champan); background: var(--champan); color: var(--noir); }
+
+@media (max-width: 56rem) {
+  .nichos__cabecera { grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .nichos__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .opcion.opcion--nicho { grid-template-columns: minmax(0, 1fr); }
+  .opcion--nicho .opcion__vitrina { order: -1; height: 11rem; padding-bottom: 1.25rem; }
+  .opcion--nicho .opcion__vitrina::after { bottom: 1.15rem; }
+}
+/* En el teléfono la sala nicho se desliza de lado, una vitrina tras otra, como los capítulos */
+@media (max-width: 40rem) {
+  .capitulo--nicho { padding: 1.5rem 1.25rem 1.35rem; border-radius: 1.6rem; }
+  .nichos__titulo { font-size: 2.6rem; }
+  .nichos__lista {
+    display: flex;
+    gap: 0.75rem;
+    margin-inline: -1.25rem;
+    padding-inline: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1.25rem;
+    scrollbar-width: none;
+  }
+  .nichos__lista::-webkit-scrollbar { display: none; }
+  .nicho { flex: 0 0 82%; scroll-snap-align: start; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+  .aura span { width: 120%; }
+  .nicho.es-principal { display: flex; min-height: 0; }
+  .nicho.es-principal .nicho__escena { height: auto; aspect-ratio: 1 / 1.05; }
+  .nicho.es-principal .nicho__cuerpo { justify-content: flex-start; padding: 1.1rem 1.25rem 1.15rem; border-left: 0; border-top: 1px solid rgb(230 213 184 / 0.08); }
+  .nicho.es-principal .nicho__nombre { font-size: 1.75rem; }
 }
 
 .fichas {
@@ -2418,6 +2785,66 @@ html:has(.detalle[open]) { overflow: hidden; }
 .opcion:hover .opcion__titulo i { transform: translateX(0.35rem); }
 .opcion__desc { max-width: 44ch; color: var(--blanco-2); }
 .opcion__conteo { color: var(--blanco); font-size: 0.9375rem; font-weight: 600; }
+
+/* Paso 1: la opción Nicho ocupa todo el ancho, sin foto: sala oscura con sus frascos */
+.opcion--nicho {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: clamp(15rem, 30vh, 19rem);
+  background:
+    radial-gradient(60% 90% at 78% 30%, rgb(230 213 184 / 0.09), transparent 70%),
+    var(--noir);
+  box-shadow: inset 0 0 0 1px var(--champan-linea);
+}
+.opcion--nicho[hidden] { display: none; }
+.opcion--nicho::after { content: none; }
+.opcion--nicho .opcion__texto { position: static; align-content: end; }
+.opcion__marca {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--champan);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.opcion--nicho .opcion__titulo { font-family: var(--serif); font-size: clamp(2.6rem, 4.4vw, 3.8rem); font-style: italic; letter-spacing: -0.01em; }
+.opcion--nicho .opcion__titulo i { background: var(--champan); color: var(--noir); }
+.opcion--nicho .opcion__conteo { color: var(--champan); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.opcion__vitrina {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4%;
+  padding: 2rem 2.5rem 2.25rem;
+}
+.opcion__vitrina::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 2.1rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(230 213 184 / 0.4), transparent);
+}
+.opcion__vitrina img {
+  position: static;
+  z-index: 0;
+  width: 28%;
+  height: 78%;
+  max-height: 13rem;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 1rem 0.9rem rgb(0 0 0 / 0.6));
+  transition: transform 1000ms var(--suave);
+}
+.opcion__vitrina img:nth-child(2) { height: 92%; max-height: 15rem; }
+.opcion--nicho:hover .opcion__vitrina img { transform: translateY(-0.35rem); }
+.opcion--nicho:hover .opcion__vitrina img:nth-child(2) { transform: translateY(-0.6rem); }
 
 /* "Ver todo": siempre debajo de los dos primeros pasos */
 /* "Ver todo" acompaña al bajar: se queda pegado abajo de la pantalla mientras se ven las
