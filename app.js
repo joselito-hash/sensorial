@@ -394,6 +394,8 @@
       /* Si la foto no se puede leer, se queda como estaba */
     }
     img.classList.add("es-lista");
+    /* Aviso para quien espera la foto ya recortada (los colores de los nichos) */
+    img.dispatchEvent(new Event("foto-lista", { bubbles: true }));
   }
 
   /* Cada foto se procesa en cuanto llega (medirla toma unos milisegundos) */
@@ -909,8 +911,10 @@
   let vistaActual = null;
   let rutaActual = { vista: "inicio" };
 
+  /* "Todos" son diseñador y árabes: los de nicho solo se ven en su propia colección */
+  const delOrigen = (p, origen) => (origen === "todos" ? p.origen !== "Nicho" : p.origen === origen);
   const contar = (origen, familia) => PERFUMES.filter((p) =>
-    (origen === "todos" || p.origen === origen) && (familia === "todas" || p.familia === familia)).length;
+    delOrigen(p, origen) && (familia === "todas" || p.familia === familia)).length;
   const textoPerfumes = (n) => (n === 1 ? "1 perfume" : `${n} perfumes`);
 
   /* "#catalogo?origen=arabe" -> { vista: "catalogo", paso: "familia", origen: "Árabe", ... }.
@@ -1149,6 +1153,7 @@
       recordarCatalogo(ruta);
     }
     mostrarVista(ruta.vista);
+    ambienteNicho();
   }
 
   function irA(ruta) {
@@ -1671,14 +1676,84 @@
   const NICHO = PERFUMES.filter((p) => p.origen === "Nicho")
     .sort((a, b) => a.casa.localeCompare(b.casa, "es") || a.nombre.localeCompare(b.nombre, "es"));
 
+  /* ---------- Los colores de cada frasco ----------
+     Las vitrinas y la ficha de un nicho toman los colores de su propio frasco (el azul y el
+     dorado de un Torino21, el ámbar de un Naxos): se leen de la foto en una copia de 40 px y
+     se agrupan por tono; los dos tonos con más peso pintan el resplandor detrás del vidrio. */
+  const tintesNicho = new Map();
+  /* Una foto del almacén que se pueda leer (crossorigin); si además hay que recortarla, también */
+  const leible = (src) => recortable(src) || (esDelAlmacen(src) ? ' crossorigin="anonymous"' : "");
+
+  function tintesDeFrasco(img) {
+    const lado = 40;
+    const lienzo = document.createElement("canvas");
+    lienzo.width = lado;
+    lienzo.height = lado;
+    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, lado, lado);
+    const { data } = ctx.getImageData(0, 0, lado, lado);
+    const cubetas = Array.from({ length: 12 }, () => ({ peso: 0, r: 0, g: 0, b: 0 }));
+    for (let i = 0; i < data.length; i += 4) {
+      const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+      if (a < 180) continue;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const sat = max ? (max - min) / max : 0;
+      if (max < 35 || sat < 0.18) continue;
+      const d = max - min;
+      let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h = (h * 60 + 360) % 360;
+      const c = cubetas[Math.floor(h / 30)];
+      /* Pesa más el color que ocupa más frasco que el más brillante (una tapa dorada no
+         debe tapar el azul del cuerpo) */
+      const peso = sat * (0.55 + 0.45 * (max / 255));
+      c.peso += peso;
+      c.r += r * peso;
+      c.g += g * peso;
+      c.b += b * peso;
+    }
+    const top = cubetas.filter((c) => c.peso > 1.5).sort((x, y) => y.peso - x.peso);
+    if (!top.length) return null;
+    const color = (c) => [c.r, c.g, c.b].map((v) => Math.round(v / c.peso)).join(" ");
+    return { a: color(top[0]), b: color(top[1] || top[0]) };
+  }
+
+  function aplicarTintes(elemento, tintes) {
+    if (!elemento || !tintes) return;
+    elemento.style.setProperty("--tinte-a", tintes.a);
+    elemento.style.setProperty("--tinte-b", tintes.b);
+    elemento.classList.add("con-tinte");
+  }
+
+  /* Cuando llega la foto de un nicho, se leen sus colores una sola vez. Las que se recortan
+     esperan a que termine el recorte (evento "foto-lista") */
+  const teñirAlCargar = (evento) => {
+    const img = evento.target;
+    if (img.tagName !== "IMG") return;
+    if (evento.type === "load" && img.hasAttribute("data-recortar")) return;
+    if (!img.crossOrigin && !img.src.startsWith("blob:")) return;
+    const tarjeta = img.closest(".nicho");
+    const ficha = img.closest(".detalle--nicho");
+    if (!tarjeta && !(ficha && img.classList.contains("detalle__foto--frasco"))) return;
+    const id = tarjeta ? tarjeta.dataset.perfume : ficha.dataset.perfume;
+    try {
+      if (!tintesNicho.has(id)) tintesNicho.set(id, tintesDeFrasco(img));
+      aplicarTintes(tarjeta || ficha, tintesNicho.get(id));
+    } catch {
+      /* foto que no se puede leer: queda el resplandor champán de siempre */
+    }
+  };
+  document.addEventListener("load", teñirAlCargar, true);
+  document.addEventListener("foto-lista", teñirAlCargar, true);
+
   function fichaNicho(p, i) {
     const f = familiaPorId.get(p.familia);
     const notas = notasPrincipales(p).map(mayuscula);
     const conc = concentracionCorta(p);
     return `
-      <li class="nicho" data-familia="${p.familia}" data-origen="${p.origen}" style="--i: ${i}">
+      <li class="nicho" data-perfume="${p.id}" data-familia="${p.familia}" data-origen="${p.origen}" style="--i: ${i}">
         <button class="nicho__escena" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <img src="${p.lamina || url(p.foto, 800)}" alt="${nombreCompleto(p)}" loading="lazy"${p.lamina ? "" : recortable(p.foto)}>
+          <img src="${p.lamina || url(p.foto, 800)}" alt="${nombreCompleto(p)}" loading="lazy"${p.lamina ? "" : leible(p.foto)}>
           ${calificacionFicha(p)}
         </button>
         <div class="nicho__cuerpo">
@@ -1710,7 +1785,7 @@
           </div>
         </div>
         <div class="nichos__cinta" aria-hidden="true"><div class="nichos__cinta-pista">${
-          Array.from({ length: 2 }, () => ["Perfumería de autor", "Ediciones limitadas", "Casas independientes", "Materias primas raras", "Para quien no quiere oler como todos"]
+          Array.from({ length: 2 }, () => ["Fragancias con firma", "Lotes pequeños", "Perfumistas independientes", "Lo que no está en cualquier vitrina", "Una estela que nadie más deja"]
             .map((t) => `<span>${t}</span>`).join("")).join("")}</div></div>
         <ul class="nichos__lista">${NICHO.map(fichaNicho).join("")}</ul>
       </section>`;
@@ -1801,7 +1876,7 @@
     let visibles = 0;
     $$(".ficha, .nicho").forEach((ficha) => {
       const pasa = (familia === "todas" || ficha.dataset.familia === familia)
-        && (origen === "todos" || ficha.dataset.origen === origen);
+        && (origen === "todos" ? ficha.dataset.origen !== "Nicho" : ficha.dataset.origen === origen);
       ficha.hidden = !pasa;
       if (pasa) visibles += 1;
     });
@@ -1834,9 +1909,9 @@
     });
     /* Cada familia dice cuántos perfumes tiene con el origen elegido; las que no tienen
        ninguno se apagan (salvo la elegida) para no llevar a un catálogo vacío */
-    const delOrigen = PERFUMES.filter((p) => origen === "todos" || p.origen === origen);
+    const conOrigen = PERFUMES.filter((p) => delOrigen(p, origen));
     $$(".chip__n").forEach((n) => {
-      const cuantos = n.dataset.n === "todas" ? delOrigen.length : delOrigen.filter((p) => p.familia === n.dataset.n).length;
+      const cuantos = n.dataset.n === "todas" ? conOrigen.length : conOrigen.filter((p) => p.familia === n.dataset.n).length;
       n.textContent = String(cuantos);
       const chip = n.closest(".chip");
       chip.disabled = cuantos === 0 && chip.getAttribute("aria-pressed") !== "true";
@@ -1847,6 +1922,32 @@
     $("#vacio").hidden = visibles > 0;
     const titulo = $("#titulo-catalogo");
     if (titulo) titulo.textContent = tituloCatalogo(estado.filtros);
+    ambienteNicho();
+  }
+
+  /* Mientras se recorren los nichos, toda la página cambia de ambiente: fondo oscuro con
+     hilos dorados que ondulan y luces que derivan (como la página de las tablas de pago).
+     Al salir de los nichos vuelve al fondo de siempre. */
+  function ambienteNicho() {
+    if (!NICHO.length || !recorrido) return;
+    const origen = recorrido.dataset.paso === "catalogo" ? estado.filtros.origen : rutaActual.origen;
+    const activo = rutaActual.vista === "catalogo" && origen === "Nicho";
+    if (activo && !$(".fondo-nicho")) {
+      const lineas = [
+        "M-60 210 C 180 120, 340 330, 560 230 S 900 120, 1060 260",
+        "M-60 520 C 160 610, 380 400, 600 500 S 880 640, 1060 470",
+        "M-60 800 C 220 720, 420 900, 640 790 S 920 700, 1060 860",
+        "M-60 370 C 260 300, 470 470, 700 360 S 950 300, 1060 380",
+      ];
+      document.body.insertAdjacentHTML("afterbegin", `
+        <div class="fondo-nicho" aria-hidden="true">
+          <div class="aura"><span></span><span></span><span></span></div>
+          <svg class="fondo-nicho__hilos" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+            ${lineas.map((d, i) => `<g style="--h: ${i}"><path class="hilo" d="${d}" pathLength="1"/><path class="hilo hilo--brillo" d="${d}" pathLength="1"/></g>`).join("")}
+          </svg>
+        </div>`);
+    }
+    document.body.classList.toggle("modo-nicho", activo);
   }
 
   /* Los filtros del catálogo actualizan la dirección sin crear pasos nuevos en el historial */
@@ -2340,7 +2441,10 @@
   function pintarDetalle(p) {
     quitarCaptcha();
     const f = familiaPorId.get(p.familia);
-    const otros = PERFUMES.filter((o) => o.familia === p.familia && o.id !== p.id).slice(0, 3);
+    const nicho = p.origen === "Nicho";
+    /* Sugerencias: de la colección nicho para un nicho; de su familia (sin nichos) para los demás */
+    const otros = PERFUMES.filter((o) => o.id !== p.id
+      && (nicho ? o.origen === "Nicho" : o.familia === p.familia && o.origen !== "Nicho")).slice(0, 3);
     const resenas = RESENAS.filter((r) => r.perfume_id === p.id).slice(0, 6);
     const cal = calificacionPorId.get(p.id);
     /* Cuántas reseñas hay de cada calificación, de 5 a 1 estrellas */
@@ -2360,14 +2464,21 @@
     ];
     const imagenes = fotos.map((foto, i) => `<img class="detalle__foto${i === 0 ? " es-activa" : ""}${foto.compuesta ? " detalle__foto--compuesta" : i === 0 ? " detalle__foto--frasco" : ""}"
       src="${foto.src}"${foto.srcset ? ` srcset="${foto.srcset}" sizes="(max-width: 40rem) 100vw, 45vw"` : ""}
-      alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}${i === 0 && !foto.compuesta ? recortable(foto.src) : ""}>`).join("");
+      alt="${foto.alt}" aria-hidden="${i !== 0}"${i ? " loading=\"lazy\"" : ""}${i === 0 && !foto.compuesta ? (nicho ? leible(foto.src) : recortable(foto.src)) : ""}>`).join("");
 
-    detalle.style.setProperty("--campo", `var(--c-${f.id})`);
-    detalle.style.setProperty("--tono", `var(--t-${f.id})`);
+    /* Los nichos tienen su propia ficha: sala oscura, letra con remates, detalles en champán
+       en lugar del color de la familia y el resplandor con los colores de su frasco */
+    detalle.classList.toggle("detalle--nicho", nicho);
+    detalle.classList.remove("con-tinte");
+    detalle.dataset.perfume = p.id;
+    detalle.style.setProperty("--campo", nicho ? "var(--champan)" : `var(--c-${f.id})`);
+    detalle.style.setProperty("--tono", nicho ? "rgb(230 213 184 / 0.1)" : `var(--t-${f.id})`);
+    if (nicho && tintesNicho.get(p.id)) aplicarTintes(detalle, tintesNicho.get(p.id));
     detalle.innerHTML = `
       <button class="detalle__cerrar" type="button" aria-label="Cerrar la ficha"><i class="ph ph-x" aria-hidden="true"></i></button>
       <div class="detalle__panel">
         <div class="detalle__visual">
+          ${nicho ? '<div class="aura" aria-hidden="true"><span></span><span></span><span></span></div>' : ""}
           <div class="detalle__lamina">${imagenes}</div>
           ${fotos.length > 1 ? `<div class="detalle__carrusel" aria-label="Galería de ${nombreCompleto(p)}">
             <div class="detalle__puntos">${fotos.map((_, i) => `<button type="button" data-diapo="${i}" aria-label="Ver foto ${i + 1} de ${fotos.length}" aria-current="${i === 0}"></button>`).join("")}</div>
@@ -2409,7 +2520,7 @@
           </div>` : ""}
           ${otros.length ? `
           <div class="detalle__otros" style="--i: 8">
-            <h3>También en ${f.nombre.toLowerCase()}</h3>
+            <h3>${nicho ? "Más de la colección nicho" : `También en ${f.nombre.toLowerCase()}`}</h3>
             <ul>
               ${otros.map((o) => `<li><button class="otro" type="button" data-ficha="${o.id}"><img src="${o.lamina || url(o.foto, 160)}" alt="" width="40" height="40">${o.nombre}</button></li>`).join("")}
             </ul>
