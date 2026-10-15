@@ -1361,8 +1361,12 @@ body.buscando .buscar i { transform: scale(1.12); }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 .fondo-nicho__hilos { position: absolute; left: 0; top: -6%; width: 100%; height: 112%; overflow: visible; }
-.hilo { fill: none; stroke: rgb(230 213 184 / 0.2); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.hilo--brillo { stroke: rgb(244 228 198 / 0.8); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 0.07 0.93; stroke-dashoffset: 1; }
+/* Sin vector-effect: con él, Chrome mide mal pathLength y los trazos quedaban a medias y los
+   destellos aparecían a mitad de pantalla. El grosor varía un poco al estirarse, casi nada */
+.hilo { fill: none; stroke: rgb(230 213 184 / 0.2); stroke-width: 1.1; }
+/* Un solo destello por hilo (el hueco es más largo que el hilo). En reposo queda escondido
+   antes del inicio del hilo, que empieza fuera de la pantalla */
+.hilo--brillo { stroke: rgb(244 228 198 / 0.8); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 0.07 1.2; stroke-dashoffset: 0.08; }
 /* Fuera de los nichos, o con una ficha abierta, todo el fondo se queda quieto */
 body:not(.modo-nicho) .fondo-nicho *,
 .con-ficha .fondo-nicho * { animation-play-state: paused !important; }
@@ -1377,7 +1381,8 @@ body:not(.modo-nicho) .fondo-nicho *,
 }
 @keyframes hilo-traza { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes hilo-onda { to { transform: translateY(22px); } }
-@keyframes hilo-brillo { 0%, 76% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
+/* Escondido antes del inicio → recorre el hilo → sale por el final (también fuera de pantalla) */
+@keyframes hilo-brillo { 0%, 76% { stroke-dashoffset: 0.08; } 100% { stroke-dashoffset: -1.01; } }
 
 /* La hoja de la página se vuelve transparente para que el fondo vivo se vea en todo */
 .hoja { transition: background-color 900ms ease, box-shadow 900ms ease; }
