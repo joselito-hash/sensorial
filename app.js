@@ -46,26 +46,20 @@
 
   /* ------------------------------------------------------------------
      FAMILIAS: la foto grande del inicio, el ingrediente y el perfume destacado.
-     video: el anuncio oficial del perfume en YouTube (id del video y segundo en que empieza).
-            Se reproduce sin sonido sobre la foto; la foto queda de respaldo mientras carga,
-            con "reducir movimiento", con ahorro de datos o si la marca quita el video.
-            Lattafa no tiene anuncio de Oud for Glory, así que Orientales usa su foto.
+     El anuncio en video de cada familia está en VIDEOS (más abajo).
      ------------------------------------------------------------------ */
   let FAMILIAS = [
     { id: "frescos", nombre: "Frescos", desc: "Cítricos, marinos y limpios.",
       larga: "Cítricos, marinos y limpios. Para el calor, la oficina y oler a recién bañado.",
       hero: "1747916148863-7164d8920b57", heroAlt: "Frasco de Dior Sauvage iluminado con luz azul", heroPos: "50% 46%",
-      video: { id: "mC-NysO3aHM", inicio: 1, titulo: "Anuncio oficial de Dior Sauvage" },
       ingrediente: "1716339140080-be256d3270ce", ingredienteAlt: "Rodajas de naranja en agua con burbujas", destacado: "sauvage" },
     { id: "dulces", nombre: "Dulces", desc: "Vainilla, praliné y flores.",
       larga: "Vainilla, praliné y flores. Envuelven, se notan y dejan estela.",
       hero: "1724157073080-fcffb8d6c956", heroAlt: "Frasco de YSL Libre sobre fondo dorado", heroPos: "50% 50%",
-      video: { id: "uHGSW2RiM14", inicio: 2, titulo: "Anuncio oficial de YSL Libre" },
       ingrediente: "1592788174877-3f99727fd23d", ingredienteAlt: "Vainas de vainilla sobre fondo claro", destacado: "libre" },
     { id: "amaderados", nombre: "Amaderados", desc: "Cedro, vetiver y sándalo.",
       larga: "Cedro, vetiver y sándalo. Sobrios, elegantes y fáciles de llevar a diario.",
       hero: "1785881570973-281d0db41119", heroAlt: "Frasco de Bleu de Chanel junto a una ventana al atardecer", heroPos: "50% 55%",
-      video: { id: "JAGVLUKdlP0", inicio: 1, titulo: "Anuncio oficial de Bleu de Chanel" },
       ingrediente: "1697507695420-04623ccff2af", ingredienteAlt: "Veta de madera oscura en primer plano", destacado: "bleu-de-chanel" },
     { id: "orientales", nombre: "Orientales", desc: "Oud, ámbar y especias.",
       larga: "Oud, ámbar y especias. Intensos y cálidos, hechos para la noche.",
@@ -201,11 +195,25 @@
       id: f.id, nombre: f.name, desc: f.short_description,
       larga: f.long_description, hero: f.hero_image, heroAlt: f.hero_alt,
       heroPos: f.hero_position,
-      video: f.video_youtube_id ? { id: f.video_youtube_id, inicio: f.video_start_seconds, titulo: f.video_title } : null,
       ingrediente: f.ingredient_image, ingredienteAlt: f.ingredient_alt,
       destacado: f.featured_perfume_id,
     }));
   }
+
+  /* VIDEOS: el anuncio de cada familia, guardado en la carpeta videos/ del sitio (comprimido
+     y sin sonido, así no depende de YouTube ni muestra botones de reproducir). Se ve sobre
+     la foto, que queda de respaldo mientras carga, con "reducir movimiento" o con ahorro de
+     datos. Una familia sin archivo aquí (como Orientales) se queda con su foto. */
+  const VIDEOS = {
+    frescos: { src: "videos/frescos.mp4", titulo: "Anuncio de Giorgio Armani Acqua di Giò" },
+    acuaticos: { src: "videos/acuaticos.mp4", titulo: "Anuncio de Calvin Klein CK Everyone" },
+    aromaticos: { src: "videos/aromaticos.mp4", titulo: "Anuncio de Versace Eros" },
+    florales: { src: "videos/florales.mp4", titulo: "Anuncio de Dior J'adore" },
+    frutales: { src: "videos/frutales.mp4", titulo: "Anuncio de Burberry Her" },
+    dulces: { src: "videos/dulces.mp4", titulo: "Anuncio de Lancôme La Vie Est Belle Intensément" },
+    amaderados: { src: "videos/amaderados.mp4", titulo: "Anuncio de Bleu de Chanel" },
+  };
+  FAMILIAS.forEach((f) => { f.video = VIDEOS[f.id] || null; });
   if (Array.isArray(REMOTO.featuredReviews)) {
     TESTIMONIOS = REMOTO.featuredReviews.map((r) => ({
       texto: r.texto, nombre: r.nombre, ciudad: r.ciudad, perfume: r.perfume,
@@ -714,104 +722,54 @@
 
   const conVideos = () => !menosMovimiento.matches && !(navigator.connection && navigator.connection.saveData);
 
-  /* dominio: primero youtube-nocookie (sin cookies); si el reproductor no responde o da
-     error (como el "Error 153" de navegadores que quitan el Referer, p. ej. Brave con
-     Shields), se intenta una vez con youtube.com antes de quedarse con la foto */
-  function crearVideo(capa, f, dominio = "www.youtube-nocookie.com") {
-    const { id, inicio, titulo } = f.video;
+  /* Video propio, sin controles: no hay botón de reproducir, barra ni logos encima. Aparece
+     cuando de verdad empieza a reproducirse; si el navegador no deja reproducirlo solo (por
+     ejemplo, el iPhone en modo de bajo consumo) o el archivo falla, se queda la foto. */
+  function crearVideo(capa, f) {
     const marco = document.createElement("div");
     marco.className = "hero__video";
     marco.setAttribute("aria-hidden", "true");
-    /* Sin loop ni playlist: con ellos YouTube agrega botones de anterior y siguiente. La
-       página lo repite sola (ver reiniciar) */
-    const parametros = new URLSearchParams({
-      autoplay: "1", mute: "1", controls: "0", playsinline: "1", rel: "0",
-      iv_load_policy: "3", disablekb: "1", fs: "0", modestbranding: "1", start: String(inicio || 0),
-      enablejsapi: "1", origin: location.origin, widget_referrer: location.origin + location.pathname,
-    });
-    const iframe = document.createElement("iframe");
-    iframe.src = `https://${dominio}/embed/${id}?${parametros}`;
-    iframe.title = titulo;
-    iframe.tabIndex = -1;
-    iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-    iframe.referrerPolicy = "strict-origin-when-cross-origin";
-    marco.append(iframe);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.defaultMuted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.preload = "auto";
+    video.disablePictureInPicture = true;
+    video.disableRemotePlayback = true;
+    ["muted", "playsinline", "disablepictureinpicture", "disableremoteplayback"].forEach((a) => video.setAttribute(a, ""));
+    video.tabIndex = -1;
+    video.title = f.video.titulo;
+    video.src = f.video.src;
+    marco.append(video);
     capa.append(marco);
 
-    /* El reproductor avisa por mensajes cuándo el video de verdad se reproduce. Al arrancar
-       (y al volver a empezar) YouTube muestra unos segundos sus botones de pausa encima del
-       video y no se pueden ocultar desde la página, así que el video aparece hasta que ya
-       llevan ese tiempo reproduciéndose; mientras tanto se ve la foto. Si el video falla
-       (por ejemplo, la marca lo quitó), se retira y queda la foto. */
-    const ESPERA_BOTONES = 3200;
-    let relojMostrar = 0;
-    let estadoPrevio = null;
-    let reiniciando = false;
-    const mostrar = () => {
-      window.clearTimeout(relojMostrar);
-      relojMostrar = window.setTimeout(() => marco.classList.add("es-visible"), ESPERA_BOTONES);
-    };
-    const ocultar = () => {
-      window.clearTimeout(relojMostrar);
-      marco.classList.remove("es-visible");
-    };
-    const ordenar = (func, args = []) => {
-      try { iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), "*"); } catch { /* sin acceso */ }
-    };
-    /* Un poco antes del final se oculta y vuelve al inicio (sin la pantalla final de YouTube) */
-    const reiniciar = () => {
-      if (reiniciando) return;
-      reiniciando = true;
-      ocultar();
-      window.setTimeout(() => {
-        ordenar("seekTo", [inicio || 0, true]);
-        ordenar("playVideo");
-        reiniciando = false;
-        estadoPrevio = null;
-      }, 700);
-    };
-    let respondio = false;
-    const otroIntento = () => {
-      quitarVideo(capa);
-      if (dominio !== "www.youtube.com" && capa.classList.contains("es-activa") && vistaActual === "inicio") {
-        crearVideo(capa, f, "www.youtube.com");
-      }
-    };
-    iframe.addEventListener("load", () => {
-      try { iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: f.id }), "*"); } catch { /* sin acceso */ }
+    video.addEventListener("playing", () => marco.classList.add("es-visible"));
+    video.addEventListener("error", () => quitarVideo(capa), { once: true });
+    /* Algunos navegadores pausan el video al cambiar de pestaña o de app: al volver, que siga */
+    video.addEventListener("pause", () => {
+      if (!document.hidden && marco.isConnected) video.play().catch(() => {});
     });
-    /* Un reproductor sano manda mensajes al poco de cargar; si en 8 s no dijo nada, falló */
-    window.setTimeout(() => { if (!respondio && marco.isConnected) otroIntento(); }, 8000);
-    marco.escuchar = (evento) => {
-      if (evento.source !== iframe.contentWindow) return;
-      respondio = true;
-      try {
-        const datos = typeof evento.data === "string" ? JSON.parse(evento.data) : evento.data;
-        const info = datos && datos.info;
-        if (datos.event === "onError") { otroIntento(); return; }
-        const estadoVideo = datos.event === "onStateChange" ? info : info && info.playerState;
-        if (info && typeof info.currentTime === "number" && info.duration > 2
-          && info.currentTime > info.duration - 0.9) reiniciar();
-        /* Los avisos se repiten varias veces por segundo: solo cuenta cuando cambia el estado */
-        if (typeof estadoVideo === "number" && estadoVideo !== estadoPrevio && !reiniciando) {
-          estadoPrevio = estadoVideo;
-          if (estadoVideo === 1) mostrar();
-          else ocultar();
-          /* Terminó: vuelve a empezar. Pausado (al cambiar de app, por ejemplo): que siga */
-          if (estadoVideo === 0) reiniciar();
-          if (estadoVideo === 2) ordenar("playVideo");
-        }
-      } catch { /* mensaje ajeno */ }
-    };
-    window.addEventListener("message", marco.escuchar);
+    const intento = video.play();
+    if (intento) intento.catch(() => { if (video.paused) quitarVideo(capa); });
   }
 
   function quitarVideo(capa) {
     const marco = $(".hero__video", capa);
     if (!marco) return;
-    window.removeEventListener("message", marco.escuchar);
+    const video = $("video", marco);
+    if (video) {
+      /* Suelta el archivo para no seguir descargándolo */
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    }
     marco.remove();
   }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) $$(".hero__video video").forEach((v) => { if (v.paused) v.play().catch(() => {}); });
+  });
 
   function ponerVideoHero() {
     $$(".hero__capa").forEach((capa) => {
@@ -867,8 +825,8 @@
     let enVista = true;
     let encima = false;
     let detenido = false;
-    /* Con videos cada familia dura más: el video tarda unos segundos en aparecer */
-    const espera = conVideos() ? 17000 : 6500;
+    /* Con videos cada familia dura más, para que el anuncio alcance a verse */
+    const espera = conVideos() ? 13000 : 6500;
     /* La barrita de la familia activa se llena en lo que tarda en pasar a la siguiente */
     selector?.style.setProperty("--duracion", `${espera}ms`);
     const detener = () => {
