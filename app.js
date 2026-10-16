@@ -201,9 +201,10 @@
   }
 
   /* VIDEOS: el anuncio de cada familia, guardado en la carpeta videos/ del sitio (comprimido
-     y sin sonido, así no depende de YouTube ni muestra botones de reproducir). Se ve sobre
-     la foto, que queda de respaldo mientras carga, con "reducir movimiento" o con ahorro de
-     datos. Una familia sin archivo aquí (como Orientales) se queda con su foto. */
+     y sin sonido, así no depende de YouTube ni muestra botones de reproducir). En la portada
+     el video reemplaza a la foto de la familia: mientras carga (o con "reducir movimiento" o
+     ahorro de datos) se ve su primer cuadro (videos/<familia>.webp), así que el video arranca
+     justo donde está la imagen. Una familia sin video aquí (como Orientales) usa su foto. */
   const VIDEOS = {
     frescos: { src: "videos/frescos.mp4", titulo: "Anuncio de Giorgio Armani Acqua di Giò" },
     acuaticos: { src: "videos/acuaticos.mp4", titulo: "Anuncio de Calvin Klein CK Everyone" },
@@ -213,7 +214,13 @@
     dulces: { src: "videos/dulces.mp4", titulo: "Anuncio de Lancôme La Vie Est Belle Intensément" },
     amaderados: { src: "videos/amaderados.mp4", titulo: "Anuncio de Bleu de Chanel" },
   };
-  FAMILIAS.forEach((f) => { f.video = VIDEOS[f.id] || null; });
+  FAMILIAS.forEach((f) => {
+    f.video = VIDEOS[f.id] || null;
+    if (f.video) {
+      f.video.cuadro = f.video.src.replace(/\.mp4$/, ".webp");
+      Object.assign(f, { hero: f.video.cuadro, heroAlt: f.video.titulo, heroPos: "50% 50%" });
+    }
+  });
   if (Array.isArray(REMOTO.featuredReviews)) {
     TESTIMONIOS = REMOTO.featuredReviews.map((r) => ({
       texto: r.texto, nombre: r.nombre, ciudad: r.ciudad, perfume: r.perfume,
@@ -651,9 +658,11 @@
       const primera = f.id === estado.familia;
       return `
         <div class="hero__capa${primera ? " es-activa" : ""}" data-familia="${f.id}">
-          <img class="hero__foto" data-parallax="0.09" data-profundidad="-10" alt="${escaparHTML(f.heroAlt || "")}"
-            src="${url(f.hero, 1600)}" srcset="${srcset(f.hero, [900, 1600, 2400])}" sizes="100vw"
-            ${primera ? 'fetchpriority="high"' : 'loading="lazy"'} style="object-position: ${f.heroPos || "50% 50%"}">
+          <div class="hero__lienzo" data-parallax="0.09" data-profundidad="-10">
+            <img class="hero__foto" alt="${escaparHTML(f.heroAlt || "")}"
+              src="${url(f.hero, 1600)}" srcset="${srcset(f.hero, [900, 1600, 2400])}" sizes="100vw"
+              ${primera ? 'fetchpriority="high"' : 'loading="lazy"'} style="object-position: ${f.heroPos || "50% 50%"}">
+          </div>
         </div>`;
     }).join("");
 
@@ -741,9 +750,11 @@
     ["muted", "playsinline", "disablepictureinpicture", "disableremoteplayback"].forEach((a) => video.setAttribute(a, ""));
     video.tabIndex = -1;
     video.title = f.video.titulo;
+    video.poster = f.video.cuadro;
     video.src = f.video.src;
     marco.append(video);
-    capa.append(marco);
+    /* Va en el mismo lienzo que la foto: mismo encuadre y mismo parallax, sin saltos */
+    ($(".hero__lienzo", capa) || capa).append(marco);
 
     video.addEventListener("playing", () => marco.classList.add("es-visible"));
     video.addEventListener("error", () => quitarVideo(capa), { once: true });

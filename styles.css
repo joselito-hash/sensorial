@@ -568,15 +568,23 @@ body.buscando .buscar i { transform: scale(1.12); }
   transition: opacity 1100ms var(--suave), transform 1600ms var(--suave), visibility 0s;
 }
 
-.hero__foto {
+/* La foto y el video de cada familia comparten este lienzo (más grande que el marco para el
+   parallax), así el video arranca exactamente con el mismo encuadre que su imagen */
+.hero__lienzo {
   position: absolute;
   left: -2%;
   top: -12%;
   width: 104%;
-  max-width: none;
   height: 124%;
-  object-fit: cover;
   will-change: transform;
+}
+.hero__foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
   -webkit-user-drag: none;
 }
 
@@ -3969,7 +3977,7 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .barra__panel { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .barra__fila { background: rgb(43 35 40 / 0.97); }
   .barra__panel { background: rgb(43 35 40); }
-  .hero__foto,
+  .hero__lienzo,
   .familia__tarjeta,
   .familia__tarjeta img,
   .destacado { will-change: auto; }
