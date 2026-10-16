@@ -180,6 +180,8 @@
         ...local,
         id: p.id, casa: p.casa, nombre: p.nombre,
         version: p.version || "", origen: p.origen, familia: p.familia,
+        /* "hombre" | "mujer" | "unisex" | null (sin especificar) */
+        publico: p.audience || local.publico || null,
         foto: p.foto, lamina: p.lamina || null,
         notas: p.notas || local.notas || { salida: "", corazon: "", fondo: "" },
         acordes: p.acordes || local.acordes || [],
@@ -429,7 +431,7 @@
   const estado = {
     familia: "frescos",
     familiaElegida: false,
-    filtros: { familia: "todas", origen: "todos" },
+    filtros: { familia: "todas", origen: "todos", publico: "todos" },
     lista: new Set(leerLista()),
   };
 
@@ -916,6 +918,11 @@
   const contar = (origen, familia) => PERFUMES.filter((p) =>
     delOrigen(p, origen) && (familia === "todas" || p.familia === familia)).length;
   const textoPerfumes = (n) => (n === 1 ? "1 perfume" : `${n} perfumes`);
+  /* Para quién: "para él" y "para ella" incluyen los unisex; los que no tienen el dato
+     solo aparecen con "para cualquiera" */
+  const PUBLICOS = ["hombre", "mujer", "unisex"];
+  const delPublico = (p, publico) => publico === "todos" || p.publico === publico
+    || (publico !== "unisex" && p.publico === "unisex");
 
   /* "#catalogo?origen=arabe" -> { vista: "catalogo", paso: "familia", origen: "Árabe", ... }.
      Devuelve null si el ancla no es una pestaña (por ejemplo, el enlace "Saltar al contenido"). */
@@ -928,12 +935,13 @@
     /* Las preguntas (origen y familia) solo se hacen una vez por visita, y nunca a quien ya
        tiene perfumes en su lista: en esos casos "Catálogo" lleva directo a los perfumes */
     if (!consulta && (recorridoHecho() || estado.lista.size > 0)) {
-      return { vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" };
+      return { vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas", publico: "todos" };
     }
     const origen = ORIGEN_DE_URL[q.get("origen")] || "todos";
     const familia = familiaPorId.has(q.get("familia")) ? q.get("familia") : (q.get("familia") === "todas" ? "todas" : null);
+    const publico = PUBLICOS.includes(q.get("para")) ? q.get("para") : "todos";
     if (q.has("todo") || (origen !== "todos" && familia)) {
-      return { vista: "catalogo", paso: "catalogo", origen, familia: familia || "todas" };
+      return { vista: "catalogo", paso: "catalogo", origen, familia: familia || "todas", publico };
     }
     if (origen !== "todos") return { vista: "catalogo", paso: "familia", origen, familia: "todas" };
     return { vista: "catalogo", paso: "origen", origen: "todos", familia: "todas" };
@@ -955,25 +963,29 @@
     if (ruta.paso === "catalogo" && ruta.origen === "todos") q.set("todo", "");
     if (ruta.origen !== "todos") q.set("origen", ORIGEN_URL[ruta.origen]);
     if (ruta.paso === "catalogo" && (ruta.familia !== "todas" || ruta.origen !== "todos")) q.set("familia", ruta.familia);
+    if (ruta.paso === "catalogo" && ruta.publico && ruta.publico !== "todos") q.set("para", ruta.publico);
     const texto = q.toString().replace("todo=", "todo");
     return `#catalogo${texto ? `?${texto}` : ""}`;
   }
   const direccion = (ruta) => `${location.pathname}${location.search}${hashDe(ruta)}`;
 
-  function tituloCatalogo({ origen, familia }) {
+  const PUBLICO_EN_TITULO = { hombre: "para él", mujer: "para ella", unisex: "unisex" };
+  function tituloCatalogo({ origen, familia, publico = "todos" }) {
     const fam = familia !== "todas" ? familiaPorId.get(familia).nombre : null;
     const ori = ORIGEN_EN_TITULO[origen] || null;
-    if (fam && ori) return `${fam} ${ori}`;
-    if (fam) return `Perfumes ${fam.toLowerCase()}`;
-    if (ori) return `Perfumes ${ori}`;
-    return "Todo el catálogo";
+    const para = PUBLICO_EN_TITULO[publico] ? ` ${PUBLICO_EN_TITULO[publico]}` : "";
+    if (fam && ori) return `${fam} ${ori}${para}`;
+    if (fam) return `Perfumes ${fam.toLowerCase()}${para}`;
+    if (ori) return `Perfumes ${ori}${para}`;
+    return para ? `Perfumes${para}` : "Todo el catálogo";
   }
 
   /* Paso 2: las cuatro familias con cuántos perfumes tiene cada una para el origen elegido */
   function pintarEleccionFamilias(origen) {
     const lista = $("#eleccion-familias");
     if (!lista) return;
-    lista.innerHTML = FAMILIAS.map((f, i) => {
+    /* Solo las familias que tienen perfumes con ese origen (en nicho, por ejemplo, las dos que hay) */
+    lista.innerHTML = FAMILIAS.filter((f) => contar(origen, f.id) > 0).map((f, i) => {
       const n = contar(origen, f.id);
       return `
       <li class="familia" style="--i: ${i}">
@@ -1145,7 +1157,7 @@
       recorrido.dataset.paso = ruta.paso;
       if (ruta.paso === "familia") pintarEleccionFamilias(ruta.origen);
       if (ruta.paso === "catalogo") {
-        estado.filtros = { familia: ruta.familia, origen: ruta.origen };
+        estado.filtros = { familia: ruta.familia, origen: ruta.origen, publico: ruta.publico || "todos" };
         aplicarFiltros();
         marcarRecorrido();
       }
@@ -1224,7 +1236,7 @@
       ${MAS_VENDIDOS.map((id, i) => {
         const p = porId.get(id);
         const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [700, 1100, 1500])}" sizes="42vw"` : "";
-        return `<img class="vendidos__imagen${i === 0 ? " es-activa" : ""}" data-indice="${i}" src="${url(p.foto, 1100)}"${juego} alt=""${i ? ' loading="lazy"' : ""}>`;
+        return `<img class="vendidos__imagen${i === 0 ? " es-activa" : ""}${esUnsplash(p.foto) ? "" : " es-frasco"}" data-indice="${i}" src="${url(p.foto, 1100)}"${juego} alt=""${i ? ' loading="lazy"' : ""}${recortable(p.foto)}>`;
       }).join("")}
       <div class="vendidos__rotulo" id="vendidos-rotulo"></div>`;
 
@@ -1233,9 +1245,9 @@
       const f = familiaPorId.get(p.familia);
       const juego = esUnsplash(p.foto) ? ` srcset="${srcset(p.foto, [500, 800, 1100])}" sizes="84vw"` : "";
       return `
-      <li class="vendidos__tarjeta" data-indice="${i}" style="--campo: var(--c-${f.id})">
+      <li class="vendidos__tarjeta${esUnsplash(p.foto) ? "" : " vendidos__tarjeta--frasco"}" data-indice="${i}" style="--campo: var(--c-${f.id})">
         <button class="vendidos__tarjeta-foto" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
-          <img src="${url(p.foto, 800)}"${juego} alt="" loading="lazy">
+          <img src="${url(p.foto, 800)}"${juego} alt="" loading="lazy"${recortable(p.foto)}>
         </button>
         <div class="vendidos__tarjeta-texto">
           <p class="vendidos__meta"><span>${f.nombre}</span>${p.casa}</p>
@@ -1324,6 +1336,10 @@
     $$(".vendido").forEach((fila) => fila.classList.toggle("es-activo", Number(fila.dataset.indice) === indice));
     $$(".vendidos__tarjeta").forEach((t) => t.classList.toggle("es-activa", Number(t.dataset.indice) === indice));
     $$(".vendidos__imagen").forEach((img) => img.classList.toggle("es-activa", Number(img.dataset.indice) === indice));
+    /* Con foto de frasco (sin fondo), la vitrina pierde su cuadro: el frasco va suelto */
+    const vitrina = $("#vendidos-vitrina");
+    vitrina?.classList.toggle("con-frasco", !esUnsplash(p.foto));
+    vitrina?.style.setProperty("--campo", `var(--c-${f.id})`);
     const rotulo = $("#vendidos-rotulo");
     rotulo.style.setProperty("--campo", `var(--c-${f.id})`);
     rotulo.innerHTML = `
@@ -1642,7 +1658,7 @@
       ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" loading="lazy" width="1080" height="1080">`
       : `<img src="${url(p.foto, 800)}" srcset="${srcset(p.foto, [500, 800, 1200])}" sizes="(max-width: 40rem) 80vw, (max-width: 72rem) 45vw, 24rem" alt="${nombreCompleto(p)}" loading="lazy"${recortable(p.foto)}>`;
     return `
-      <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}">
+      <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}" data-publico="${p.publico || ""}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
           <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}${NOVEDADES.includes(p.id) ? '<span class="ficha__nuevo">Nuevo</span>' : ""}${calificacionFicha(p)}</span>
         </button>
@@ -1751,7 +1767,7 @@
     const notas = notasPrincipales(p).map(mayuscula);
     const conc = concentracionCorta(p);
     return `
-      <li class="nicho" data-perfume="${p.id}" data-familia="${p.familia}" data-origen="${p.origen}" style="--i: ${i}">
+      <li class="nicho" data-perfume="${p.id}" data-familia="${p.familia}" data-origen="${p.origen}" data-publico="${p.publico || ""}" style="--i: ${i}">
         <button class="nicho__escena" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
           <img src="${p.lamina || url(p.foto, 800)}" alt="${nombreCompleto(p)}" loading="lazy"${p.lamina ? "" : leible(p.foto)}>
           ${calificacionFicha(p)}
@@ -1870,13 +1886,97 @@
     }).join("");
   }
 
+  /* ---------- Filtro en forma de frase ----------
+     "Quiero perfumes [frescos] [de diseñador] [para ella]". Cada parte subrayada abre su lista
+     de opciones con cuántos perfumes hay con lo demás ya elegido; solo aparecen las opciones
+     que tienen perfumes (la elegida siempre). */
+  const HUECOS = {
+    familia: {
+      cualquiera: "todas",
+      etiqueta: (v) => (v === "todas" ? "de todas las familias" : familiaPorId.get(v).nombre.toLowerCase()),
+      opciones: () => [["todas", "Todas las familias"], ...FAMILIAS.map((f) => [f.id, f.nombre])],
+    },
+    origen: {
+      cualquiera: "todos",
+      etiqueta: (v) => ({ todos: "de diseñador y árabes", "Diseñador": "de diseñador", "Árabe": "árabes", Nicho: "de nicho" })[v],
+      opciones: () => [["todos", "Diseñador y árabes"], ["Diseñador", "Diseñador"], ["Árabe", "Árabes"], ...(NICHO.length ? [["Nicho", "Nicho"]] : [])],
+    },
+    publico: {
+      cualquiera: "todos",
+      etiqueta: (v) => ({ todos: "para cualquiera", hombre: "para él", mujer: "para ella", unisex: "unisex" })[v],
+      opciones: () => [["todos", "Para cualquiera"], ["hombre", "Para él"], ["mujer", "Para ella"], ["unisex", "Unisex"]],
+    },
+  };
+  const NOMBRE_HUECO = { familia: "Familia", origen: "Origen", publico: "Para quién" };
+
+  /* Cuántos perfumes quedarían si se cambia una parte de la frase */
+  function cuantosCon(cambio) {
+    const f = { publico: "todos", ...estado.filtros, ...cambio };
+    return PERFUMES.filter((p) => (f.familia === "todas" || p.familia === f.familia)
+      && delOrigen(p, f.origen) && delPublico(p, f.publico)).length;
+  }
+
+  function pintarFrase() {
+    const caja = $("#frase-filtros");
+    if (!caja) return;
+    Object.entries(HUECOS).forEach(([grupo, h]) => {
+      const hueco = $(`[data-hueco="${grupo}"]`, caja);
+      if (!hueco) return;
+      const actual = estado.filtros[grupo] || h.cualquiera;
+      const abierto = hueco.classList.contains("es-abierto");
+      const color = (v) => (grupo === "familia" && v !== "todas" ? ` style="--campo: var(--c-${v})"` : "");
+      const punto = (v) => (grupo === "familia" ? `<span class="frase__punto${v === "todas" ? " frase__punto--todas" : ""}" aria-hidden="true"></span>` : "");
+      const opciones = h.opciones().map(([valor, nombre]) => {
+        const n = cuantosCon({ [grupo]: valor });
+        if (!n && valor !== actual) return "";
+        return `<button class="frase__opcion" type="button" role="option" aria-selected="${valor === actual}" data-grupo="${grupo}" data-valor="${valor}"${color(valor)}>${punto(valor)}<span>${nombre}</span><span class="frase__n">${n}</span></button>`;
+      }).join("");
+      hueco.innerHTML = `
+        <button class="frase__boton${actual !== h.cualquiera ? " es-elegido" : ""}" type="button" aria-haspopup="listbox" aria-expanded="${abierto}" data-abrir-hueco="${grupo}"${color(actual)}>${punto(actual)}<span>${h.etiqueta(actual)}</span><i class="ph ph-caret-down" aria-hidden="true"></i></button>
+        <div class="frase__menu" role="listbox" aria-label="${NOMBRE_HUECO[grupo]}"${abierto ? "" : " hidden"}>
+          <p class="frase__menu-titulo">${NOMBRE_HUECO[grupo]}</p>${opciones}
+        </div>`;
+    });
+  }
+
+  function cerrarHuecos(excepto = null) {
+    $$(".frase__hueco.es-abierto").forEach((hueco) => {
+      if (hueco === excepto) return;
+      hueco.classList.remove("es-abierto");
+      $(".frase__menu", hueco).hidden = true;
+      $(".frase__boton", hueco).setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function alternarHueco(boton) {
+    const hueco = boton.closest(".frase__hueco");
+    const abrir = !hueco.classList.contains("es-abierto");
+    cerrarHuecos(hueco);
+    hueco.classList.toggle("es-abierto", abrir);
+    $(".frase__menu", hueco).hidden = !abrir;
+    boton.setAttribute("aria-expanded", String(abrir));
+    if (abrir) ($(".frase__opcion[aria-selected='true']", hueco) || $(".frase__opcion", hueco))?.focus({ preventScroll: true });
+  }
+
+  function elegirEnFrase(opcion) {
+    const grupo = opcion.dataset.grupo;
+    estado.filtros[grupo] = opcion.dataset.valor;
+    /* Si la familia elegida se queda sin perfumes con el nuevo origen o público, vuelve a "todas" */
+    if (grupo !== "familia" && estado.filtros.familia !== "todas" && !cuantosCon({})) estado.filtros.familia = "todas";
+    cerrarHuecos();
+    aplicarFiltros();
+    sincronizarDireccion();
+    $(`[data-abrir-hueco="${grupo}"]`)?.focus({ preventScroll: true });
+  }
+
   function aplicarFiltros() {
     if (!$("#capitulos")) return;
-    const { familia, origen } = estado.filtros;
+    const { familia, origen, publico = "todos" } = estado.filtros;
     let visibles = 0;
     $$(".ficha, .nicho").forEach((ficha) => {
       const pasa = (familia === "todas" || ficha.dataset.familia === familia)
-        && (origen === "todos" ? ficha.dataset.origen !== "Nicho" : ficha.dataset.origen === origen);
+        && (origen === "todos" ? ficha.dataset.origen !== "Nicho" : ficha.dataset.origen === origen)
+        && delPublico({ publico: ficha.dataset.publico || null }, publico);
       ficha.hidden = !pasa;
       if (pasa) visibles += 1;
     });
@@ -1897,27 +1997,9 @@
     });
     const sala = $(".capitulo--nicho");
     if (sala) sala.dataset.cuantos = String($$(".nicho:not([hidden])").length);
-    /* El control de origen: la marca clara mide lo que una opción y se mueve a la elegida */
-    const segmento = $(".segmento");
-    if (segmento) {
-      const opciones = $$(".chip:not([hidden])", segmento);
-      segmento.style.setProperty("--opciones", opciones.length);
-      segmento.style.setProperty("--elegida", Math.max(0, opciones.findIndex((b) => b.dataset.valor === origen)));
-    }
-    $$(".chip").forEach((chip) => {
-      chip.setAttribute("aria-pressed", String(estado.filtros[chip.dataset.grupo] === chip.dataset.valor));
-    });
-    /* Cada familia dice cuántos perfumes tiene con el origen elegido; las que no tienen
-       ninguno se apagan (salvo la elegida) para no llevar a un catálogo vacío */
-    const conOrigen = PERFUMES.filter((p) => delOrigen(p, origen));
-    $$(".chip__n").forEach((n) => {
-      const cuantos = n.dataset.n === "todas" ? conOrigen.length : conOrigen.filter((p) => p.familia === n.dataset.n).length;
-      n.textContent = String(cuantos);
-      const chip = n.closest(".chip");
-      chip.disabled = cuantos === 0 && chip.getAttribute("aria-pressed") !== "true";
-    });
+    pintarFrase();
     $("#conteo").innerHTML = `<strong>${visibles}</strong> ${visibles === 1 ? "perfume" : "perfumes"}`;
-    $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos"; });
+    $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos" && publico === "todos"; });
     resumirFiltros(visibles);
     $("#vacio").hidden = visibles > 0;
     const titulo = $("#titulo-catalogo");
@@ -1953,7 +2035,7 @@
   /* Los filtros del catálogo actualizan la dirección sin crear pasos nuevos en el historial */
   function sincronizarDireccion() {
     if (vistaActual !== "catalogo" || recorrido.dataset.paso !== "catalogo") return;
-    const ruta = { vista: "catalogo", paso: "catalogo", origen: estado.filtros.origen, familia: estado.filtros.familia };
+    const ruta = { vista: "catalogo", paso: "catalogo", origen: estado.filtros.origen, familia: estado.filtros.familia, publico: estado.filtros.publico };
     rutaActual = ruta;
     history.replaceState(null, "", direccion(ruta));
     recordarCatalogo(ruta);
@@ -2824,6 +2906,16 @@
 
   document.addEventListener("click", (evento) => {
     const boton = evento.target.closest("button");
+    /* Un clic fuera de la parte abierta de la frase la cierra */
+    if (!evento.target.closest(".frase__hueco")) cerrarHuecos();
+    if (boton && "abrirHueco" in boton.dataset) {
+      alternarHueco(boton);
+      return;
+    }
+    if (boton && boton.classList.contains("frase__opcion")) {
+      elegirEnFrase(boton);
+      return;
+    }
     if (!boton) {
       /* Tocar cualquier parte de una tarjeta de perfume (no solo la foto) abre su ficha;
          los botones de dentro, como "Agregar", siguen haciendo lo suyo */
@@ -2850,7 +2942,9 @@
     } else if (boton.id === "ver-todo-origen") {
       irA({ vista: "catalogo", paso: "catalogo", origen: rutaActual.origen, familia: "todas" });
     } else if ("verTodo" in boton.dataset) {
-      irA({ vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas" });
+      /* En el paso de familias, "Ver todo" respeta el origen elegido (nicho lleva a nichos) */
+      const origen = boton.closest("#paso-familia") ? rutaActual.origen : "todos";
+      irA({ vista: "catalogo", paso: "catalogo", origen, familia: "todas" });
     } else if (boton.dataset.irPaso) {
       if (boton.dataset.irPaso === "origen") irA({ vista: "catalogo", paso: "origen", origen: "todos", familia: "todas" });
       else if (boton.dataset.irPaso === "familia" && rutaActual.origen !== "todos") {
@@ -2863,7 +2957,7 @@
     } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
       cerrarFiltros();
     } else if (boton.id === "limpiar-filtros" || "limpiarFiltros" in boton.dataset) {
-      estado.filtros = { familia: "todas", origen: "todos" };
+      estado.filtros = { familia: "todas", origen: "todos", publico: "todos" };
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.dataset.sugerencia) {
@@ -2894,7 +2988,7 @@
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.id === "quitar-filtros") {
-      estado.filtros = { familia: "todas", origen: "todos" };
+      estado.filtros = { familia: "todas", origen: "todos", publico: "todos" };
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.id === "vaciar" || boton.id === "vaciar-pedido") {
@@ -2904,6 +2998,15 @@
       pintarLista(null);
       actualizarPedido();
     }
+  });
+
+  /* Esc cierra la parte abierta de la frase y regresa el foco a su botón */
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key !== "Escape") return;
+    const abierto = $(".frase__hueco.es-abierto");
+    if (!abierto) return;
+    cerrarHuecos();
+    $(".frase__boton", abierto)?.focus({ preventScroll: true });
   });
 
   /* La hoja de filtros se cierra con Esc o tocando el fondo */

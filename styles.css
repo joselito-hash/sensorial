@@ -809,6 +809,148 @@ body.buscando .buscar i { transform: scale(1.12); }
 
 /* Catálogo: un capítulo de color por familia, con sus perfumes en tarjetas oscuras */
 
+/* ---------- Filtro en forma de frase ----------
+   "Quiero perfumes [de todas las familias] [de diseñador y árabes] [para cualquiera]".
+   Se lee de corrido: lo fijo en gris, lo que se puede cambiar subrayado con línea punteada
+   (y del color de la familia cuando hay una elegida). Cada parte abre una lista corta con
+   cuántos perfumes quedarían; en el teléfono la lista sube desde abajo. */
+.frase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem 2.5rem;
+  margin-top: 2.25rem;
+  padding: clamp(1.25rem, 2.6vw, 1.75rem) clamp(1.25rem, 2.6vw, 2rem);
+  border-radius: var(--r-tarjeta);
+  background: rgb(255 255 255 / 0.03);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+.frase__texto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+  font-size: clamp(1.4rem, 2.5vw, 2.15rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.frase__fijo { color: var(--tinta-2); }
+.frase__hueco { position: relative; }
+.frase__boton {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0 0.1rem 0.05rem;
+  border: 0;
+  border-bottom: 1.5px dashed rgb(255 255 255 / 0.32);
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color 250ms, border-color 250ms;
+}
+.frase__boton:hover,
+.frase__hueco.es-abierto .frase__boton { border-bottom-style: solid; border-bottom-color: var(--campo, var(--tinta)); }
+.frase__boton.es-elegido { border-bottom-style: solid; border-bottom-color: color-mix(in oklch, var(--campo, var(--tinta)) 70%, transparent); color: var(--campo, var(--tinta)); }
+.frase__boton:active { transform: translateY(1px); }
+.frase__boton i { align-self: center; color: var(--tinta-2); font-size: 0.5em; transition: transform 350ms var(--suave); }
+.frase__hueco.es-abierto .frase__boton i { transform: rotate(180deg); }
+.frase__punto { flex: none; align-self: center; width: 0.38em; height: 0.38em; border-radius: 50%; background: var(--campo, var(--tinta)); }
+.frase__punto--todas { background: conic-gradient(var(--c-frescos), var(--c-acuaticos), var(--c-aromaticos), var(--c-amaderados), var(--c-orientales), var(--c-frutales), var(--c-dulces), var(--c-florales), var(--c-frescos)); }
+
+.frase__menu {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: -0.5rem;
+  z-index: 30;
+  display: grid;
+  min-width: 16rem;
+  max-height: min(26rem, 60vh);
+  overflow-y: auto;
+  padding: 0.4rem;
+  border-radius: 1rem;
+  background: #2b2328;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 24px 50px -20px rgb(0 0 0 / 0.85);
+  font-size: 1rem;
+  letter-spacing: 0;
+  line-height: 1.3;
+  transform-origin: top left;
+}
+.frase__menu[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .frase__menu { animation: frase-menu 320ms var(--suave); }
+  @keyframes frase-menu { from { opacity: 0; transform: translateY(-0.4rem) scale(0.97); } }
+}
+.frase__menu-titulo {
+  padding: 0.5rem 0.75rem 0.35rem;
+  color: var(--tinta-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.frase__opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 200ms;
+}
+.frase__opcion:hover,
+.frase__opcion:focus-visible { outline: none; background: rgb(255 255 255 / 0.06); }
+.frase__opcion[aria-selected="true"] { background: rgb(255 255 255 / 0.09); }
+.frase__opcion .frase__punto { width: 0.6rem; height: 0.6rem; }
+.frase__n {
+  margin-left: auto;
+  min-width: 1.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.07);
+  color: var(--tinta-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.frase__opcion[aria-selected="true"] .frase__n { background: var(--tinta); color: var(--papel); }
+.frase__resultado { display: flex; align-items: center; gap: 0.25rem; padding-bottom: 0.2rem; }
+.frase__conteo { color: var(--tinta-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.frase__conteo strong { color: var(--tinta); font-size: 1.15rem; font-weight: 700; }
+.frase__limpiar { min-height: 2.4rem; padding: 0.45rem 0.9rem; color: var(--tinta-2); font-size: 0.875rem; }
+.frase__limpiar:hover { color: var(--tinta); }
+.frase__limpiar[hidden] { display: none; }
+.frase__limpiar:hover i { transform: rotate(-60deg); }
+@media (max-width: 40rem) {
+  .frase { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; margin-top: 1.5rem; padding: 1.1rem 1.15rem; }
+  .frase__texto { font-size: 1.35rem; }
+  .frase__resultado { justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid rgb(255 255 255 / 0.07); }
+  /* En el teléfono la lista sube desde abajo, a lo ancho, fácil de tocar con el pulgar */
+  .frase__menu {
+    position: fixed;
+    top: auto;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: calc(var(--z-barra) + 3);
+    min-width: 0;
+    max-height: 65svh;
+    font-size: 1.0625rem;
+    transform-origin: bottom center;
+  }
+}
+
 /* Filtros: una consola en dos pisos. Arriba el origen (control segmentado) y el resultado;
    abajo las familias, cada una con su punto de color y cuántos perfumes tiene. */
 .filtros {
@@ -1389,7 +1531,11 @@ body:not(.modo-nicho) .fondo-nicho *,
 .modo-nicho .hoja { background-color: transparent; box-shadow: none; }
 /* Con el ambiente puesto, la sala deja de ser una caja: los nichos flotan sobre el fondo */
 /* Menú casi opaco, sin desenfoque: difuminar el fondo animado detrás costaba en cada cuadro */
-.modo-nicho .nav { background: rgb(22 17 20 / 0.94); transition: background-color 600ms; }
+.modo-nicho .nav {
+  background: var(--noir);
+  box-shadow: 0 1px 0 var(--champan-linea);
+  transition: background-color 600ms, box-shadow 600ms;
+}
 .modo-nicho .capitulo--nicho { overflow: visible; padding-inline: 0; background: none; box-shadow: none; }
 .modo-nicho .capitulo--nicho > .aura,
 .modo-nicho .capitulo--nicho::before,
@@ -2202,6 +2348,33 @@ html:has(.detalle[open]) { overflow: hidden; }
   transition: opacity 700ms ease, transform 1400ms var(--suave);
 }
 .vendidos__imagen.es-activa { opacity: 1; transform: none; }
+/* Más vendidos con foto de frasco (sin fondo): la vitrina pierde su cuadro y su degradado; el
+   frasco va suelto, completo, con un halo tenue del color de su familia y su sombra. Las fotos
+   de ambiente (con fondo) se siguen viendo en su cuadro. */
+.vendidos__vitrina { transition: background-color 600ms ease; }
+.vendidos__vitrina::after { transition: opacity 600ms ease; }
+.vendidos__vitrina::before {
+  content: "";
+  position: absolute;
+  inset: 6% 8% 26%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--campo, var(--tinta)) 24%, transparent), transparent);
+  opacity: 0;
+  transition: opacity 700ms ease;
+  pointer-events: none;
+}
+.vendidos__vitrina.con-frasco { background-color: transparent; }
+.vendidos__vitrina.con-frasco::after { opacity: 0; }
+.vendidos__vitrina.con-frasco::before { opacity: 1; }
+.vendidos__imagen.es-frasco {
+  inset: 3% 12% 30%;
+  width: 76%;
+  height: 67%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 1.6rem 1.4rem rgb(10 6 9 / 0.6));
+}
 /* La fila deslizable de tarjetas solo existe en pantallas chicas */
 .vendidos__pista { display: none; }
 .vendidos__rotulo {
@@ -2974,20 +3147,22 @@ html:has(.detalle[open]) { overflow: hidden; }
   height: 1px;
   background: linear-gradient(90deg, transparent, rgb(230 213 184 / 0.4), transparent);
 }
+/* Todos los frascos a la misma altura (las fotos ya vienen recortadas al frasco); el ancho
+   sale de cada frasco */
 .opcion__vitrina img {
   position: static;
   z-index: 0;
-  width: 28%;
-  height: 78%;
-  max-height: 13rem;
+  width: auto;
+  height: clamp(9rem, 22vh, 13rem);
+  max-width: 30%;
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 1rem 0.9rem rgb(0 0 0 / 0.6));
   transition: transform 1000ms var(--suave);
 }
-.opcion__vitrina img:nth-child(2) { height: 92%; max-height: 15rem; }
 .opcion--nicho:hover .opcion__vitrina img { transform: translateY(-0.35rem); }
-.opcion--nicho:hover .opcion__vitrina img:nth-child(2) { transform: translateY(-0.6rem); }
+/* La flecha va junto a la palabra "Nicho", no flotando a media tarjeta */
+.opcion--nicho .opcion__titulo { justify-content: flex-start; gap: 1.1rem; }
 
 /* "Ver todo": siempre debajo de los dos primeros pasos */
 /* "Ver todo" acompaña al bajar: se queda pegado abajo de la pantalla mientras se ven las
@@ -3271,6 +3446,7 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .paso.entra .familia,
   .paso.entra .paso__pie,
   .paso.entra .filtros,
+  .paso.entra .frase,
   .paso.entra #capitulos { animation: paso-entra 800ms var(--suave) both; animation-delay: calc(var(--i, 0) * 90ms + 200ms); }
 
   .nav__conteo.pulso { animation: pulso 450ms var(--suave); }
@@ -3594,6 +3770,9 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .vendidos__tarjeta.es-activa { opacity: 1; transform: none; }
   .vendidos__tarjeta-foto { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
   .vendidos__tarjeta-foto img { width: 100%; height: 100%; object-fit: cover; }
+  /* Frasco sin fondo: completo arriba del texto, sobre un halo del color de su familia */
+  .vendidos__tarjeta--frasco { background: radial-gradient(70% 45% at 50% 35%, color-mix(in oklch, var(--campo) 20%, transparent), transparent 75%), var(--papel-2); }
+  .vendidos__tarjeta--frasco .vendidos__tarjeta-foto img { padding: 1.5rem 14% 10rem; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 1.2rem 1rem rgb(10 6 9 / 0.55)); }
   .vendidos__tarjeta-texto {
     position: absolute;
     inset: auto 0 0 0;
