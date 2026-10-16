@@ -264,20 +264,26 @@
             <p>Cada tarjeta muestra las tres notas principales del perfume. Toca uno para ver su ficha, o agrégalo a tu lista y pídelos todos en un solo mensaje.</p>
           </div>
 
-          <!-- Filtro en forma de frase: cada parte subrayada se toca y abre sus opciones.
-               app.js pinta los botones y las listas (con cuántos perfumes hay en cada opción) -->
-          <div class="frase" id="frase-filtros" role="group" aria-label="Filtrar el catálogo">
-            <div class="frase__texto">
-              <span class="frase__fijo">Quiero perfumes</span>
-              <span class="frase__hueco" data-hueco="familia"></span>
-              <span class="frase__hueco" data-hueco="origen"></span>
-              <span class="frase__hueco" data-hueco="publico"></span>
+          <!-- Índice: dos filtros cortos (origen y para quién) y, debajo, la barra de familias que
+               se queda fija al bajar y lleva a cada capítulo. app.js pinta las opciones -->
+          <div class="indice" id="indice">
+            <div class="indice__grupo" role="group" aria-label="Origen">
+              <span class="indice__etiqueta" aria-hidden="true">Origen</span>
+              <div class="indice__opciones" data-indice-grupo="origen"></div>
             </div>
-            <div class="frase__resultado">
-              <p class="frase__conteo" id="conteo" aria-live="polite"></p>
-              <button class="enlace frase__limpiar" type="button" data-limpiar-filtros hidden><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Empezar de nuevo</button>
+            <div class="indice__grupo" role="group" aria-label="Para quién">
+              <span class="indice__etiqueta" aria-hidden="true">Para</span>
+              <div class="indice__opciones" data-indice-grupo="publico"></div>
+            </div>
+            <div class="indice__resultado">
+              <p class="indice__conteo" id="conteo" aria-live="polite"></p>
+              <button class="enlace indice__limpiar" type="button" data-limpiar-filtros hidden><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Limpiar</button>
             </div>
           </div>
+          <nav class="indice-barra" id="indice-barra" aria-label="Familias del catálogo">
+            <span class="indice-barra__titulo" aria-hidden="true">Ir a</span>
+            <ol class="indice-barra__lista" id="indice-lista"></ol>
+          </nav>
 
           <div id="capitulos"></div>
 

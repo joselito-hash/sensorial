@@ -8,7 +8,7 @@
      ------------------------------------------------------------------ */
   const CONFIG = {
     marca: "Sensorial Boutique",
-    whatsapp: "527445424972",
+    whatsapp: "525650569410", // +52 56 5056 9410
     /* Perfumes de "Más vendidos" (inicio y búsqueda), en orden. Usa el id de cada perfume
        de la lista PERFUMES. Los de ahora son de ejemplo: pon los que más vendes. */
     masVendidos: ["sauvage", "bleu-de-chanel", "oud-for-glory", "eros", "acqua-di-gio", "libre", "1-million", "la-vie-est-belle"],
@@ -466,10 +466,11 @@
     return `Hola ${CONFIG.marca}, quiero que me recomienden un perfume.`;
   }
 
+  const enlaceWhatsApp = (texto) => `https://wa.me/${CONFIG.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(texto)}`;
+
   function actualizarPedido() {
     const texto = mensaje();
-    const numero = CONFIG.whatsapp.replace(/\D/g, "");
-    const enlace = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    const enlace = enlaceWhatsApp(texto);
     $$(".js-wa").forEach((a) => { a.href = enlace; });
     const vista = $("#mensaje-texto");
     if (vista) vista.textContent = texto;
@@ -1800,9 +1801,6 @@
             <span class="capitulo__conteo"></span>
           </div>
         </div>
-        <div class="nichos__cinta" aria-hidden="true"><div class="nichos__cinta-pista">${
-          Array.from({ length: 2 }, () => ["Fragancias con firma", "Lotes pequeños", "Perfumistas independientes", "Lo que no está en cualquier vitrina", "Una estela que nadie más deja"]
-            .map((t) => `<span>${t}</span>`).join("")).join("")}</div></div>
         <ul class="nichos__lista">${NICHO.map(fichaNicho).join("")}</ul>
       </section>`;
   }
@@ -1886,87 +1884,98 @@
     }).join("");
   }
 
-  /* ---------- Filtro en forma de frase ----------
-     "Quiero perfumes [frescos] [de diseñador] [para ella]". Cada parte subrayada abre su lista
-     de opciones con cuántos perfumes hay con lo demás ya elegido; solo aparecen las opciones
-     que tienen perfumes (la elegida siempre). */
-  const HUECOS = {
-    familia: {
-      cualquiera: "todas",
-      etiqueta: (v) => (v === "todas" ? "de todas las familias" : familiaPorId.get(v).nombre.toLowerCase()),
-      opciones: () => [["todas", "Todas las familias"], ...FAMILIAS.map((f) => [f.id, f.nombre])],
-    },
-    origen: {
-      cualquiera: "todos",
-      etiqueta: (v) => ({ todos: "de diseñador y árabes", "Diseñador": "de diseñador", "Árabe": "árabes", Nicho: "de nicho" })[v],
-      opciones: () => [["todos", "Diseñador y árabes"], ["Diseñador", "Diseñador"], ["Árabe", "Árabes"], ...(NICHO.length ? [["Nicho", "Nicho"]] : [])],
-    },
-    publico: {
-      cualquiera: "todos",
-      etiqueta: (v) => ({ todos: "para cualquiera", hombre: "para él", mujer: "para ella", unisex: "unisex" })[v],
-      opciones: () => [["todos", "Para cualquiera"], ["hombre", "Para él"], ["mujer", "Para ella"], ["unisex", "Unisex"]],
-    },
+  /* ---------- Índice del catálogo ----------
+     Arriba, dos controles cortos: de dónde (Todos · Diseñador · Árabes · Nicho) y para quién
+     (Todos · Él · Ella · Unisex). Debajo, una barra fija mientras se baja con las familias que
+     hay y cuántos perfumes tiene cada una: tocar una lleva a su capítulo, y la del capítulo
+     que se está viendo se ilumina con su color. Las opciones sin perfumes se apagan. */
+  const OPCIONES_INDICE = {
+    origen: () => [["todos", "Todos"], ["Diseñador", "Diseñador"], ["Árabe", "Árabes"], ...(NICHO.length ? [["Nicho", "Nicho"]] : [])],
+    publico: () => [["todos", "Todos"], ["hombre", "Él"], ["mujer", "Ella"], ["unisex", "Unisex"]],
   };
-  const NOMBRE_HUECO = { familia: "Familia", origen: "Origen", publico: "Para quién" };
 
-  /* Cuántos perfumes quedarían si se cambia una parte de la frase */
+  /* Cuántos perfumes quedarían si se cambia un filtro */
   function cuantosCon(cambio) {
     const f = { publico: "todos", ...estado.filtros, ...cambio };
     return PERFUMES.filter((p) => (f.familia === "todas" || p.familia === f.familia)
       && delOrigen(p, f.origen) && delPublico(p, f.publico)).length;
   }
 
-  function pintarFrase() {
-    const caja = $("#frase-filtros");
-    if (!caja) return;
-    Object.entries(HUECOS).forEach(([grupo, h]) => {
-      const hueco = $(`[data-hueco="${grupo}"]`, caja);
-      if (!hueco) return;
-      const actual = estado.filtros[grupo] || h.cualquiera;
-      const abierto = hueco.classList.contains("es-abierto");
-      const color = (v) => (grupo === "familia" && v !== "todas" ? ` style="--campo: var(--c-${v})"` : "");
-      const punto = (v) => (grupo === "familia" ? `<span class="frase__punto${v === "todas" ? " frase__punto--todas" : ""}" aria-hidden="true"></span>` : "");
-      const opciones = h.opciones().map(([valor, nombre]) => {
+  function pintarIndice() {
+    $$("[data-indice-grupo]").forEach((caja) => {
+      const grupo = caja.dataset.indiceGrupo;
+      const actual = estado.filtros[grupo] || "todos";
+      caja.innerHTML = OPCIONES_INDICE[grupo]().map(([valor, nombre]) => {
         const n = cuantosCon({ [grupo]: valor });
-        if (!n && valor !== actual) return "";
-        return `<button class="frase__opcion" type="button" role="option" aria-selected="${valor === actual}" data-grupo="${grupo}" data-valor="${valor}"${color(valor)}>${punto(valor)}<span>${nombre}</span><span class="frase__n">${n}</span></button>`;
+        const apagada = !n && valor !== actual;
+        return `<button class="indice__op" type="button" data-filtro="${grupo}" data-valor="${valor}" aria-pressed="${valor === actual}"${apagada ? " disabled" : ""}>${nombre}</button>`;
       }).join("");
-      hueco.innerHTML = `
-        <button class="frase__boton${actual !== h.cualquiera ? " es-elegido" : ""}" type="button" aria-haspopup="listbox" aria-expanded="${abierto}" data-abrir-hueco="${grupo}"${color(actual)}>${punto(actual)}<span>${h.etiqueta(actual)}</span><i class="ph ph-caret-down" aria-hidden="true"></i></button>
-        <div class="frase__menu" role="listbox" aria-label="${NOMBRE_HUECO[grupo]}"${abierto ? "" : " hidden"}>
-          <p class="frase__menu-titulo">${NOMBRE_HUECO[grupo]}</p>${opciones}
-        </div>`;
     });
+
+    const barra = $("#indice-barra");
+    const lista = $("#indice-lista");
+    if (!barra || !lista) return;
+    /* En nichos hay una sola sala: no hace falta índice */
+    const familias = FAMILIAS.map((f) => [f, cuantosCon({ familia: f.id })]).filter(([, n]) => n > 0);
+    barra.hidden = estado.filtros.origen === "Nicho" || familias.length < 2;
+    lista.innerHTML = familias.map(([f, n]) => `
+      <li><button class="indice-barra__item" type="button" data-ir-capitulo="${f.id}" style="--campo: var(--c-${f.id})"${estado.filtros.familia === f.id ? ' aria-current="true"' : ""}>
+        <span class="indice-barra__punto" aria-hidden="true"></span>${f.nombre}<span class="indice-barra__n">${n}</span>
+      </button></li>`).join("");
+    observarCapitulos();
   }
 
-  function cerrarHuecos(excepto = null) {
-    $$(".frase__hueco.es-abierto").forEach((hueco) => {
-      if (hueco === excepto) return;
-      hueco.classList.remove("es-abierto");
-      $(".frase__menu", hueco).hidden = true;
-      $(".frase__boton", hueco).setAttribute("aria-expanded", "false");
-    });
-  }
-
-  function alternarHueco(boton) {
-    const hueco = boton.closest(".frase__hueco");
-    const abrir = !hueco.classList.contains("es-abierto");
-    cerrarHuecos(hueco);
-    hueco.classList.toggle("es-abierto", abrir);
-    $(".frase__menu", hueco).hidden = !abrir;
-    boton.setAttribute("aria-expanded", String(abrir));
-    if (abrir) ($(".frase__opcion[aria-selected='true']", hueco) || $(".frase__opcion", hueco))?.focus({ preventScroll: true });
-  }
-
-  function elegirEnFrase(opcion) {
-    const grupo = opcion.dataset.grupo;
-    estado.filtros[grupo] = opcion.dataset.valor;
-    /* Si la familia elegida se queda sin perfumes con el nuevo origen o público, vuelve a "todas" */
-    if (grupo !== "familia" && estado.filtros.familia !== "todas" && !cuantosCon({})) estado.filtros.familia = "todas";
-    cerrarHuecos();
+  function elegirFiltro(boton) {
+    estado.filtros[boton.dataset.filtro] = boton.dataset.valor;
+    /* Si la familia elegida se queda sin perfumes con el nuevo filtro, vuelve a "todas" */
+    if (estado.filtros.familia !== "todas" && !cuantosCon({})) estado.filtros.familia = "todas";
     aplicarFiltros();
     sincronizarDireccion();
-    $(`[data-abrir-hueco="${grupo}"]`)?.focus({ preventScroll: true });
+  }
+
+  /* Lleva al capítulo de una familia, dejando a la vista el menú y la barra del índice. Si se
+     estaba viendo solo otra familia, primero se muestran todas */
+  function irACapitulo(id) {
+    if (estado.filtros.familia !== "todas" && estado.filtros.familia !== id) {
+      estado.filtros.familia = "todas";
+      aplicarFiltros();
+      sincronizarDireccion();
+    }
+    const capitulo = $(`.capitulo[data-capitulo="${id}"]`);
+    if (!capitulo) return;
+    const tope = ($(".nav")?.offsetHeight || 80) + ($("#indice-barra")?.offsetHeight || 0) + 20;
+    window.scrollTo({ top: capitulo.getBoundingClientRect().top + window.scrollY - tope, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    marcarCapitulo(id);
+  }
+
+  /* La familia del capítulo que está arriba de la pantalla se ilumina en el índice, y el
+     índice se desliza de lado para que siempre se vea */
+  let espiaCapitulos = null;
+  const capitulosVisibles = new Set();
+  function marcarCapitulo(id) {
+    const lista = $("#indice-lista");
+    if (!lista) return;
+    let activo = null;
+    $$(".indice-barra__item", lista).forEach((item) => {
+      const es = item.dataset.irCapitulo === id;
+      item.classList.toggle("es-activo", es);
+      if (es) activo = item;
+    });
+    if (activo && lista.scrollWidth > lista.clientWidth) {
+      lista.scrollTo({ left: activo.offsetLeft - (lista.clientWidth - activo.offsetWidth) / 2, behavior: menosMovimiento.matches ? "auto" : "smooth" });
+    }
+  }
+  function observarCapitulos() {
+    espiaCapitulos?.disconnect();
+    capitulosVisibles.clear();
+    if (!("IntersectionObserver" in window)) return;
+    const tope = ($(".nav")?.offsetHeight || 80) + ($("#indice-barra")?.offsetHeight || 0) + 24;
+    espiaCapitulos = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => (e.isIntersecting ? capitulosVisibles.add(e.target) : capitulosVisibles.delete(e.target)));
+      const primero = [...capitulosVisibles].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+      if (primero) marcarCapitulo(primero.dataset.capitulo);
+    }, { rootMargin: `-${tope}px 0px -55% 0px` });
+    $$(".capitulo:not(.capitulo--nicho):not([hidden])").forEach((c) => espiaCapitulos.observe(c));
   }
 
   function aplicarFiltros() {
@@ -1997,7 +2006,7 @@
     });
     const sala = $(".capitulo--nicho");
     if (sala) sala.dataset.cuantos = String($$(".nicho:not([hidden])").length);
-    pintarFrase();
+    pintarIndice();
     $("#conteo").innerHTML = `<strong>${visibles}</strong> ${visibles === 1 ? "perfume" : "perfumes"}`;
     $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos" && publico === "todos"; });
     resumirFiltros(visibles);
@@ -2050,15 +2059,36 @@
   /* Al enfocar, la barra crece (transición CSS de ancho) y justo después el velo difumina la
      página de forma gradual. Al cerrar ocurre al revés: primero se va el velo y luego la barra
      vuelve a su tamaño. */
-  /* Mientras se busca, la página queda quieta: al escribir, el navegador intentaba mantener
-     el cursor a la vista y la iba subiendo poco a poco */
+  /* Mientras se busca, la página queda quieta. Con cada tecla el navegador intenta mantener
+     el cursor a la vista y mueve la página aunque no se pueda deslizar (overflow: hidden no
+     lo impide): por eso se recuerda dónde estaba y, si se mueve, se regresa ahí al instante,
+     antes de que se alcance a ver. */
+  /* El salto ocurre ya al enfocar el campo (el navegador lo "acerca" antes de que corra el
+     código de abrir), así que la altura de referencia es la última conocida antes de buscar */
+  let alturaQuieta = null;
+  let ultimaAltura = window.scrollY;
   function abrirBusqueda() {
+    if (alturaQuieta === null) alturaQuieta = ultimaAltura;
     document.body.classList.add("buscando");
     document.documentElement.classList.add("pagina-quieta");
     veloBusqueda.classList.add("es-activo");
+    if (Math.abs(window.scrollY - alturaQuieta) > 0.5) window.scrollTo({ top: alturaQuieta, behavior: "instant" });
   }
+  window.addEventListener("scroll", () => {
+    if (alturaQuieta === null) {
+      ultimaAltura = window.scrollY;
+    } else if (Math.abs(window.scrollY - alturaQuieta) > 0.5) {
+      window.scrollTo({ top: alturaQuieta, behavior: "instant" });
+    }
+  }, { passive: true });
+  /* Al tocar el campo, antes de que el navegador lo enfoque y mueva la página */
+  campoBusqueda.addEventListener("pointerdown", () => {
+    if (alturaQuieta === null) alturaQuieta = window.scrollY;
+  });
 
   function cerrarSugerencias() {
+    alturaQuieta = null;
+    ultimaAltura = window.scrollY;
     panelSugerencias.hidden = true;
     campoBusqueda.setAttribute("aria-expanded", "false");
     campoBusqueda.value = "";
@@ -2232,11 +2262,22 @@
       : exactos ? `${textoPerfumes(resultados.length)} para "${campoBusqueda.value.trim()}"`
       : "Quizá buscabas";
 
+    /* Si no está (o solo hay parecidos), se puede preguntar directo por WhatsApp con lo que
+       se escribió: muchas veces se consigue aunque no esté en el catálogo */
+    const escrito = campoBusqueda.value.trim();
+    const consultar = (clase, texto) => `
+      <a class="busqueda__consulta ${clase}" href="${escaparHTML(enlaceWhatsApp(`Hola ${CONFIG.marca}, estoy buscando el perfume "${escrito}". ¿Me ayudan a conseguirlo?`))}" target="_blank" rel="noopener">
+        <i class="ph ph-whatsapp-logo" aria-hidden="true"></i>
+        <span><strong>${texto}</strong><small>Te respondemos por WhatsApp si lo podemos conseguir.</small></span>
+        <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+      </a>`;
+
     if (resultados.length) {
       panelSugerencias.innerHTML = `
         <div class="busqueda__lista">
           <p class="busqueda__titulo"></p>
           ${resultados.map((p) => filaSugerencia(p, consulta)).join("")}
+          ${consulta && !exactos ? consultar("busqueda__consulta--discreta", "¿No es ninguno? Pregúntanos por él") : ""}
         </div>
         <div class="busqueda__vista" id="busqueda-vista" aria-live="polite"></div>`;
       $(".busqueda__titulo", panelSugerencias).textContent = titulo;
@@ -2244,11 +2285,12 @@
     } else {
       panelSugerencias.innerHTML = `
         <div class="busqueda__lista busqueda__lista--sola">
-          <p class="buscar__sin-resultados"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span></span>Prueba con el nombre o la casa, por ejemplo Dior o Lattafa.</p>
+          <p class="buscar__sin-resultados"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span></span>Prueba con el nombre o la casa, por ejemplo Dior o Lattafa, o consúltanos directo.</p>
+          ${consultar("", "Pregúntanos por este perfume")}
           <p class="busqueda__titulo">Quizá te interese</p>
           ${MAS_VENDIDOS.slice(0, 3).map((id) => filaSugerencia(porId.get(id), "")).join("")}
         </div>`;
-      $(".buscar__sin-resultados span", panelSugerencias).textContent = `No encontramos "${campoBusqueda.value.trim()}".`;
+      $(".buscar__sin-resultados span", panelSugerencias).textContent = `No encontramos "${escrito}".`;
     }
     panelSugerencias.hidden = false;
     campoBusqueda.setAttribute("aria-expanded", "true");
@@ -2906,14 +2948,13 @@
 
   document.addEventListener("click", (evento) => {
     const boton = evento.target.closest("button");
-    /* Un clic fuera de la parte abierta de la frase la cierra */
-    if (!evento.target.closest(".frase__hueco")) cerrarHuecos();
-    if (boton && "abrirHueco" in boton.dataset) {
-      alternarHueco(boton);
+    /* Índice del catálogo: un filtro (origen o para quién) o ir al capítulo de una familia */
+    if (boton && boton.dataset.filtro) {
+      elegirFiltro(boton);
       return;
     }
-    if (boton && boton.classList.contains("frase__opcion")) {
-      elegirEnFrase(boton);
+    if (boton && boton.dataset.irCapitulo) {
+      irACapitulo(boton.dataset.irCapitulo);
       return;
     }
     if (!boton) {
@@ -3000,14 +3041,6 @@
     }
   });
 
-  /* Esc cierra la parte abierta de la frase y regresa el foco a su botón */
-  document.addEventListener("keydown", (evento) => {
-    if (evento.key !== "Escape") return;
-    const abierto = $(".frase__hueco.es-abierto");
-    if (!abierto) return;
-    cerrarHuecos();
-    $(".frase__boton", abierto)?.focus({ preventScroll: true });
-  });
 
   /* La hoja de filtros se cierra con Esc o tocando el fondo */
   if (hojaFiltros) {

@@ -10,7 +10,7 @@
 (() => {
   "use strict";
 
-  const WHATSAPP = "527445424972"; // el mismo número que CONFIG.whatsapp en app.js
+  const WHATSAPP = "525650569410"; // +52 56 5056 9410, el mismo número que CONFIG.whatsapp en app.js
   const T = window.TablaPagos;
   const reducido = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const config = window.SENSORIAL_SUPABASE || {};

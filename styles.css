@@ -459,6 +459,43 @@ body.buscando .buscar i { transform: scale(1.12); }
 .buscar__sin-resultados i { margin-bottom: 0.35rem; color: var(--tinta); font-size: 1.4rem; }
 .buscar__sin-resultados span { color: var(--tinta); font-size: 1rem; font-weight: 600; }
 
+/* "Pregúntanos por este perfume": acceso directo a WhatsApp con lo que se buscó escrito */
+.busqueda__consulta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0.15rem 0 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: var(--tinta);
+  color: var(--papel);
+  text-decoration: none;
+  transition: transform 250ms var(--suave), background-color 200ms;
+}
+.busqueda__consulta:hover { background: #ffffff; }
+.busqueda__consulta:active { transform: scale(0.98); }
+.busqueda__consulta > i:first-child {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--papel);
+  color: var(--tinta);
+  font-size: 1.3rem;
+}
+.busqueda__consulta span { display: grid; gap: 0.1rem; min-width: 0; line-height: 1.25; }
+.busqueda__consulta strong { font-size: 0.975rem; font-weight: 700; }
+.busqueda__consulta small { color: rgb(34 28 32 / 0.7); font-size: 0.8125rem; }
+.busqueda__consulta > i:last-child { margin-left: auto; font-size: 1.1rem; transition: transform 300ms var(--suave); }
+.busqueda__consulta:hover > i:last-child { transform: translate(2px, -2px); }
+/* Debajo de resultados parecidos va más discreto: fila con borde, no botón lleno */
+.busqueda__consulta--discreta { margin: 0.6rem 0 0; background: none; box-shadow: inset 0 0 0 1px var(--linea); color: var(--tinta); }
+.busqueda__consulta--discreta:hover { background: rgb(255 255 255 / 0.05); }
+.busqueda__consulta--discreta > i:first-child { background: rgb(255 255 255 / 0.08); color: var(--tinta); }
+.busqueda__consulta--discreta small { color: var(--tinta-2); }
+
 .busqueda__vista {
   display: flex;
   flex-direction: column;
@@ -809,146 +846,122 @@ body.buscando .buscar i { transform: scale(1.12); }
 
 /* Catálogo: un capítulo de color por familia, con sus perfumes en tarjetas oscuras */
 
-/* ---------- Filtro en forma de frase ----------
-   "Quiero perfumes [de todas las familias] [de diseñador y árabes] [para cualquiera]".
-   Se lee de corrido: lo fijo en gris, lo que se puede cambiar subrayado con línea punteada
-   (y del color de la familia cuando hay una elegida). Cada parte abre una lista corta con
-   cuántos perfumes quedarían; en el teléfono la lista sube desde abajo. */
-.frase {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 1rem 2.5rem;
-  margin-top: 2.25rem;
-  padding: clamp(1.25rem, 2.6vw, 1.75rem) clamp(1.25rem, 2.6vw, 2rem);
-  border-radius: var(--r-tarjeta);
-  background: rgb(255 255 255 / 0.03);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.05);
-}
-.frase__texto {
+/* ---------- Índice del catálogo ----------
+   Arriba: dos controles segmentados cortos (Origen y Para) y el conteo. Debajo: la barra de
+   familias, que se queda fija bajo el menú al bajar y funciona como índice: cada familia
+   lleva a su capítulo y la del capítulo que se está viendo se ilumina con su color. */
+.indice {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.6rem;
-  font-size: clamp(1.4rem, 2.5vw, 2.15rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-}
-.frase__fijo { color: var(--tinta-2); }
-.frase__hueco { position: relative; }
-.frase__boton {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0 0.1rem 0.05rem;
-  border: 0;
-  border-bottom: 1.5px dashed rgb(255 255 255 / 0.32);
-  background: none;
-  color: var(--tinta);
-  font: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-  transition: color 250ms, border-color 250ms;
-}
-.frase__boton:hover,
-.frase__hueco.es-abierto .frase__boton { border-bottom-style: solid; border-bottom-color: var(--campo, var(--tinta)); }
-.frase__boton.es-elegido { border-bottom-style: solid; border-bottom-color: color-mix(in oklch, var(--campo, var(--tinta)) 70%, transparent); color: var(--campo, var(--tinta)); }
-.frase__boton:active { transform: translateY(1px); }
-.frase__boton i { align-self: center; color: var(--tinta-2); font-size: 0.5em; transition: transform 350ms var(--suave); }
-.frase__hueco.es-abierto .frase__boton i { transform: rotate(180deg); }
-.frase__punto { flex: none; align-self: center; width: 0.38em; height: 0.38em; border-radius: 50%; background: var(--campo, var(--tinta)); }
-.frase__punto--todas { background: conic-gradient(var(--c-frescos), var(--c-acuaticos), var(--c-aromaticos), var(--c-amaderados), var(--c-orientales), var(--c-frutales), var(--c-dulces), var(--c-florales), var(--c-frescos)); }
-
-.frase__menu {
-  position: absolute;
-  top: calc(100% + 0.6rem);
-  left: -0.5rem;
-  z-index: 30;
-  display: grid;
-  min-width: 16rem;
-  max-height: min(26rem, 60vh);
-  overflow-y: auto;
-  padding: 0.4rem;
-  border-radius: 1rem;
-  background: #2b2328;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 24px 50px -20px rgb(0 0 0 / 0.85);
-  font-size: 1rem;
-  letter-spacing: 0;
-  line-height: 1.3;
-  transform-origin: top left;
-}
-.frase__menu[hidden] { display: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .frase__menu { animation: frase-menu 320ms var(--suave); }
-  @keyframes frase-menu { from { opacity: 0; transform: translateY(-0.4rem) scale(0.97); } }
-}
-.frase__menu-titulo {
-  padding: 0.5rem 0.75rem 0.35rem;
-  color: var(--tinta-2);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.frase__opcion {
-  display: flex;
   align-items: center;
-  gap: 0.65rem;
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.55rem 0.75rem;
-  border: 0;
-  border-radius: 0.65rem;
-  background: none;
-  color: var(--tinta);
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 200ms;
+  gap: 0.85rem 1.75rem;
+  margin-top: 2.25rem;
 }
-.frase__opcion:hover,
-.frase__opcion:focus-visible { outline: none; background: rgb(255 255 255 / 0.06); }
-.frase__opcion[aria-selected="true"] { background: rgb(255 255 255 / 0.09); }
-.frase__opcion .frase__punto { width: 0.6rem; height: 0.6rem; }
-.frase__n {
-  margin-left: auto;
-  min-width: 1.6rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.07);
+.indice__grupo { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.indice__etiqueta {
   color: var(--tinta-2);
   font-size: 0.75rem;
   font-weight: 700;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-.frase__opcion[aria-selected="true"] .frase__n { background: var(--tinta); color: var(--papel); }
-.frase__resultado { display: flex; align-items: center; gap: 0.25rem; padding-bottom: 0.2rem; }
-.frase__conteo { color: var(--tinta-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.frase__conteo strong { color: var(--tinta); font-size: 1.15rem; font-weight: 700; }
-.frase__limpiar { min-height: 2.4rem; padding: 0.45rem 0.9rem; color: var(--tinta-2); font-size: 0.875rem; }
-.frase__limpiar:hover { color: var(--tinta); }
-.frase__limpiar[hidden] { display: none; }
-.frase__limpiar:hover i { transform: rotate(-60deg); }
+.indice__opciones {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+.indice__op {
+  min-height: 2.3rem;
+  padding: 0.4rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tinta-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 250ms var(--suave), color 250ms;
+}
+.indice__op:hover:not(:disabled) { color: var(--tinta); }
+.indice__op[aria-pressed="true"] { background: var(--tinta); color: var(--papel); }
+.indice__op:active:not(:disabled) { transform: scale(0.97); }
+.indice__op:disabled { opacity: 0.32; cursor: not-allowed; }
+.indice__resultado { display: flex; align-items: center; gap: 0.25rem; margin-left: auto; }
+.indice__conteo { color: var(--tinta-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.indice__conteo strong { color: var(--tinta); font-size: 1.15rem; font-weight: 700; }
+.indice__limpiar { min-height: 2.4rem; padding: 0.45rem 0.9rem; color: var(--tinta-2); font-size: 0.875rem; }
+.indice__limpiar:hover { color: var(--tinta); }
+.indice__limpiar[hidden] { display: none; }
+.indice__limpiar:hover i { transform: rotate(-60deg); }
+
+.indice-barra {
+  position: sticky;
+  top: calc(var(--nav-alto) + 0.5rem);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  padding: 0.35rem 0.4rem 0.35rem 1.1rem;
+  border-radius: 999px;
+  background: rgb(38 31 36 / 0.96);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 16px 32px -22px rgb(0 0 0 / 0.85);
+}
+.indice-barra[hidden] { display: none; }
+.indice-barra__titulo {
+  flex: none;
+  color: var(--tinta-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.indice-barra__lista {
+  display: flex;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
+}
+.indice-barra__lista::-webkit-scrollbar { display: none; }
+.indice-barra__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tinta-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 300ms var(--suave), color 300ms;
+}
+.indice-barra__punto { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--campo); }
+.indice-barra__n { color: var(--tinta-2); font-size: 0.75rem; font-weight: 700; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.indice-barra__item:hover { background: rgb(255 255 255 / 0.05); color: var(--tinta); }
+.indice-barra__item.es-activo { background: color-mix(in oklch, var(--campo) 22%, transparent); color: var(--campo); }
+.indice-barra__item.es-activo .indice-barra__n { color: var(--campo); opacity: 1; }
+.indice-barra__item[aria-current="true"] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--campo) 60%, transparent); }
 @media (max-width: 40rem) {
-  .frase { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; margin-top: 1.5rem; padding: 1.1rem 1.15rem; }
-  .frase__texto { font-size: 1.35rem; }
-  .frase__resultado { justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid rgb(255 255 255 / 0.07); }
-  /* En el teléfono la lista sube desde abajo, a lo ancho, fácil de tocar con el pulgar */
-  .frase__menu {
-    position: fixed;
-    top: auto;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
-    z-index: calc(var(--z-barra) + 3);
-    min-width: 0;
-    max-height: 65svh;
-    font-size: 1.0625rem;
-    transform-origin: bottom center;
-  }
+  .indice { gap: 0.75rem; margin-top: 1.5rem; }
+  .indice__grupo { width: 100%; }
+  .indice__etiqueta { min-width: 3.5rem; }
+  .indice__opciones { overflow-x: auto; scrollbar-width: none; }
+  .indice__op { padding-inline: 0.85rem; font-size: 0.875rem; }
+  .indice__resultado { width: 100%; justify-content: space-between; margin-left: 0; }
+  .indice-barra { top: calc(var(--nav-alto) + 0.35rem); padding-left: 0.9rem; }
 }
 
 /* Filtros: una consola en dos pisos. Arriba el origen (control segmentado) y el resultado;
@@ -1186,34 +1199,8 @@ body.buscando .buscar i { transform: scale(1.12); }
 @keyframes aura-b { to { transform: translate(-42%, 22%) scale(0.86); } }
 @keyframes aura-c { to { transform: translate(24%, -38%) scale(1.12); } }
 
-/* Cinta de texto en serif cursiva que corre lento bajo el título */
-.nichos__cinta {
-  margin-top: clamp(1.1rem, 2.4vw, 1.6rem);
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-}
-.nichos__cinta-pista { display: flex; width: max-content; }
-.nichos__cinta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 2.25rem;
-  padding-right: 2.25rem;
-  color: rgb(230 213 184 / 0.42);
-  font-family: var(--serif);
-  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
-  font-style: italic;
-  white-space: nowrap;
-}
-.nichos__cinta span::after { content: ""; width: 0.35rem; height: 0.35rem; border: 1px solid currentColor; transform: rotate(45deg); }
-@media (prefers-reduced-motion: no-preference) {
-  .nichos__cinta-pista { animation: nichos-cinta 46s linear infinite; }
-  .capitulo--nicho:not(.en-pantalla) .nichos__cinta-pista { animation-play-state: paused; }
-}
-@keyframes nichos-cinta { to { transform: translateX(-50%); } }
 /* Con una ficha abierta encima, lo que se mueve en la sala se detiene: el velo borroso de la
    ficha no tiene que volver a difuminarse en cada cuadro y la ficha se desliza fluida */
-.con-ficha .nichos__cinta-pista,
 .con-ficha .capitulo--nicho .aura span,
 .con-ficha .capitulo--nicho::before { animation-play-state: paused; }
 /* Un destello recorre despacio el filete de arriba, como luz sobre un mostrador */
@@ -1531,9 +1518,13 @@ body:not(.modo-nicho) .fondo-nicho *,
 .modo-nicho .hoja { background-color: transparent; box-shadow: none; }
 /* Con el ambiente puesto, la sala deja de ser una caja: los nichos flotan sobre el fondo */
 /* Menú casi opaco, sin desenfoque: difuminar el fondo animado detrás costaba en cada cuadro */
+/* En nichos el menú flota: barra redondeada con filete champán, separada del borde de arriba,
+   en lugar de una franja cuadrada cortada a lo ancho */
 .modo-nicho .nav {
+  top: var(--margen);
+  border-radius: 1.4rem;
   background: var(--noir);
-  box-shadow: 0 1px 0 var(--champan-linea);
+  box-shadow: inset 0 0 0 1px var(--champan-linea), 0 18px 40px -24px rgb(0 0 0 / 0.9);
   transition: background-color 600ms, box-shadow 600ms;
 }
 .modo-nicho .capitulo--nicho { overflow: visible; padding-inline: 0; background: none; box-shadow: none; }
@@ -1559,8 +1550,10 @@ body:not(.modo-nicho) .fondo-nicho *,
     #120e10;
   box-shadow: inset -1px 0 0 var(--champan-linea);
 }
-.detalle--nicho .detalle__lamina,
-.detalle--nicho .detalle__lamina { background: none; box-shadow: none; }
+/* Sin cuadro alrededor del frasco: el marco ya no recorta su sombra ni su halo (se veía un
+   rectángulo oscuro cortado bajo el frasco). Las fotos de galería conservan sus esquinas */
+.detalle--nicho .detalle__lamina { overflow: visible; border-radius: 0; background: none; box-shadow: none; }
+.detalle--nicho .detalle__foto:not(.detalle__foto--frasco) { border-radius: var(--r-marco); }
 .detalle--nicho .detalle__lamina::after {
   content: "";
   position: absolute;
@@ -1620,6 +1613,8 @@ body:not(.modo-nicho) .fondo-nicho *,
     scrollbar-width: none;
   }
   .nichos__lista::-webkit-scrollbar { display: none; }
+  /* Aire abajo dentro de la fila deslizable: si no, recorta la sombra de las tarjetas */
+  .nichos__lista { padding-bottom: 2.25rem; margin-bottom: -2.25rem; }
   .nicho { flex: 0 0 82%; scroll-snap-align: start; }
   .aura span { width: 120%; }
   .nicho.es-principal { display: flex; min-height: 0; }
@@ -3446,7 +3441,8 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .paso.entra .familia,
   .paso.entra .paso__pie,
   .paso.entra .filtros,
-  .paso.entra .frase,
+  .paso.entra .indice,
+  .paso.entra .indice-barra,
   .paso.entra #capitulos { animation: paso-entra 800ms var(--suave) both; animation-delay: calc(var(--i, 0) * 90ms + 200ms); }
 
   .nav__conteo.pulso { animation: pulso 450ms var(--suave); }
