@@ -38,7 +38,7 @@
     leer("catalog_public?select=*&order=id.asc"),
     leer("families?select=*&order=display_order.asc"),
     leer("featured_reviews?select=*&order=published_at.desc"),
-    leer("reviews?select=id,perfume_id,author_name,city,body,rating,published_at&order=published_at.desc&limit=200"),
+    leer("reviews?select=id,perfume_id,author_name,city,body,rating,verified_purchase,published_at&order=published_at.desc&limit=200"),
   ]).then((results) => {
     const datos = results.map((r) => r.status === "fulfilled" ? r.value : null);
     results.filter((r) => r.status === "rejected").forEach((r) => console.warn(r.reason));

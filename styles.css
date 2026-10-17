@@ -2177,8 +2177,23 @@ html:has(.detalle[open]) { overflow: hidden; }
   font-weight: 700;
 }
 .resena__autor strong { font-weight: 600; }
-.resena__autor > span:last-child:not(.resena__inicial) { color: var(--tinta-2); }
-.resena__autor > span:last-child:not(.resena__inicial)::before { content: "· "; }
+.resena__autor > strong + span:not(.resena__verificada) { color: var(--tinta-2); }
+.resena__autor > strong + span:not(.resena__verificada)::before { content: "· "; }
+/* Reseñas que llegaron desde la tabla de pagos de la clienta */
+.resena__verificada {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding: 0.22rem 0.6rem 0.22rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--campo, var(--tinta)) 14%, transparent);
+  color: var(--campo, var(--tinta));
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.resena__verificada i { font-size: 0.95rem; }
 
 .resena__form { margin-top: 1rem; padding: 1rem 1.1rem; border-radius: var(--r-tarjeta); background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06); }
 .calificar { margin: 0; padding: 0; border: 0; min-width: 0; }

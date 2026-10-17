@@ -135,12 +135,230 @@
   const cortoDe = (plan) => String(plan.product_name || "").trim() || nombreDe(plan);
   const tonoDe = (plan) => (T.TONOS.includes(plan.tone) ? plan.tone : "rosa");
 
-  /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume */
-  const opcionesDe = (plan) => ({
-    contacto: whatsapp(`Hola, soy ${plan.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${nombreDe(plan)}.`),
-    descargar: true,
-    siguiente: whatsapp(`Hola, soy ${plan.client_name}. Ya terminé de pagar mi ${nombreDe(plan)}. Me gustaría elegir mi siguiente perfume.`),
-  });
+  /* En curso: WhatsApp para dudas y Descargar. Liquidada: WhatsApp para pedir otro perfume.
+     Con su perfume ligado al catálogo, también la reseña (pedirla o la que ya dejó). */
+  let resenas = new Map();
+  const opcionesDe = (plan) => {
+    const tabla = plan.token || token;
+    const info = resenas.get(tabla);
+    return {
+      contacto: whatsapp(`Hola, soy ${plan.client_name}. Tengo una pregunta sobre mi tabla de pagos de ${nombreDe(plan)}.`),
+      descargar: true,
+      siguiente: whatsapp(`Hola, soy ${plan.client_name}. Ya terminé de pagar mi ${nombreDe(plan)}. Me gustaría elegir mi siguiente perfume.`),
+      resena: info ? { tabla, perfumeId: info.perfume_id, hecha: info.resena || null } : null,
+    };
+  };
+
+  /* ---------- Reseñas ----------
+     Pregunta a Supabase qué perfume del catálogo puede reseñar cada tabla y si ya lo hizo. Si
+     no responde a tiempo, la tabla se muestra igual, sin el bloque de la reseña. */
+  async function cargarResenas(datos) {
+    if (!config.url || !config.publishableKey || !config.turnstileSiteKey) return new Map();
+    const grupo = Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos];
+    const tokens = [...new Set([token, ...grupo.map((plan) => plan?.token).filter(Boolean)])].slice(0, 12);
+    const controller = new AbortController();
+    const reloj = setTimeout(() => controller.abort(), 3000);
+    try {
+      const respuesta = await fetch(new URL("/rest/v1/rpc/sensorial_tabla_resenas", config.url), {
+        method: "POST",
+        headers: { apikey: config.publishableKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_tokens: tokens }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!respuesta.ok) return new Map();
+      const lista = await respuesta.json();
+      return new Map((Array.isArray(lista) ? lista : []).filter((r) => r && r.perfume_id).map((r) => [r.token, r]));
+    } catch {
+      return new Map();
+    } finally {
+      clearTimeout(reloj);
+    }
+  }
+
+  /* Verificación de Cloudflare (Turnstile): se carga hasta que la clienta elige sus estrellas y
+     es invisible; solo muestra una casilla si de verdad duda */
+  let captchaCarga = null;
+  const captchas = new Map();
+  function cargarCaptcha() {
+    if (window.turnstile) return Promise.resolve();
+    captchaCarga ??= new Promise((listo, falla) => {
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.onload = listo;
+      script.onerror = () => { captchaCarga = null; falla(new Error("No se pudo cargar la verificación")); };
+      document.head.append(script);
+    });
+    return captchaCarga;
+  }
+  async function prepararCaptcha(form) {
+    if (captchas.has(form)) return;
+    const caja = form.querySelector(".tp-resena__captcha");
+    const estado = { id: null, token: "" };
+    captchas.set(form, estado);
+    try {
+      await cargarCaptcha();
+      estado.id = window.turnstile.render(caja, {
+        sitekey: config.turnstileSiteKey,
+        theme: "dark",
+        size: "flexible",
+        appearance: "interaction-only",
+        callback: (valor) => { estado.token = valor; },
+        "expired-callback": () => { estado.token = ""; },
+        "error-callback": () => { estado.token = ""; },
+      });
+    } catch {
+      captchas.delete(form);
+      avisarResena(form, "No se pudo cargar la verificación. Actualiza la página para intentarlo.", true);
+    }
+  }
+  async function tokenCaptcha(form) {
+    await prepararCaptcha(form);
+    const estado = captchas.get(form);
+    for (let i = 0; i < 40 && estado && !estado.token; i += 1) await new Promise((listo) => { setTimeout(listo, 250); });
+    return estado?.token || "";
+  }
+
+  function avisarResena(form, texto, error = false) {
+    const estado = form.querySelector(".tp-resena__estado");
+    estado.textContent = texto;
+    estado.classList.toggle("is-error", error);
+  }
+
+  /* Pinta n estrellas llenas (clase) o en vista previa al pasar el mouse */
+  function marcarEstrellas(form, n, clase = "is-llena") {
+    form.querySelectorAll(".tp-estrellas__op").forEach((op, i) => op.classList.toggle(clase, i < n));
+  }
+
+  /* Destellos dorados que saltan de la estrella elegida */
+  const BRILLO = "M12 0c.6 6.4 5.6 11.4 12 12-6.4.6-11.4 5.6-12 12-.6-6.4-5.6-11.4-12-12 6.4-.6 11.4-5.6 12-12z";
+  function destellar(op) {
+    if (reducido()) return;
+    for (let i = 0; i < 6; i += 1) {
+      const angulo = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const chispa = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      chispa.setAttribute("viewBox", "0 0 24 24");
+      chispa.setAttribute("class", "tp-estrellas__chispa");
+      chispa.setAttribute("aria-hidden", "true");
+      chispa.innerHTML = `<path d="${BRILLO}"/>`;
+      chispa.style.setProperty("--x", `${Math.round(Math.cos(angulo) * 34)}px`);
+      chispa.style.setProperty("--y", `${Math.round(Math.sin(angulo) * 34)}px`);
+      chispa.style.setProperty("--g", `${(i % 2 ? 1 : -1) * 120}deg`);
+      op.append(chispa);
+      chispa.addEventListener("animationend", () => chispa.remove(), { once: true });
+    }
+  }
+
+  function abrirResena(form, valor) {
+    marcarEstrellas(form, valor);
+    form.querySelector(".tp-estrellas__texto").textContent = T.CALIFICACIONES[valor] || " ";
+    const resto = form.querySelector(".tp-resena__resto");
+    if (form.classList.contains("is-abierta")) return;
+    form.classList.add("is-abierta");
+    resto.inert = false;
+    prepararCaptcha(form);
+  }
+
+  async function enviarResena(form) {
+    const seccion = form.closest("[data-tp-resena]");
+    const boton = form.querySelector(".tp-resena__enviar");
+    const datos = new FormData(form);
+    const estrellas = Number(datos.get("estrellas"));
+    const nombre = String(datos.get("nombre") || "").trim();
+    const texto = String(datos.get("texto") || "").trim();
+    if (!estrellas) return avisarResena(form, "Elige cuántas estrellas le das.", true);
+    if (nombre.length < 2) {
+      form.querySelector("[name='nombre']").focus();
+      return avisarResena(form, "Escribe tu nombre como quieres que aparezca.", true);
+    }
+    if (texto.length < 15) {
+      form.querySelector("[name='texto']").focus();
+      return avisarResena(form, "Cuéntanos un poco más: al menos una frase.", true);
+    }
+    boton.disabled = true;
+    avisarResena(form, "Enviando tu reseña…");
+    const captcha = await tokenCaptcha(form);
+    if (!captcha) {
+      boton.disabled = false;
+      return avisarResena(form, form.querySelector(".tp-resena__captcha iframe")
+        ? "Marca la casilla de verificación y vuelve a enviar."
+        : "No pudimos verificar el envío. Revisa tu conexión e inténtalo de nuevo.", true);
+    }
+    try {
+      const respuesta = await fetch(new URL("/functions/v1/submit-review", config.url), {
+        method: "POST",
+        headers: { apikey: config.publishableKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tabla: seccion.dataset.tpResena, nombre, estrellas, texto,
+          publicationConsent: true, token: captcha,
+        }),
+      });
+      const resultado = await respuesta.json().catch(() => ({}));
+      if (resultado.nombreOcupado) {
+        const campo = form.querySelector("[name='nombre']");
+        campo.focus();
+        campo.select();
+        throw new Error(resultado.error);
+      }
+      /* 409 con "repetida": ya tenía una reseña de esta tabla; se le muestra igual */
+      if (!respuesta.ok && !resultado.repetida) throw new Error(resultado.error || "No se pudo enviar la reseña.");
+      const hecha = document.createElement("div");
+      hecha.innerHTML = T.resenaHecha({ estrellas, estado: "pending" }, true);
+      const tarjeta = hecha.firstElementChild;
+      tarjeta.querySelectorAll(".tp-estrella").forEach((el, i) => el.style.setProperty("--n", i));
+      const id = captchas.get(form)?.id;
+      if (id != null) window.turnstile?.remove(id);
+      captchas.delete(form);
+      seccion.querySelector(".tp-resena__invita")?.remove();
+      form.replaceWith(tarjeta);
+      seccion.classList.add("is-hecha");
+      seccion.removeAttribute("data-tp-resena");
+    } catch (error) {
+      const estado = captchas.get(form);
+      if (estado) {
+        estado.token = "";
+        if (estado.id != null) window.turnstile?.reset(estado.id);
+      }
+      boton.disabled = false;
+      avisarResena(form, error.message || "No se pudo enviar la reseña. Inténtalo de nuevo.", true);
+    }
+  }
+
+  /* Un solo juego de eventos para todas las hojas (cada perfume tiene su reseña) */
+  function iniciarResenas() {
+    escena.querySelectorAll(".tp-resena__resto").forEach((resto) => { resto.inert = true; });
+    escena.addEventListener("change", (evento) => {
+      const estrella = evento.target.closest(".tp-estrellas__op input");
+      if (!estrella) return;
+      const form = estrella.form;
+      const op = estrella.closest(".tp-estrellas__op");
+      op.classList.remove("is-pulsa");
+      void op.offsetWidth;
+      op.classList.add("is-pulsa");
+      destellar(op);
+      abrirResena(form, Number(estrella.value));
+      avisarResena(form, "");
+    });
+    /* Con mouse: al pasar por las estrellas se asoman las que quedarían llenas */
+    escena.addEventListener("pointerover", (evento) => {
+      if (evento.pointerType !== "mouse") return;
+      const op = evento.target.closest(".tp-estrellas__op");
+      if (!op) return;
+      const ops = [...op.parentElement.children];
+      marcarEstrellas(op.closest("form"), ops.indexOf(op) + 1, "is-asoma");
+    });
+    escena.addEventListener("pointerout", (evento) => {
+      const fila = evento.target.closest(".tp-estrellas__fila");
+      if (fila && !fila.contains(evento.relatedTarget)) marcarEstrellas(fila.closest("form"), 0, "is-asoma");
+    });
+    escena.addEventListener("submit", (evento) => {
+      const form = evento.target.closest(".tp-resena__form");
+      if (!form) return;
+      evento.preventDefault();
+      enviarResena(form);
+    });
+  }
 
   /* Varias tablas: arriba un índice y abajo una hoja por perfume. Cada perfume del índice lleva
      su número, su nombre, lo que falta (o "Pagado") y una línea dorada que se llena con lo
@@ -235,6 +453,8 @@
     /* Arrastre: decide en los primeros 8 px si es de lado (carrusel) o hacia abajo (la página) */
     raiz.addEventListener("pointerdown", (evento) => {
       if (!evento.isPrimary || evento.button !== 0) return;
+      /* Escribiendo la reseña (o eligiendo texto) no se cambia de perfume */
+      if (evento.target.closest("input, textarea, label, .tp-resena__captcha")) return;
       arrastre = { id: evento.pointerId, x0: evento.clientX, y0: evento.clientY, lado: false, desde: 0, muestras: [[evento.timeStamp, evento.clientX]] };
     });
     raiz.addEventListener("pointermove", (evento) => {
@@ -365,6 +585,7 @@
     const inicial = celebra ? recien : principal;
     escena.classList.toggle("tp-escena--varias", varias);
     escena.innerHTML = varias ? carruselHTML(grupo, inicial) : T.pintar(grupo[0], opcionesDe(grupo[0]));
+    iniciarResenas();
     /* Con varios perfumes, el logo y el título viven en el encabezado fijo, fuera de las hojas */
     const cabecera = escena.querySelector(".tp--cabecera");
     const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera)")];
@@ -496,7 +717,10 @@
   (async () => {
     try {
       const datos = await cargar();
-      await precargar([T.imagen(datos.image_url), T.imagen(datos.watermark_image_url)]);
+      [resenas] = await Promise.all([
+        cargarResenas(datos),
+        precargar([T.imagen(datos.image_url), T.imagen(datos.watermark_image_url)]),
+      ]);
       mostrarTablas(datos);
     } catch (error) {
       const motivo = ["sin-token", "no-encontrada"].includes(error.message) ? error.message : "error";

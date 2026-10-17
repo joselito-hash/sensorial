@@ -67,6 +67,18 @@ Para revocar el acceso de un usuario, borra **solo su fila** de `private.sensori
 
 Para pruebas locales, puedes añadir `http://localhost:5500` a `SITE_ORIGIN` (separado por coma) y permitir `localhost` en un widget Turnstile de prueba. La revisión visual local requiere un servidor HTTP; abrir `index.html` como archivo no equivale al origen configurado.
 
+## Reseñas desde la tabla de pagos
+
+La clienta tiene su perfume desde el primer abono, así que su tabla de pagos (`/p/TOKEN`) le pregunta «¿Qué tal te va con tu …?» como último capítulo de la hoja: al final si sigue pagando, y entre el agradecimiento y «¿Vamos por tu siguiente perfume?» si ya liquidó. Toca las estrellas, se abre el formulario con su nombre ya escrito y la reseña llega a **Reseñas** del panel como `pending` y **con compra verificada**. En la tienda se ve con la etiqueta «Compra verificada». Una reseña por tabla. Cuando la publicas, su tabla le muestra «Tu reseña ya está en la tienda» con un enlace a la ficha del perfume.
+
+Para activarla:
+
+1. Corre `supabase/migrations/20261016_007_resenas_en_tablas.sql` en el SQL Editor. Liga sola cada tabla con su perfume cuando la casa y el nombre coinciden con un único perfume publicado.
+2. Vuelve a publicar la función: `supabase functions deploy submit-review` (o pega `supabase/functions/submit-review/index.js` en el editor del dashboard).
+3. En el panel, cada tabla tiene **Perfume del catálogo**. Se propone solo al escribir la casa y el nombre; si hay varias versiones (EDT, EDP…), elige la que compró. Una tabla sin perfume ligado no pide reseña.
+
+Para ver qué tablas quedaron sin ligar: `select client_name, brand, product_name from public.payment_plans where perfume_id is null;`
+
 ## Traer perfumes de Fragrantica desde el panel
 
 En el editor de cada perfume hay una sección **Traer de Fragrantica**: escribes el nombre (o pegas el enlace de su página en Fragrantica), eliges el resultado y el formulario se llena con nombre, casa (la elige si ya existe o la deja lista como casa nueva), año, público, las tres fases de notas, los acordes con su intensidad, la foto que publica Fragrantica y la fuente. Nada se guarda hasta pulsar **Guardar perfume**. Si la ficha ya tiene datos, el panel pregunta si reemplazarlos o solo llenar lo vacío.

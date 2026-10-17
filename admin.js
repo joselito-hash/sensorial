@@ -1642,6 +1642,34 @@
 
   /* ---------- Editor de la tabla ---------- */
 
+  /* "Perfume del catálogo": liga la tabla con su perfume para que la clienta pueda reseñarlo
+     desde su tabla (migración 007). Sin la columna en la base, el campo no aparece. */
+  const conPerfumeLigado = () => !state.sinColumnaPerfume
+    && (!state.data.plans.length || state.data.plans.some((plan) => "perfume_id" in plan));
+  const perfumesLigables = () => state.data.perfumes.filter((p) => p.is_published)
+    .map((p) => ({ id: p.id, casa: state.data.brands.find((b) => b.id === p.brand_id)?.name || "", nombre: p.name, version: p.concentration || "" }))
+    .sort((a, b) => `${a.casa} ${a.nombre}`.localeCompare(`${b.casa} ${b.nombre}`, "es"));
+
+  function pintarPerfumeLigado(valor) {
+    $("#plan-perfume-campo").hidden = !conPerfumeLigado();
+    planFields.perfume_id.innerHTML = '<option value="">Sin ligar: su tabla no pedirá reseña</option>'
+      + perfumesLigables().map((p) => `<option value="${escapeHTML(p.id)}">${escapeHTML(`${p.casa} ${p.nombre}${p.version ? ` · ${p.version}` : ""}`)}</option>`).join("");
+    planFields.perfume_id.value = valor || "";
+  }
+
+  /* Mientras no se elija a mano, se propone el perfume cuya casa y nombre coinciden con lo
+     escrito (solo si hay uno) */
+  function sugerirPerfumeLigado() {
+    if (!state.plan || state.plan.perfumeAMano || !conPerfumeLigado()) return;
+    const casa = normalizar(planFields.brand.value);
+    const nombre = normalizar(planFields.product_name.value);
+    const iguales = nombre ? perfumesLigables().filter((p) => normalizar(p.nombre) === nombre && (!casa || normalizar(p.casa) === casa)) : [];
+    planFields.perfume_id.value = iguales.length === 1 ? iguales[0].id : "";
+    $("#plan-perfume-ayuda").textContent = iguales.length > 1
+      ? `Hay ${iguales.length} versiones de ${planFields.product_name.value.trim()}: elige la que compró.`
+      : "Su tabla le pedirá una reseña de este perfume, que llega a la tienda como compra verificada.";
+  }
+
   /* Lo que lleva el formulario, sin validar: alimenta la vista previa mientras se escribe */
   function datosPlan() {
     return {
@@ -1650,6 +1678,7 @@
       product_name: nonempty(planFields.product_name.value),
       watermark: nonempty(planFields.watermark.value),
       tone: planFields.tone.value || "rosa",
+      ...(conPerfumeLigado() ? { perfume_id: planFields.perfume_id.value || null } : {}),
       installments: state.plan.cuotas.map((c) => ({ amount: monto(c.amount) || 0, ...(fechaValida(c.due) ? { due: c.due } : {}) })),
       payments: state.plan.abonos.map((a) => ({ amount: monto(a.amount), date: a.date, ...(nonempty(a.note) ? { note: nonempty(a.note) } : {}) })),
     };
@@ -1698,6 +1727,9 @@
       planFields.count.value = plan.installments.length;
     }
     if (junto) planFields.client_name.value = junto.client_name;
+    state.plan.perfumeAMano = Boolean(plan?.perfume_id);
+    pintarPerfumeLigado(plan?.perfume_id);
+    sugerirPerfumeLigado();
     prepararJunto(plan, junto);
     planFields.abono_date.value = hoy();
     pintarFotos();
@@ -2020,16 +2052,26 @@
       const antes = state.data.plans.find((plan) => plan.id === id);
       let clientGroup = planFields.client_group.value;
       if (!clientGroup && antes && companeras(antes).length) clientGroup = crypto.randomUUID();
-      const saved = await request(id ? `payment_plans?id=eq.${encodeURIComponent(id)}&select=*` : "payment_plans?select=*", {
-        method: id ? "PATCH" : "POST",
-        body: {
-          ...datos,
-          ...(conGrupos() && clientGroup ? { client_group: clientGroup } : {}),
-          image_url: state.plan.fotos.image.url || null,
-          watermark_image_url: state.plan.fotos.silueta.url || null,
-        },
-        prefer: "return=representation",
+      const cuerpo = {
+        ...datos,
+        ...(conGrupos() && clientGroup ? { client_group: clientGroup } : {}),
+        image_url: state.plan.fotos.image.url || null,
+        watermark_image_url: state.plan.fotos.silueta.url || null,
+      };
+      const enviar = () => request(id ? `payment_plans?id=eq.${encodeURIComponent(id)}&select=*` : "payment_plans?select=*", {
+        method: id ? "PATCH" : "POST", body: cuerpo, prefer: "return=representation",
       });
+      let saved;
+      try {
+        saved = await enviar();
+      } catch (error) {
+        /* Sin la migración 007 no existe perfume_id: se guarda sin él y el campo se oculta */
+        if (!("perfume_id" in cuerpo) || !/perfume_id/i.test(error.message)) throw error;
+        state.sinColumnaPerfume = true;
+        delete cuerpo.perfume_id;
+        $("#plan-perfume-campo").hidden = true;
+        saved = await enviar();
+      }
       if (!Array.isArray(saved) || saved.length !== 1) throw new Error("No se guardó la tabla.");
       const index = state.data.plans.findIndex((plan) => plan.id === saved[0].id);
       if (index >= 0) state.data.plans[index] = saved[0];
@@ -2167,6 +2209,8 @@
     if (event.target.name === "watermark") state.plan.aguaEditada = true;
     if (["client_name", "client_group"].includes(event.target.name)) sugerirJunto();
     if (event.target.name === "brand" && !state.plan.aguaEditada) planFields.watermark.value = TP.marcaDeAgua(event.target.value);
+    if (event.target.name === "perfume_id") state.plan.perfumeAMano = Boolean(event.target.value);
+    if (["brand", "product_name"].includes(event.target.name)) sugerirPerfumeLigado();
     const campo = event.target.closest("[data-cuota]");
     if (campo) {
       const i = Number(campo.dataset.i);

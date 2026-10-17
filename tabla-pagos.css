@@ -35,7 +35,7 @@
 .tp {
   position: relative;
   display: grid;
-  grid-template-areas: "cabeza" "visual" "nombre" "saldo" "tarjeta" "resumen" "contacto";
+  grid-template-areas: "cabeza" "visual" "nombre" "saldo" "tarjeta" "resumen" "contacto" "resena";
   justify-items: center;
   width: min(100%, 34rem);
   margin-inline: auto;
@@ -304,17 +304,149 @@
 .tp-siguiente__titulo { font-size: clamp(1.45rem, 7cqi, 1.9rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
 .tp-siguiente__texto { max-width: 30ch; color: var(--tp-tinta-2); font-size: clamp(0.98rem, 4.2cqi, 1.08rem); line-height: 1.45; }
 
+/* ---------- Reseña ----------
+   El último capítulo de la tabla, separado por el mismo filo dorado que "¿Vamos por tu
+   siguiente perfume?". En curso va al final; liquidada, entre el agradecimiento y la
+   invitación a la siguiente compra. Pregunta con el nombre en la letra manuscrita del
+   perfume, estrellas trazadas en dorado y, al enviarla, el sello de compra verificada. */
+.tp--liquidado { grid-template-areas: "cabeza" "visual" "nombre" "saldo" "tarjeta" "resena" "resumen" "contacto"; }
+.tp-resena {
+  grid-area: resena;
+  display: grid;
+  justify-items: center;
+  width: min(100%, 29rem);
+  margin-top: clamp(1.75rem, 7cqi, 2.5rem);
+  padding-top: clamp(1.4rem, 5cqi, 1.9rem);
+  border-top: 1px solid rgb(227 196 140 / 0.35);
+}
+.tp-resena__pregunta { display: grid; justify-items: center; margin: 0; font-weight: 400; line-height: 1.05; }
+.tp-resena__pregunta > span:first-child { font-size: clamp(1.15rem, 5.2cqi, 1.45rem); font-weight: 600; }
+.tp-resena__perfume {
+  max-width: 100%;
+  margin-top: -0.12em;
+  padding: 0 0.25em 0.12em;
+  color: var(--tp-tono);
+  font-family: "Ms Madi", cursive;
+  font-size: clamp(2.3rem, 11cqi, 3.2rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.tp-resena__invita { max-width: 30ch; color: var(--tp-tinta-2); font-size: clamp(0.95rem, 4cqi, 1.04rem); line-height: 1.45; }
+.tp-resena__form { display: grid; justify-items: center; width: 100%; }
+
+.tp-estrellas { display: grid; justify-items: center; gap: 0.3rem; min-width: 0; margin: 0.9rem 0 0; padding: 0; border: 0; }
+.tp-estrellas__fila { display: flex; gap: clamp(0.15rem, 1.5cqi, 0.45rem); }
+.tp-estrellas__op {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(2.9rem, 13cqi, 3.5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tp-estrellas__op input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tp-estrellas__op:has(input:focus-visible) { outline: 2px solid var(--tp-tono); outline-offset: 1px; }
+.tp-estrella { display: block; width: 76%; height: 76%; overflow: visible; }
+.tp-estrella path { fill: rgb(227 196 140 / 0); stroke: var(--tp-oro); stroke-width: 1.35; stroke-linejoin: round; transition: fill 0.35s var(--tp-suave); }
+.tp-estrellas__op.is-asoma path { fill: rgb(227 196 140 / 0.28); }
+.tp-estrellas__op.is-llena path,
+.tp-estrella.is-llena path { fill: var(--tp-oro); }
+.tp-estrellas__op:active .tp-estrella { transform: scale(0.92); }
+.tp-estrellas__chispa { position: absolute; left: 50%; top: 50%; width: 0.85rem; height: 0.85rem; fill: var(--tp-oro); opacity: 0; pointer-events: none; }
+.tp-estrellas__chispa:nth-child(2n) { fill: var(--tp-tono); }
+.tp-estrellas__texto { min-height: 1.45em; color: var(--tp-tono); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.02em; }
+
+/* El resto del formulario se abre al elegir estrellas (de 0 a su alto, sin medirlo) */
+.tp-resena__resto { display: grid; grid-template-rows: 0fr; width: 100%; transition: grid-template-rows 0.6s var(--tp-suave); }
+.tp-resena__form.is-abierta .tp-resena__resto { grid-template-rows: 1fr; }
+.tp-resena__dentro {
+  display: grid;
+  gap: 0.95rem;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.6rem 0.2rem 0.2rem;
+  opacity: 0;
+  transition: opacity 0.35s var(--tp-suave);
+}
+.tp-resena__form.is-abierta .tp-resena__dentro { opacity: 1; transition-delay: 0.15s; }
+.tp-campo { display: grid; gap: 0.4rem; color: var(--tp-tinta-2); font-size: 0.92rem; font-weight: 700; text-align: left; }
+.tp-campo input,
+.tp-campo textarea {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 0;
+  border-radius: 1.1rem;
+  background: rgb(255 255 255 / 0.03);
+  box-shadow: inset 0 0 0 1.5px rgb(227 196 140 / 0.32);
+  color: var(--tp-tinta);
+  font: 500 1rem/1.45 Urbanist, system-ui, sans-serif;
+  transition: box-shadow 0.25s var(--tp-suave), background-color 0.25s;
+}
+.tp-campo textarea { min-height: 7.5rem; resize: vertical; }
+.tp-campo input::placeholder,
+.tp-campo textarea::placeholder { color: rgb(201 188 195 / 0.55); }
+.tp-campo input:focus,
+.tp-campo textarea:focus { outline: none; background: rgb(255 255 255 / 0.05); box-shadow: inset 0 0 0 1.5px var(--tp-oro); }
+.tp-campo small { color: rgb(201 188 195 / 0.75); font-size: 0.8rem; font-weight: 500; }
+.tp-resena__captcha:empty { display: none; }
+.tp-resena__enviar { justify-self: center; border: 0; font: inherit; font-weight: 800; cursor: pointer; }
+.tp-resena__enviar:disabled { opacity: 0.7; cursor: progress; transform: none; }
+.tp-resena__nota { display: flex; align-items: flex-start; gap: 0.45rem; color: var(--tp-tinta-2); font-size: 0.82rem; line-height: 1.45; text-align: left; }
+.tp-resena__nota i { flex: none; margin-top: 0.05rem; color: var(--tp-oro); font-size: 1.05rem; }
+.tp-resena__estado { color: var(--tp-tinta-2); font-size: 0.92rem; line-height: 1.4; }
+.tp-resena__estado:not(:empty) { margin-top: 0.7rem; }
+.tp-resena__estado.is-error { color: #f2b1a8; }
+
+/* Enviada: el sello de compra verificada junto a sus estrellas y el estado de la reseña */
+.tp-resena__hecha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem 1.15rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 1.1rem 1.3rem;
+  border-radius: 1.75rem;
+  background: rgb(255 255 255 / 0.02);
+  box-shadow: inset 0 0 0 1.5px rgb(227 196 140 / 0.42), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9);
+  text-align: left;
+}
+.tp-verificada {
+  display: grid;
+  place-items: center;
+  width: clamp(4.9rem, 21cqi, 5.75rem);
+  aspect-ratio: 1;
+  rotate: -9deg;
+  filter: drop-shadow(0 0.7rem 1rem rgb(10 6 9 / 0.55));
+}
+.tp-verificada svg { grid-area: 1 / 1; width: 100%; height: 100%; overflow: visible; }
+.tp-verificada i { grid-area: 1 / 1; color: var(--tp-oro); font-size: clamp(1.35rem, 6cqi, 1.7rem); }
+.tp-resena__suyas { display: flex; gap: 0.15rem; margin-bottom: 0.35rem; }
+.tp-resena__suyas .tp-estrella { width: 1.1rem; height: 1.1rem; }
+.tp-resena__gracias p { color: var(--tp-tinta-2); font-size: clamp(0.95rem, 4cqi, 1.02rem); line-height: 1.45; }
+.tp-resena__gracias strong { color: var(--tp-tono); font-weight: 800; }
+.tp-resena__ver { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.55rem; color: var(--tp-oro); font-weight: 800; text-decoration: none; }
+.tp-resena__ver:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+.tp-resena.is-hecha .tp-resena__perfume { font-size: clamp(2rem, 9.5cqi, 2.7rem); }
+@container (max-width: 23rem) {
+  .tp-resena__hecha { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .tp-resena__suyas { justify-content: center; }
+}
+
 /* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
    arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
 @container (min-width: 62rem) {
   .tp {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 30rem);
-    grid-template-rows: 1fr repeat(6, auto) 1fr;
-    grid-template-areas: "visual ." "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual .";
+    grid-template-rows: 1fr repeat(7, auto) 1fr;
+    grid-template-areas: "visual ." "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual resena" "visual .";
     column-gap: clamp(2rem, 5cqi, 5rem);
     width: min(100%, 74rem);
     padding-block: 1.25rem;
   }
+  .tp--liquidado { grid-template-areas: "visual ." "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resena" "visual resumen" "visual contacto" "visual ."; }
   .tp-visual { --tp-alto: min(80svh, 44rem); margin-top: 0; }
   .tp-nombre { margin-top: clamp(1.25rem, 2.5cqi, 2rem); }
 }
@@ -360,7 +492,12 @@
   .tp--entrada .tp-resumen:not(.is-vista),
   .tp--entrada .tp-cierre:not(.is-vista),
   .tp--entrada .tp-siguiente:not(.is-vista),
+  .tp--entrada .tp-resena:not(.is-vista),
   .tp--entrada .tp-acciones:not(.is-vista) { opacity: 0; }
+  /* Reseña: sube, el nombre se escribe y las estrellas se trazan en dorado una tras otra */
+  .tp--entrada .tp-resena.is-vista { animation: tp-sube 700ms var(--tp-suave) both; }
+  .tp--entrada .tp-resena.is-vista .tp-resena__perfume { animation: tp-escribe 1100ms cubic-bezier(0.55, 0, 0.25, 1) 250ms both; }
+  .tp--entrada .tp-resena.is-vista .tp-estrellas__op path { stroke-dasharray: 1; animation: tp-traza 900ms cubic-bezier(0.65, 0, 0.35, 1) calc(450ms + var(--n, 0) * 110ms) both; }
   .tp--entrada .tp-saldo.is-vista .tp-saldo__etiqueta { animation: tp-sube 600ms var(--tp-suave) both; }
   .tp--entrada .tp-saldo.is-vista strong { animation: tp-aparece 600ms var(--tp-suave) 100ms both; }
   .tp--entrada .tp-saldo.is-vista .tp-raya { transform-origin: left center; animation: tp-raya 900ms var(--tp-suave) 150ms both; }
@@ -410,6 +547,19 @@
     0% { opacity: 0; transform: scale(1.9) rotate(-28deg); }
     60% { opacity: 1; transform: scale(0.92) rotate(2deg); }
     100% { opacity: 1; transform: none; }
+  }
+  /* Al elegir: la estrella late, las de antes se llenan en cascada y saltan destellos */
+  .tp-estrellas__op.is-pulsa .tp-estrella { animation: tp-late 520ms cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+  .tp-estrellas__op.is-llena path { transition-delay: calc(var(--n, 0) * 45ms); }
+  .tp-estrellas__chispa { animation: tp-destello 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  .tp-resena__hecha.is-recien { animation: tp-sube 700ms var(--tp-suave) both; }
+  .tp-resena__hecha.is-recien .tp-verificada { animation: tp-estampa 700ms cubic-bezier(0.3, 1.4, 0.5, 1) 250ms both; }
+  .tp-resena__hecha.is-recien .tp-resena__suyas .tp-estrella { animation: tp-late 520ms cubic-bezier(0.3, 1.6, 0.5, 1) calc(600ms + var(--n, 0) * 70ms) both; }
+  @keyframes tp-late { 0% { transform: scale(0.6); } 55% { transform: scale(1.18); } 100% { transform: none; } }
+  @keyframes tp-destello {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0.9) rotate(var(--g)); }
   }
   @keyframes tp-chispa {
     0% { opacity: 0; transform: translate(0, 0) scale(0.2) rotate(0deg); }
@@ -535,10 +685,11 @@
    vista en la columna izquierda hasta que termina la tabla) y la información va desde arriba */
 @container (min-width: 62rem) {
   .tp:not(.tp--cabecera) {
-    grid-template-rows: repeat(6, auto) 1fr;
-    grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual .";
+    grid-template-rows: repeat(7, auto) 1fr;
+    grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resumen" "visual contacto" "visual resena" "visual .";
     padding-bottom: 3rem;
   }
+  .tp--liquidado:not(.tp--cabecera) { grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resena" "visual resumen" "visual contacto" "visual ."; }
   .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
   /* Con varios perfumes, debajo del índice de arriba */
   .tp-escena--varias .tp:not(.tp--cabecera) .tp-visual { top: 6.25rem; --tp-alto: min(76svh, 42rem); }

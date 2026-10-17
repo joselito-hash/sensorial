@@ -161,6 +161,68 @@
   const DESTELLO = LOGO.find(([tipo]) => tipo === "brillo")[2];
   const CHISPAS = 12;
 
+  /* ---------- Reseña ----------
+     La clienta tiene su perfume desde el primer abono: su tabla le pregunta qué tal le va. Las
+     estrellas se trazan en dorado como el marco de la tarjeta; al tocar una se abre el resto.
+     Enviada (o si ya la había dejado), queda un sello de compra verificada, hermano del sello
+     de liquidado. pagos.js se encarga del envío. */
+  const ESTRELLA = "M12 2.6l2.82 5.9 6.48.78-4.78 4.46 1.23 6.42L12 17.02l-5.75 3.14 1.23-6.42L2.7 9.28l6.48-.78z";
+  const CALIFICACIONES = ["", "No me gustó", "Regular", "Está bien", "Me gustó", "Me encantó"];
+  const estrellaSVG = (clase = "") => `<svg class="tp-estrella${clase}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ESTRELLA}" pathLength="1"/></svg>`;
+
+  function selloVerificado() {
+    logos += 1;
+    return `<span class="tp-verificada" aria-hidden="true"><svg viewBox="0 0 120 120" focusable="false"><defs><path id="tpv-${logos}" d="M60 60m-43 0a43 43 0 1 1 86 0a43 43 0 1 1-86 0"/></defs><circle class="tp-sello__disco" cx="60" cy="60" r="57"/><circle class="tp-sello__aro" cx="60" cy="60" r="57"/><circle class="tp-sello__aro" cx="60" cy="60" r="31"/><text class="tp-sello__texto"><textPath href="#tpv-${logos}" textLength="268" lengthAdjust="spacing">COMPRA VERIFICADA · SENSORIAL ·</textPath></text></svg><i class="ph ph-seal-check"></i></span>`;
+  }
+
+  /* Ya enviada: sus estrellas, el sello y en qué va (en revisión o publicada en la tienda) */
+  function resenaHecha({ estrellas = 0, estado = "pending", perfumeId = "" } = {}, recien = false) {
+    const publicada = estado === "published";
+    const pila = estrellas ? `<span class="tp-resena__suyas" role="img" aria-label="${estrellas} de 5 estrellas">${[1, 2, 3, 4, 5].map((n) => estrellaSVG(n <= estrellas ? " is-llena" : "")).join("")}</span>` : "";
+    const [titulo, texto] = publicada
+      ? ["Tu reseña ya está en la tienda.", "Aparece con tu compra verificada. Gracias por contarnos."]
+      : [recien ? "¡Gracias! Recibimos tu reseña." : "Tu reseña está en revisión.", "La publicaremos en la tienda en cuanto la revisemos, marcada como compra verificada."];
+    return `<div class="tp-resena__hecha${recien ? " is-recien" : ""}" role="status">
+        ${selloVerificado()}
+        <div class="tp-resena__gracias">
+          ${pila}
+          <p><strong>${titulo}</strong> ${texto}</p>
+          ${publicada && perfumeId ? `<a class="tp-resena__ver" href="/#catalogo?todo&amp;perfume=${encodeURIComponent(perfumeId)}" target="_blank" rel="noopener">Verla en la tienda<i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function resenaHTML(r, { cliente, perfume }) {
+    if (!r) return "";
+    const pregunta = `<h2 class="tp-resena__pregunta"><span>¿Qué tal te va con tu</span> <span class="tp-resena__perfume">${escapar(perfume)}?</span></h2>`;
+    if (r.hecha) {
+      return `<section class="tp-resena is-hecha" aria-label="Tu reseña">${pregunta}${resenaHecha({ ...r.hecha, perfumeId: r.perfumeId })}</section>`;
+    }
+    logos += 1;
+    const id = `tpr-${logos}`;
+    return `<section class="tp-resena" aria-labelledby="${id}-t" data-tp-resena="${escapar(r.tabla)}">
+        <h2 class="tp-resena__pregunta" id="${id}-t"><span>¿Qué tal te va con tu</span> <span class="tp-resena__perfume">${escapar(perfume)}?</span></h2>
+        <p class="tp-resena__invita">Tu opinión ayuda a quien está por elegir. Toca las estrellas.</p>
+        <form class="tp-resena__form" novalidate>
+          <fieldset class="tp-estrellas">
+            <legend class="tp-oculto">Califica tu ${escapar(perfume)}</legend>
+            <div class="tp-estrellas__fila">${[1, 2, 3, 4, 5].map((n) => `<label class="tp-estrellas__op"><input type="radio" name="estrellas" value="${n}" required><span class="tp-oculto">${n} de 5 estrellas: ${CALIFICACIONES[n]}</span>${estrellaSVG()}</label>`).join("")}</div>
+            <p class="tp-estrellas__texto" aria-hidden="true">&nbsp;</p>
+          </fieldset>
+          <div class="tp-resena__resto">
+            <div class="tp-resena__dentro">
+              <label class="tp-campo"><span>Tu nombre</span><input name="nombre" value="${escapar(cliente)}" maxlength="80" minlength="2" required autocomplete="given-name"><small>Así aparecerá en la tienda.</small></label>
+              <label class="tp-campo"><span>Tu reseña</span><textarea name="texto" rows="4" minlength="15" maxlength="1500" required placeholder="Cuánto te dura, cómo huele en ti, si te lo han chuleado…"></textarea></label>
+              <div class="tp-resena__captcha"></div>
+              <button class="tp-contacto tp-resena__enviar" type="submit"><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>Publicar reseña</button>
+              <p class="tp-resena__nota"><i class="ph ph-seal-check" aria-hidden="true"></i>Llega como compra verificada. Al enviarla aceptas que publiquemos tu nombre y tu reseña cuando la revisemos.</p>
+            </div>
+          </div>
+          <p class="tp-resena__estado" role="status" aria-live="polite"></p>
+        </form>
+      </section>`;
+  }
+
   /* El orden de cada pieza va en data-d; la hoja de estilos lo lee como --d */
   function ordenar(raiz) {
     raiz?.querySelectorAll("[data-d]").forEach((el) => el.style.setProperty("--d", el.dataset.d));
@@ -214,6 +276,8 @@
       opciones.descargar ? '<button class="tp-descargar" type="button" data-tp-descargar><i class="ph ph-download-simple" aria-hidden="true"></i>Descargar</button>' : "",
     ]).join("");
     const contacto = botones ? `<div class="tp-acciones">${botones}</div>` : "";
+    /* opciones.resena (pagos.js): { tabla } para pedirla o { hecha } si ya la dejó */
+    const resena = resenaHTML(opciones.resena, { cliente, perfume: perfume || nombre });
 
     if (e.liquidado) {
       const abonos = (datos.payments || []).length;
@@ -227,6 +291,7 @@
       ${visual}
       ${saldo("Total pagado:", e.total)}
       <p class="tp-cierre"><strong>Gracias${cliente ? `, ${escapar(cliente)}` : ""}.</strong> Terminaste de pagar tu ${escapar(nombre === "Perfume" ? "perfume" : nombre)}${detalle ? ` ${escapar(detalle)}` : ""}.</p>
+      ${resena}
       <div class="tp-siguiente">
         <p class="tp-siguiente__titulo">¿Vamos por tu siguiente perfume?</p>
         <p class="tp-siguiente__texto">Escríbenos y te ayudamos a elegirlo. También puedes pagarlo en abonos.</p>
@@ -261,6 +326,7 @@
       </section>
       <p class="tp-resumen">${resumen}</p>
       ${contacto}
+      ${resena}
     </article>`;
   }
 
@@ -352,6 +418,7 @@
     const pagados = tabla.querySelectorAll(".tp-pago.is-pagado");
     pagados.forEach((el, k) => el.style.setProperty("--k", k));
     tabla.style.setProperty("--filas", filas.length);
+    tabla.querySelectorAll(".tp-estrellas__op, .tp-resena__suyas .tp-estrella").forEach((el, i) => el.style.setProperty("--n", i % 5));
     const agua = tabla.querySelector(".tp-agua");
     if (agua) agua.style.setProperty("--letras", Math.max([...agua.textContent].length, 2));
     const marca = tabla.querySelector(".tp-cabeza .tp-logo");
@@ -379,7 +446,8 @@
       if (monto) limpiar.push(contar(monto, Number(monto.dataset.tpMonto), 120));
     }, "0%"));
     const tarjeta = tabla.querySelector(".tp-tarjeta");
-    const abajo = [".tp-resumen", ".tp-cierre", ".tp-siguiente", ".tp-acciones"].map((sel) => tabla.querySelector(sel)).filter(Boolean);
+    /* En el orden en que aparecen en la página */
+    const abajo = [...tabla.querySelectorAll(".tp-resumen, .tp-cierre, .tp-resena, .tp-siguiente, .tp-acciones")];
     /* Lo último de la página se anima en cuanto se ve la mitad: ahí ya no se puede bajar más */
     const revelarAbajo = (desde) => abajo.forEach((el, i) => limpiar.push(alVer(el, desde + i * 150, 0.5, () => el.classList.add("is-vista"), "0%")));
     if (tarjeta) {
@@ -935,6 +1003,6 @@
 
   window.TablaPagos = {
     TONOS, calcular, pintar, cabecera, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
-    dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar,
+    dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar, resenaHecha, CALIFICACIONES,
   };
 })();

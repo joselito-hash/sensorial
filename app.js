@@ -1,6 +1,10 @@
 (() => {
   "use strict";
 
+  /* Enlace directo a la ficha de un perfume (#catalogo?todo&perfume=ID). Se lee antes de que
+     la página reescriba la dirección; la ficha se abre al final, cuando todo está listo. */
+  const PERFUME_DEL_ENLACE = new URLSearchParams(location.hash.split("?")[1] || "").get("perfume");
+
   /* ------------------------------------------------------------------
      CONFIGURACIÓN: edita solo este bloque.
      whatsapp: código de país + número, solo dígitos (ej. "5215512345678").
@@ -2636,7 +2640,7 @@
                 <p class="resena__texto">${escaparHTML(r.body)}</p>
                 <p class="resena__autor">
                   <span class="resena__inicial" aria-hidden="true">${escaparHTML((r.author_name || "?").trim().charAt(0).toUpperCase())}</span>
-                  <strong>${escaparHTML(r.author_name)}</strong>${r.city ? `<span>${escaparHTML(r.city)}</span>` : ""}
+                  <strong>${escaparHTML(r.author_name)}</strong>${r.city ? `<span>${escaparHTML(r.city)}</span>` : ""}${r.verified_purchase ? '<span class="resena__verificada"><i class="ph ph-seal-check" aria-hidden="true"></i>Compra verificada</span>' : ""}
                 </p>
               </li>`).join("")}</ul>` : `<p class="resenas__vacio">Todavía nadie ha reseñado este perfume.${puedeEnviar && !yaResenado ? " Si ya lo usaste, cuéntanos qué te pareció." : ""}</p>`}
             ${puedeEnviar && !yaResenado ? `<form class="resena__form" data-resena-perfume="${p.id}">
@@ -3111,4 +3115,13 @@
   else window.addEventListener("load", ponerVideoHero, { once: true });
   /* Con intro, el carrusel empieza a contar cuando la intro libera la página */
   if (!document.documentElement.classList.contains("con-intro")) iniciarCarrusel();
+
+  /* "Verla en la tienda" de la reseña publicada en la tabla de pagos: abre la ficha del
+     perfume en sus reseñas */
+  if (PERFUME_DEL_ENLACE && porId.has(PERFUME_DEL_ENLACE)) {
+    window.setTimeout(() => {
+      abrirDetalle(PERFUME_DEL_ENLACE);
+      window.setTimeout(() => $(".detalle__resenas", detalle)?.scrollIntoView({ behavior: "auto", block: "start" }), 500);
+    }, 350);
+  }
 })();
