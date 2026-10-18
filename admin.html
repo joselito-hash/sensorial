@@ -114,6 +114,13 @@
         </section>
         <section id="view-pagos" class="view" hidden aria-labelledby="pagos-title">
           <div class="page-heading"><div><p class="eyebrow">APARTADOS</p><h1 id="pagos-title">Tablas de pagos</h1><p class="muted">Sube las fotos, escribe el plan y ve registrando los abonos. El enlace siempre muestra lo que lleva tu cliente.</p></div><button class="button button--primary" type="button" data-new-plan>+ Nueva tabla</button></div>
+          <div class="ajuste" id="ajuste-tarjeta" hidden>
+            <div class="ajuste__texto">
+              <strong id="ajuste-tarjeta-titulo">Tarjeta de fidelidad en las tablas</strong>
+              <small id="ajuste-tarjeta-ayuda">Apagada: tus clientas no la ven. Préndela cuando esté lista para lanzarse.</small>
+            </div>
+            <button class="switch" type="button" role="switch" id="ajuste-tarjeta-boton" aria-checked="false" aria-labelledby="ajuste-tarjeta-titulo" aria-describedby="ajuste-tarjeta-ayuda"><span class="switch__perilla"></span></button>
+          </div>
           <p id="plans-error" class="empty" role="alert" hidden></p>
           <p id="plans-total" class="plans-total" hidden></p>
           <div class="catalog-toolbar"><label class="search-label"><span aria-hidden="true">⌕</span><input id="plan-search" type="search" placeholder="Buscar por cliente o perfume" aria-label="Buscar tablas de pagos"></label><select id="plan-filter" aria-label="Filtrar tablas de pagos"><option value="open">En curso</option><option value="paid">Liquidadas</option><option value="all">Todas</option></select></div>
@@ -247,6 +254,30 @@
         <p id="abono-efecto" class="abono-efecto" role="status" aria-live="polite"></p>
       </div>
       <footer class="editor-footer"><p id="abono-mensaje" class="dialog-mensaje" role="alert"></p><span class="editor-spacer"></span><button type="button" class="button button--subtle" data-abono-close>Cancelar</button><button type="submit" id="abono-save" class="button button--primary">Guardar abono</button></footer>
+    </form>
+  </dialog>
+
+  <!-- La tarjeta de fidelidad de una clienta: si la ve y sellos agregados a mano -->
+  <dialog id="tarjeta-dialog" class="editor-dialog tarjeta-dialog" aria-labelledby="tarjeta-title">
+    <form id="tarjeta-form" class="editor-form" novalidate>
+      <header class="editor-header"><div><p class="eyebrow">TARJETA DE FIDELIDAD</p><h2 id="tarjeta-title">Tarjeta</h2><p id="tarjeta-cuenta" class="muted"></p></div><button type="button" class="icon-button" data-tarjeta-close aria-label="Cerrar tarjeta de fidelidad">×</button></header>
+      <div class="editor-fields tarjeta-cuerpo">
+        <div class="tarjeta-vista tp-escena" id="tarjeta-vista" data-tono="dorado" aria-label="Vista previa de su tarjeta"></div>
+        <fieldset class="tarjeta-modo"><legend>¿La ve en su tabla?</legend>
+          <label><input type="radio" name="loyalty_mode" value="auto" checked><span><b>Como el ajuste general</b><small id="tarjeta-general"></small></span></label>
+          <label><input type="radio" name="loyalty_mode" value="on"><span><b>Prendida para ella</b><small>La ve aunque el ajuste general esté apagado. Sirve para probarla con una clienta.</small></span></label>
+          <label><input type="radio" name="loyalty_mode" value="off"><span><b>Apagada para ella</b><small>No la ve aunque el ajuste general esté prendido.</small></span></label>
+        </fieldset>
+        <div class="tarjeta-extra">
+          <div><b>Sellos agregados a mano</b><small>Compras que no pasaron por una tabla de pagos (de contado, en tienda…).</small></div>
+          <div class="tarjeta-extra__control">
+            <button type="button" class="icon-button" data-tarjeta-extra="-1" aria-label="Quitar un sello">−</button>
+            <input name="loyalty_extra" type="number" min="0" max="64" step="1" inputmode="numeric" value="0" aria-label="Sellos agregados a mano">
+            <button type="button" class="icon-button" data-tarjeta-extra="1" aria-label="Agregar un sello">+</button>
+          </div>
+        </div>
+      </div>
+      <footer class="editor-footer"><p id="tarjeta-mensaje" class="dialog-mensaje" role="alert"></p><span class="editor-spacer"></span><button type="button" class="button button--subtle" data-tarjeta-close>Cancelar</button><button type="submit" id="tarjeta-save" class="button button--primary">Guardar tarjeta</button></footer>
     </form>
   </dialog>
 </body>

@@ -149,6 +149,36 @@
     };
   };
 
+  /* La tarjeta de fidelidad se controla desde el panel: un interruptor general y, por clienta,
+     "como el general", "prendida" o "apagada", más sellos agregados a mano. Si no se puede
+     leer, queda apagada. */
+  let tarjeta = { activa: false, extra: 0 };
+  async function cargarTarjeta(datos) {
+    const apagada = { activa: false, extra: 0 };
+    if (!config.url || !config.publishableKey) return apagada;
+    const grupo = Array.isArray(datos.grupo) && datos.grupo.length ? datos.grupo : [datos];
+    const tokens = [...new Set([token, ...grupo.map((plan) => plan?.token).filter(Boolean)])].slice(0, 12);
+    const controller = new AbortController();
+    const reloj = setTimeout(() => controller.abort(), 3000);
+    try {
+      const respuesta = await fetch(new URL("/rest/v1/rpc/sensorial_tabla_fidelidad", config.url), {
+        method: "POST",
+        headers: { apikey: config.publishableKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_tokens: tokens }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!respuesta.ok) return apagada;
+      const r = await respuesta.json();
+      const activa = r?.modo === "on" || (r?.modo !== "off" && r?.general === true);
+      return { activa, extra: Math.max(0, Math.min(64, Number(r?.extra) || 0)) };
+    } catch {
+      return apagada;
+    } finally {
+      clearTimeout(reloj);
+    }
+  }
+
   /* Tarjeta de fidelidad: WhatsApp para pedir el premio ganado o para sumar otro sello */
   const opcionesFidelidad = (grupo) => {
     const cliente = grupo[0]?.client_name || "";
@@ -408,7 +438,7 @@
      su número, su nombre, lo que falta (o "Pagado") y una línea dorada que se llena con lo
      pagado. El índice también da avisos cortos ("Sauvage pagado · Sigue Good Girl") en el mismo
      lugar, sin tapar la tabla. */
-  function carruselHTML(grupo, inicial) {
+  function carruselHTML(grupo, inicial, conTarjeta) {
     const hojas = grupo.map((plan, i) => `<div class="tp-hoja" role="group" aria-roledescription="perfume" aria-label="${i + 1} de ${grupo.length}: ${T.escapar(nombreDe(plan))}">${T.pintar(plan, opcionesDe(plan))}</div>`).join("");
     const botones = grupo.map((plan, i) => {
       const e = T.calcular(plan);
@@ -419,21 +449,22 @@
         + `<span class="tp-frascos__texto" aria-hidden="true"><b>${T.escapar(cortoDe(plan))}</b><small>${e.liquidado ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${T.escapar(estado)}</small></span>`
         + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     }).join("");
-    /* Al final, deslizando a la izquierda: la tarjeta de fidelidad, con su botón en el índice */
-    const f = T.cuentaFidelidad(grupo);
+    /* Al final, deslizando a la izquierda: la tarjeta de fidelidad (si está prendida en el
+       panel), con su botón en el índice */
+    const f = T.cuentaFidelidad(grupo, tarjeta.extra);
     const sellos = `${f.selladosAqui} de ${T.SELLOS} sellos`;
-    const tarjeta = `<div class="tp-hoja tp-hoja--fidelidad" role="group" aria-roledescription="tarjeta" aria-label="Tarjeta de fidelidad">${T.fidelidad(grupo, opcionesFidelidad(grupo))}</div>`;
-    const botonTarjeta = `<button class="tp-frascos__boton tp-frascos__boton--fidelidad" type="button" data-hoja="${grupo.length}" data-avance="${(f.selladosAqui / T.SELLOS).toFixed(3)}" aria-label="Tarjeta de fidelidad, ${sellos}">`
+    const hojaTarjeta = !conTarjeta ? "" : `<div class="tp-hoja tp-hoja--fidelidad" role="group" aria-roledescription="tarjeta" aria-label="Tarjeta de fidelidad">${T.fidelidad(grupo, opcionesFidelidad(grupo), tarjeta.extra)}</div>`;
+    const botonTarjeta = !conTarjeta ? "" : `<button class="tp-frascos__boton tp-frascos__boton--fidelidad" type="button" data-hoja="${grupo.length}" data-avance="${(f.selladosAqui / T.SELLOS).toFixed(3)}" aria-label="Tarjeta de fidelidad, ${sellos}">`
       + '<span class="tp-frascos__num" aria-hidden="true"><i class="ph ph-seal-check"></i></span>'
       + `<span class="tp-frascos__texto" aria-hidden="true"><b>Fidelidad</b><small>${sellos}</small></span>`
       + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     /* De cuatro en adelante, el índice va compacto (ver .tp-frascos--compacto) */
-    return `<nav class="tp-frascos${grupo.length + 1 > 3 ? " tp-frascos--compacto" : ""}" aria-label="Elige un perfume o tu tarjeta">
+    return `<nav class="tp-frascos${grupo.length + (conTarjeta ? 1 : 0) > 3 ? " tp-frascos--compacto" : ""}" aria-label="${conTarjeta ? "Elige un perfume o tu tarjeta" : "Elige un perfume"}">
         <div class="tp-frascos__lista">${botones}${botonTarjeta}</div>
         <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>
       ${T.cabecera(T.calcular(grupo[inicial]).liquidado ? "liquidado" : "en-curso")}
-      <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes y tu tarjeta de fidelidad"><div class="tp-carrusel__pista">${hojas}${tarjeta}</div></div>
+      <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes y tu tarjeta de fidelidad"><div class="tp-carrusel__pista">${hojas}${hojaTarjeta}</div></div>
       <p class="tp-oculto" aria-live="polite" data-tp-anuncio></p>`;
   }
 
@@ -635,10 +666,12 @@
       : -1;
     const celebra = recien >= 0 && !reducido();
     const inicial = celebra ? recien : principal;
-    /* Siempre hay carrusel: aunque tenga un solo perfume, a su izquierda queda su tarjeta de
-       fidelidad. El logo y el título viven en el encabezado fijo, fuera de las hojas. */
-    escena.classList.add("tp-escena--varias");
-    escena.innerHTML = carruselHTML(grupo, inicial);
+    /* Carrusel con varios perfumes o con la tarjeta de fidelidad prendida (aunque tenga un solo
+       perfume, a su izquierda queda su tarjeta). Ahí el logo y el título viven en el encabezado
+       fijo, fuera de las hojas. Con un perfume y sin tarjeta, la tabla va sola. */
+    const enCarrusel = varias || tarjeta.activa;
+    escena.classList.toggle("tp-escena--varias", enCarrusel);
+    escena.innerHTML = enCarrusel ? carruselHTML(grupo, inicial, tarjeta.activa) : T.pintar(grupo[0], opcionesDe(grupo[0]));
     iniciarResenas();
     const cabecera = escena.querySelector(".tp--cabecera");
     const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera):not(.tp--fidelidad)")];
@@ -660,7 +693,7 @@
     /* Si la clienta toca, arrastra o cambia de perfume, la página ya no se mueve sola */
     let tomoElControl = false;
     let pasoAutomatico = false;
-    {
+    if (enCarrusel) {
       const frascos = escena.querySelector(".tp-frascos");
       const botones = [...frascos.querySelectorAll("[data-hoja]")];
       /* Lo pagado de cada perfume llena su línea. Se pone desde aquí y no con style="" en el
@@ -720,7 +753,7 @@
     abrir(() => (cabecera || tabla).querySelector(".tp-cabeza .tp-logo"), () => {
       if (cabecera) T.montar(cabecera, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
       T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion && !cabecera });
-      if (conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
+      if (enCarrusel && conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
       if (celebra) {
         /* El sello se estampa y saltan las chispas (cerca de 3.5 s); entonces la pastilla avisa
            y la página pasa sola al perfume que sigue, que entra con su animación */
@@ -745,7 +778,7 @@
       } else if (recien >= 0) {
         /* Movimiento reducido: sin celebración, solo el aviso sobre el perfume principal */
         avisar(`${cortoDe(grupo[recien])} pagado · Sigue ${cortoDe(grupo[principal])}`, 4500);
-      } else if (conAnimacion) {
+      } else if (enCarrusel && conAnimacion) {
         /* Y el perfume de junto (o la tarjeta de fidelidad), en la pastilla, destella una vez */
         setTimeout(() => {
           if (tomoElControl) return;
@@ -779,8 +812,9 @@
   (async () => {
     try {
       const datos = await cargar();
-      [resenas] = await Promise.all([
+      [resenas, tarjeta] = await Promise.all([
         cargarResenas(datos),
+        cargarTarjeta(datos),
         precargar([T.imagen(datos.image_url), T.imagen(datos.watermark_image_url)]),
       ]);
       mostrarTablas(datos);

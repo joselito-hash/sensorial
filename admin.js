@@ -160,6 +160,50 @@
     }
   }
 
+  /* Ajustes del sitio (migración 008). Sin la tabla, el interruptor no aparece. */
+  async function loadSettings() {
+    try {
+      const filas = await request("site_settings?select=key,value");
+      state.settings = Object.fromEntries((Array.isArray(filas) ? filas : []).map((fila) => [fila.key, fila.value]));
+    } catch {
+      state.settings = null;
+    }
+    pintarAjusteTarjeta();
+  }
+
+  function pintarAjusteTarjeta() {
+    const caja = $("#ajuste-tarjeta");
+    if (!caja) return;
+    caja.hidden = !state.settings;
+    if (!state.settings) return;
+    const prendida = state.settings.tarjeta_fidelidad === true;
+    $("#ajuste-tarjeta-boton").setAttribute("aria-checked", String(prendida));
+    caja.classList.toggle("is-prendida", prendida);
+    $("#ajuste-tarjeta-ayuda").textContent = prendida
+      ? "Prendida: al final de cada tabla, deslizando a la izquierda, tus clientas ven su tarjeta de sellos."
+      : "Apagada: tus clientas no la ven. Préndela cuando esté lista para lanzarse.";
+  }
+
+  async function cambiarAjusteTarjeta() {
+    const boton = $("#ajuste-tarjeta-boton");
+    const prender = boton.getAttribute("aria-checked") !== "true";
+    boton.disabled = true;
+    try {
+      await request("site_settings?on_conflict=key", {
+        method: "POST",
+        body: { key: "tarjeta_fidelidad", value: prender, updated_at: new Date().toISOString() },
+        prefer: "resolution=merge-duplicates,return=minimal",
+      });
+      state.settings.tarjeta_fidelidad = prender;
+      pintarAjusteTarjeta();
+      notify(prender ? "Tarjeta de fidelidad prendida: ya aparece en las tablas de tus clientas." : "Tarjeta de fidelidad apagada: ya no aparece en las tablas.");
+    } catch (error) {
+      notify(`No se pudo cambiar: ${error.message}`, true);
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
   async function loadData() {
     const queries = {
       brands: "brands?select=*&order=id.asc",
@@ -174,7 +218,7 @@
       sources: "perfume_sources?select=*&order=created_at.asc,id.asc",
       reviews: "reviews?select=*&order=created_at.desc,id.asc",
     };
-    const [rows] = await Promise.all([Promise.all(Object.values(queries).map(readAll)), loadPlans()]);
+    const [rows] = await Promise.all([Promise.all(Object.values(queries).map(readAll)), loadPlans(), loadSettings()]);
     Object.keys(queries).forEach((key, index) => { state.data[key] = rows[index] || []; });
     renderAll();
   }
@@ -1602,6 +1646,7 @@
             ${separadas ? "" : '<button type="button" data-plan-action="copiar">Copiar enlace</button>'}
             ${separadas ? "" : `<a href="${escapeHTML(whatsappPlan(principal))}" target="_blank" rel="noopener">WhatsApp</a>`}
             ${grupos ? '<button type="button" data-plan-action="otro">+ Otro perfume</button>' : ""}
+            ${conTarjetas() ? `<button type="button" data-plan-action="tarjeta" title="Su tarjeta de fidelidad">Tarjeta · ${TP.cuentaFidelidad(c.planes.map(({ plan }) => plan), extraDe(c.planes)).selladosAqui}/${TP.SELLOS}</button>` : ""}
           </div>
         </header>
         <ol class="cliente__tablas">${filas}</ol>
@@ -1614,6 +1659,84 @@
       ? "No hay tablas con ese filtro."
       : "<strong>Aún no hay tablas de pagos.</strong> Crea la primera con «+ Nueva tabla»: sube la foto del perfume, escribe el plan y comparte el enlace con tu cliente.";
   }
+
+  /* ---------- Tarjeta de fidelidad de cada clienta ----------
+     Si la ve (como el ajuste general, prendida o apagada solo para ella) y sellos agregados a
+     mano. Se guarda lo mismo en todas sus tablas (migración 008). */
+  const conTarjetas = () => state.data.plans.some((plan) => "loyalty_mode" in plan);
+  const extraDe = (lista) => Math.max(0, ...lista.map(({ plan }) => Number(plan.loyalty_extra) || 0));
+  const modoDe = (lista) => (lista.some(({ plan }) => plan.loyalty_mode === "off") ? "off"
+    : lista.some(({ plan }) => plan.loyalty_mode === "on") ? "on" : "auto");
+  const tarjetaFields = $("#tarjeta-form").elements;
+
+  function clienteDe(plan) {
+    const todos = state.data.plans.map((p) => ({ plan: p, e: TP.calcular(p) }));
+    return clientesDe(todos).find((c) => c.planes.some(({ plan: p }) => p.id === plan.id));
+  }
+
+  function pintarVistaTarjeta() {
+    const c = state.tarjeta?.cliente;
+    if (!c) return;
+    const extra = Math.max(0, Math.min(64, Math.floor(Number(tarjetaFields.loyalty_extra.value) || 0)));
+    const planes = c.planes.map(({ plan }) => plan);
+    $("#tarjeta-vista").innerHTML = TP.fidelidad(planes, {}, extra);
+    const f = TP.cuentaFidelidad(planes, extra);
+    $("#tarjeta-cuenta").textContent = `${f.selladosAqui} de ${TP.SELLOS} sellos · ${f.compras.filter((x) => x.plan && x.sellada).length} de sus tablas y ${extra} a mano`;
+  }
+
+  function abrirTarjeta(plan) {
+    const c = clienteDe(plan);
+    if (!c) return;
+    state.tarjeta = { cliente: c };
+    $("#tarjeta-form").reset();
+    $("#tarjeta-title").textContent = `Tarjeta de ${c.nombre}`;
+    tarjetaFields.loyalty_mode.value = modoDe(c.planes);
+    tarjetaFields.loyalty_extra.value = extraDe(c.planes);
+    const general = state.settings?.tarjeta_fidelidad === true;
+    $("#tarjeta-general").textContent = general ? "Ahora la ve: el ajuste general está prendido." : "Ahora no la ve: el ajuste general está apagado.";
+    $("#tarjeta-mensaje").textContent = "";
+    pintarVistaTarjeta();
+    $("#tarjeta-dialog").showModal();
+  }
+
+  async function guardarTarjeta(evento) {
+    evento.preventDefault();
+    const c = state.tarjeta?.cliente;
+    if (!c) return;
+    const boton = $("#tarjeta-save");
+    const cuerpo = {
+      loyalty_mode: tarjetaFields.loyalty_mode.value || "auto",
+      loyalty_extra: Math.max(0, Math.min(64, Math.floor(Number(tarjetaFields.loyalty_extra.value) || 0))),
+    };
+    boton.disabled = true;
+    try {
+      const ids = c.planes.map(({ plan }) => encodeURIComponent(plan.id)).join(",");
+      const guardadas = await request(`payment_plans?id=in.(${ids})&select=*`, { method: "PATCH", body: cuerpo, prefer: "return=representation" });
+      if (!Array.isArray(guardadas) || !guardadas.length) throw new Error("No se guardó la tarjeta.");
+      guardadas.forEach((fila) => {
+        const i = state.data.plans.findIndex((p) => p.id === fila.id);
+        if (i >= 0) state.data.plans[i] = fila;
+      });
+      $("#tarjeta-dialog").close();
+      renderPlans();
+      notify(`Tarjeta de ${c.nombre} guardada.`);
+    } catch (error) {
+      $("#tarjeta-mensaje").textContent = error.message;
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
+  $("#tarjeta-form").addEventListener("submit", guardarTarjeta);
+  $("#tarjeta-form").addEventListener("input", pintarVistaTarjeta);
+  $("#tarjeta-dialog").addEventListener("click", (evento) => {
+    if (evento.target.closest("[data-tarjeta-close]")) { $("#tarjeta-dialog").close(); return; }
+    const paso = evento.target.closest("[data-tarjeta-extra]");
+    if (!paso) return;
+    const campo = tarjetaFields.loyalty_extra;
+    campo.value = Math.max(0, Math.min(64, (Number(campo.value) || 0) + Number(paso.dataset.tarjetaExtra)));
+    pintarVistaTarjeta();
+  });
 
   async function copiarEnlace(plan) {
     const enlace = enlacePlan(plan);
@@ -2200,7 +2323,9 @@
     if (button.dataset.planAction === "copiar") copiarEnlace(plan);
     if (button.dataset.planAction === "descargar") descargarPlan(plan, button);
     if (button.dataset.planAction === "otro") abrirPlan(null, { junto: plan });
+    if (button.dataset.planAction === "tarjeta") abrirTarjeta(plan);
   });
+  $("#ajuste-tarjeta-boton").addEventListener("click", cambiarAjusteTarjeta);
   $("#plan-form").addEventListener("submit", guardarPlan);
   $("#plan-form").addEventListener("input", (event) => {
     if (!state.plan || event.target.type === "file") return;

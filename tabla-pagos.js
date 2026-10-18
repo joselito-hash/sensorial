@@ -236,12 +236,15 @@
   const MANCHA = "M34 0C36 16 47 24 60 30C76 37 88 48 92 66C94 76 97 84 100 88V0Z";
   const FILO = "M22 0C25 18 38 28 53 35C70 43 82 55 86 72C88 82 93 92 100 97";
 
-  function cuentaFidelidad(planes) {
+  /* extra: sellos agregados a mano en el panel (compras que no pasaron por una tabla); van
+     primero, como las compras más antiguas */
+  function cuentaFidelidad(planes, extra = 0) {
     const porFecha = [...planes].sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || "")));
-    const compras = porFecha.map((plan) => {
+    const aMano = Array.from({ length: Math.max(0, Math.min(64, Math.floor(Number(extra) || 0))) }, () => ({ plan: null, sellada: true, fecha: "", pendiente: 0 }));
+    const compras = [...aMano, ...porFecha.map((plan) => {
       const e = calcular(plan);
       return { plan, sellada: e.liquidado, fecha: e.ultimoAbono, pendiente: e.pendiente };
-    });
+    })];
     const sellos = compras.filter((c) => c.sellada).length;
     /* La tarjeta que se ve: la que tiene la compra más reciente (o la siguiente si la última se llenó) */
     const vuelta = Math.floor(Math.max(compras.length - 1, 0) / SELLOS);
@@ -250,10 +253,10 @@
     return { compras, sellos, vuelta, enTarjeta, selladosAqui };
   }
 
-  function fidelidad(planes, opciones = {}) {
-    const f = cuentaFidelidad(planes);
+  function fidelidad(planes, opciones = {}, extra = 0) {
+    const f = cuentaFidelidad(planes, extra);
     const cliente = texto(planes[0]?.client_name);
-    const nombreCorto = (plan) => texto(plan.product_name) || "Perfume";
+    const nombreCorto = (plan) => (plan ? texto(plan.product_name) || "Perfume" : "Compra en tienda");
     const circulos = Array.from({ length: SELLOS }, (_, i) => {
       const compra = f.enTarjeta[i];
       const premio = PREMIOS.find((p) => p.sello === i + 1);
@@ -276,8 +279,8 @@
     }).join("");
     const historial = f.enTarjeta.map((c, i) => `<li class="${c.sellada ? "is-sellado" : "is-curso"}">
         <span class="tf-historial__num">${String(f.vuelta * SELLOS + i + 1).padStart(2, "0")}</span>
-        <span class="tf-historial__nombre"><b>${escapar([texto(c.plan.brand), nombreCorto(c.plan)].filter(Boolean).join(" "))}</b>
-          <small>${c.sellada ? `Sellado${c.fecha ? ` el ${fecha(c.fecha)}` : ""}` : `Se sella al terminar de pagar · faltan ${dinero(c.pendiente)}`}</small></span>
+        <span class="tf-historial__nombre"><b>${escapar(c.plan ? [texto(c.plan.brand), nombreCorto(c.plan)].filter(Boolean).join(" ") : nombreCorto(null))}</b>
+          <small>${!c.plan ? "Sello agregado por Sensorial" : c.sellada ? `Sellado${c.fecha ? ` el ${fecha(c.fecha)}` : ""}` : `Se sella al terminar de pagar · faltan ${dinero(c.pendiente)}`}</small></span>
         <i class="ph ${c.sellada ? "ph-seal-check" : "ph-hourglass-medium"}" aria-hidden="true"></i>
       </li>`).join("");
     const listo = PREMIOS.filter((p) => f.selladosAqui >= p.sello).at(-1);
