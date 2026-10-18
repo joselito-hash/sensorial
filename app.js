@@ -1346,35 +1346,23 @@
     seccion.hidden = NOVEDADES.length === 0;
     if (!NOVEDADES.length) return;
 
-    /* Reseñas del perfume: estrellas, calificación y cuántas (lleva a las reseñas de su ficha)
-       y, debajo de la descripción, una frase de la mejor reseña. Sin reseñas, una invitación. */
-    const corta = (t, max = 150) => {
-      const limpio = String(t || "").replace(/\s+/g, " ").trim();
-      return limpio.length <= max ? limpio : `${limpio.slice(0, limpio.lastIndexOf(" ", max) > 60 ? limpio.lastIndexOf(" ", max) : max).replace(/[.,;:]$/, "")}…`;
-    };
+    /* Reseñas del perfume: estrellas, calificación y cuántas (lleva a las reseñas de su ficha).
+       Sin reseñas, una invitación. */
     const resenasDe = (p) => {
       const cal = calificacionPorId.get(p.id);
-      const mejor = RESENAS.filter((r) => r.perfume_id === p.id && r.body && (!r.rating || r.rating >= 4))
-        .sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(b.published_at).localeCompare(String(a.published_at)))[0];
-      const linea = cal
+      return cal
         ? `<button class="novedad__calif" type="button" data-ficha="${p.id}" data-a-resenas aria-label="${cifraCalificacion(cal.promedio)} de 5 estrellas, ${textoResenas(cal.total)}: ver reseñas">${estrellasHTML(cal.promedio)}<strong>${cifraCalificacion(cal.promedio)}</strong><span>${textoResenas(cal.total)}</span></button>`
         : `<button class="novedad__calif novedad__calif--vacia" type="button" data-ficha="${p.id}" data-a-resenas><i class="ph ph-star" aria-hidden="true"></i><span>Aún sin reseñas · sé de las primeras</span></button>`;
-      const cita = mejor ? `<figure class="novedad__cita">
-          <blockquote>“${escaparHTML(corta(mejor.body))}”</blockquote>
-          <figcaption>${escaparHTML(mejor.author_name)}${mejor.verified_purchase ? ' · <span><i class="ph ph-seal-check" aria-hidden="true"></i>Compra verificada</span>' : ""}</figcaption>
-        </figure>` : "";
-      return { linea, cita };
     };
 
     const texto = (p, f, clase, i) => {
-      const { linea, cita } = resenasDe(p);
+      const linea = resenasDe(p);
       return `
       <div class="${clase}" data-indice="${i}" style="--campo: var(--c-${f.id})">
         <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen !== "Diseñador" ? ` · ${p.origen}` : ""}</p>
         <h3 class="novedad__nombre">${p.nombre}</h3>
         ${linea}
         <p class="novedad__desc">${hueleA(p)} ${f.larga}</p>
-        ${cita}
         <ul class="novedad__notas" aria-label="Notas principales">
           ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
         </ul>

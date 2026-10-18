@@ -2638,8 +2638,7 @@ html:has(.detalle[open]) { overflow: hidden; }
   overflow-wrap: break-word;
 }
 .novedad__desc { max-width: 38ch; margin-top: 1.25rem; color: var(--tinta-2); font-size: 1.05rem; line-height: 1.6; }
-/* Reseñas en Recién llegados: la calificación bajo el nombre (lleva a sus reseñas) y una
-   frase de la mejor reseña, con su autora */
+/* Reseñas en Recién llegados: la calificación bajo el nombre (lleva a sus reseñas) */
 .novedad__calif {
   display: inline-flex;
   align-items: center;
@@ -2660,10 +2659,6 @@ html:has(.detalle[open]) { overflow: hidden; }
 .novedad__calif:hover span:last-child { text-decoration-color: currentColor; }
 .novedad__calif--vacia { color: var(--tinta-2); }
 .novedad__calif--vacia i { color: var(--campo); font-size: 1.05rem; }
-.novedad__cita { max-width: 40ch; margin: 1.25rem 0 0; padding-left: 1rem; border-left: 2px solid var(--campo); }
-.novedad__cita blockquote { margin: 0; color: var(--tinta); font-size: 1.02rem; font-style: italic; line-height: 1.5; }
-.novedad__cita figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-top: 0.45rem; color: var(--tinta-2); font-size: 0.85rem; font-weight: 600; }
-.novedad__cita figcaption span { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--campo); }
 .novedad__notas { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.25rem; }
 .novedad__notas li {
   display: inline-flex;
@@ -3862,7 +3857,6 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
     color: var(--blanco);
   }
   .novedad__pie .novedad__desc,
-  .novedad__pie .novedad__cita,
   .novedad__pie .novedad__notas { display: none; }
   .novedad__pie .novedad__calif { margin-top: 0.35rem; font-size: 0.875rem; }
   .novedad__pie .novedad__nombre { margin-top: 0.4rem; font-size: clamp(2rem, 9vw, 2.8rem); }
