@@ -18,8 +18,8 @@
       var conIntro = enInicio && !vista && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       raiz.classList.add(conIntro ? "con-intro" : "sin-intro");
       if (conIntro) {
-        /* "intro-esperando" congela la intro hasta que la página termine de cargar */
-        raiz.classList.add("intro-activa", "intro-esperando");
+        /* La intro arranca en cuanto se pinta la página, sin esperar a que cargue todo */
+        raiz.classList.add("intro-activa");
         try { sessionStorage.setItem("sb-intro", "1"); } catch (e) {}
       }
     })();

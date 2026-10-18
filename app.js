@@ -1346,11 +1346,35 @@
     seccion.hidden = NOVEDADES.length === 0;
     if (!NOVEDADES.length) return;
 
-    const texto = (p, f, clase, i) => `
+    /* Reseñas del perfume: estrellas, calificación y cuántas (lleva a las reseñas de su ficha)
+       y, debajo de la descripción, una frase de la mejor reseña. Sin reseñas, una invitación. */
+    const corta = (t, max = 150) => {
+      const limpio = String(t || "").replace(/\s+/g, " ").trim();
+      return limpio.length <= max ? limpio : `${limpio.slice(0, limpio.lastIndexOf(" ", max) > 60 ? limpio.lastIndexOf(" ", max) : max).replace(/[.,;:]$/, "")}…`;
+    };
+    const resenasDe = (p) => {
+      const cal = calificacionPorId.get(p.id);
+      const mejor = RESENAS.filter((r) => r.perfume_id === p.id && r.body && (!r.rating || r.rating >= 4))
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0) || String(b.published_at).localeCompare(String(a.published_at)))[0];
+      const linea = cal
+        ? `<button class="novedad__calif" type="button" data-ficha="${p.id}" data-a-resenas aria-label="${cifraCalificacion(cal.promedio)} de 5 estrellas, ${textoResenas(cal.total)}: ver reseñas">${estrellasHTML(cal.promedio)}<strong>${cifraCalificacion(cal.promedio)}</strong><span>${textoResenas(cal.total)}</span></button>`
+        : `<button class="novedad__calif novedad__calif--vacia" type="button" data-ficha="${p.id}" data-a-resenas><i class="ph ph-star" aria-hidden="true"></i><span>Aún sin reseñas · sé de las primeras</span></button>`;
+      const cita = mejor ? `<figure class="novedad__cita">
+          <blockquote>“${escaparHTML(corta(mejor.body))}”</blockquote>
+          <figcaption>${escaparHTML(mejor.author_name)}${mejor.verified_purchase ? ' · <span><i class="ph ph-seal-check" aria-hidden="true"></i>Compra verificada</span>' : ""}</figcaption>
+        </figure>` : "";
+      return { linea, cita };
+    };
+
+    const texto = (p, f, clase, i) => {
+      const { linea, cita } = resenasDe(p);
+      return `
       <div class="${clase}" data-indice="${i}" style="--campo: var(--c-${f.id})">
         <p class="novedad__meta"><span>${f.nombre}</span>${p.casa}${p.origen !== "Diseñador" ? ` · ${p.origen}` : ""}</p>
         <h3 class="novedad__nombre">${p.nombre}</h3>
+        ${linea}
         <p class="novedad__desc">${hueleA(p)} ${f.larga}</p>
+        ${cita}
         <ul class="novedad__notas" aria-label="Notas principales">
           ${notasPrincipales(p).map((nota) => `<li><i class="ph ${iconoNota(nota)}" aria-hidden="true"></i>${mayuscula(nota)}</li>`).join("")}
         </ul>
@@ -1359,6 +1383,7 @@
           <button class="agregar" type="button" data-id="${p.id}" aria-pressed="false"><i class="ph ph-plus" aria-hidden="true"></i><span>Agregar</span></button>
         </div>
       </div>`;
+    };
 
     $("#novedades-lista").innerHTML = NOVEDADES.map((id, i) => {
       const p = porId.get(id);
@@ -2954,20 +2979,14 @@
       if (evento.animationName === "intro-desvanece") liberar(false);
     });
 
-    /* La intro no arranca de golpe: espera a que la página cargue (fotos de la portada,
-       letra e iconos) y un momento más. Si la conexión es lenta, arranca a los 3.5 s. */
-    let arrancada = false;
-    const arrancar = () => {
-      if (arrancada) return;
-      arrancada = true;
-      raiz.classList.remove("intro-esperando");
-      /* Respaldo por si la animación se atrasa o el navegador no avisa de su final */
-      window.setTimeout(() => liberar(true), 5600);
-    };
-    const trasCargar = () => window.setTimeout(arrancar, 350);
-    if (document.readyState === "complete") trasCargar();
-    else window.addEventListener("load", trasCargar, { once: true });
-    window.setTimeout(arrancar, 3500);
+    /* La intro arranca sola en cuanto se pinta la página (sin esperar a que carguen las fotos).
+       Este código llega cuando el catálogo ya cargó: si para entonces la intro ya terminó, se
+       libera al momento; si no, hay un respaldo por si el navegador no avisa de su final.
+       La intro dura unos 4.3 s desde que se abre la página. */
+    raiz.classList.remove("intro-esperando");
+    const terminada = intro.getAnimations?.().some((a) => a.animationName === "intro-desvanece" && a.playState === "finished");
+    if (terminada || getComputedStyle(intro).visibility === "hidden") liberar(true);
+    else window.setTimeout(() => liberar(true), Math.max(600, 4800 - performance.now()));
   }
 
   /* ---------- Eventos ---------- */
@@ -3050,6 +3069,10 @@
       if (boton.closest(".barra")) cerrarPanelLista();
       const tarjeta = boton.closest(".ficha, .nicho, .vendidos__tarjeta, .vendido, .pedido__item, .destacado, .novedad");
       abrirDetalle(boton.dataset.ficha, tarjeta ? $(".ficha__lamina, .nicho__escena, .vendidos__tarjeta-foto, .pedido__foto, .destacado__foto, .novedad__foto", tarjeta) : null);
+      /* Desde las estrellas de un perfume: la ficha se abre y baja a sus reseñas */
+      if ("aResenas" in boton.dataset) {
+        window.setTimeout(() => $(".detalle__resenas", detalle)?.scrollIntoView({ behavior: menosMovimiento.matches ? "auto" : "smooth", block: "start" }), 450);
+      }
     } else if ("irResenas" in boton.dataset) {
       $(".detalle__resenas", detalle)?.scrollIntoView({ behavior: menosMovimiento.matches ? "auto" : "smooth", block: "start" });
     } else if (boton.classList.contains("detalle__cerrar")) {

@@ -155,6 +155,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .review-card__actions .danger{color:#e7b1b1}
 .review-card__actions button:disabled{opacity:.5;cursor:wait}
 .review-card__date{font-size:11px;color:#988b92}
+/* Aviso de emojis y edición de una reseña */
+.review-card__emojis{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;padding:8px 10px 8px 12px;border-radius:10px;background:rgba(219,197,139,.1);color:#dbc58b;font-size:13px;font-weight:700}
+.review-card__emojis button{border:1px solid rgba(219,197,139,.55);background:none;color:#dbc58b;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:800;cursor:pointer}
+.review-card.is-editando{border-color:#a9cbb8}
+.review-edit{display:grid;gap:12px}
+.review-edit label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#cfc3c9}
+.review-edit input,.review-edit select,.review-edit textarea{width:100%;border:1px solid #695b62;border-radius:10px;background:#251e22;color:#f9f4f6;padding:9px 11px;font:inherit;font-size:15px;font-weight:500}
+.review-edit textarea{resize:vertical;line-height:1.45}
+.review-edit__fila{display:grid;grid-template-columns:1.2fr 1fr .9fr;gap:10px}
+.review-edit__aviso{margin:0;min-height:1em;color:#dbc58b;font-size:13px}
+.review-edit__espacio{flex:1}
+@media(max-width:640px){.review-edit__fila{grid-template-columns:1fr}}
 .empty{padding:40px;border:1px dashed #5a4d54;border-radius:16px;color:#afa3aa}
 .notice{position:fixed;right:26px;bottom:26px;z-index:20;max-width:min(420px,90vw);background:#b5d6c4;color:#183b29;padding:14px 19px;border-radius:12px;box-shadow:0 12px 30px #0006;font-weight:700}
 .notice.error{background:#efc2c2;color:#572525}

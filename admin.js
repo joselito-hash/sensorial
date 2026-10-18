@@ -276,25 +276,97 @@
     $("#perfume-empty").hidden = rows.length > 0;
   }
 
+  /* Emojis en las reseñas: se detectan para avisar y se pueden quitar de un clic. Se quitan
+     también los modificadores que los acompañan (tono de piel, unión, variación, banderas) y
+     los espacios que quedan sueltos. */
+  const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}️‍⃣]/u;
+  const conEmojis = (texto) => EMOJI.test(String(texto || ""));
+  const sinEmojis = (texto) => String(texto || "")
+    .replace(new RegExp(EMOJI.source, "gu"), "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([.,;:!?)])/g, "$1")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  /* La reseña que se está editando se pinta como formulario dentro de su tarjeta */
+  function formularioResena(r) {
+    return `<form class="review-edit" data-review-form>
+      <div class="review-edit__fila">
+        <label>Nombre <input name="author_name" value="${escapeHTML(r.author_name)}" required minlength="2" maxlength="80"></label>
+        <label>Ciudad <input name="city" value="${escapeHTML(r.city || "")}" maxlength="80" placeholder="Opcional"></label>
+        <label>Estrellas <select name="rating"><option value="">Sin estrellas</option>${[5, 4, 3, 2, 1].map((n) => `<option value="${n}"${r.rating === n ? " selected" : ""}>${"★".repeat(n)}</option>`).join("")}</select></label>
+      </div>
+      <label>Reseña <textarea name="body" rows="5" required minlength="15" maxlength="1500">${escapeHTML(r.body)}</textarea></label>
+      <p class="review-edit__aviso" data-review-aviso role="status"></p>
+      <div class="review-card__actions">
+        <button type="button" data-review-action="quitar-emojis-form">Quitar emojis</button>
+        <span class="review-edit__espacio"></span>
+        <button type="button" data-review-action="cancelar">Cancelar</button>
+        <button type="submit" class="accept">Guardar cambios</button>
+      </div>
+    </form>`;
+  }
+
   function renderReviews() {
     $$("[data-review-filter]").forEach((button) => button.classList.toggle("active", button.dataset.reviewFilter === state.reviewFilter));
     const rows = state.data.reviews.filter((r) => state.reviewFilter === "all" || r.status === state.reviewFilter);
     $("#review-list").innerHTML = rows.map((r) => {
       const date = r.created_at ? new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(r.created_at)) : "";
       const stars = r.rating ? "★".repeat(r.rating) + "☆".repeat(5 - r.rating) : "Sin estrellas";
+      if (state.editandoResena === r.id) {
+        return `<article class="review-card is-editando" data-review-id="${escapeHTML(r.id)}"><div class="review-card__head"><div><strong>Editar reseña</strong><small>${escapeHTML(perfumeName(r.perfume_id))}</small></div></div>${formularioResena(r)}</article>`;
+      }
+      const emojis = conEmojis(`${r.body} ${r.author_name} ${r.city || ""}`)
+        ? '<p class="review-card__emojis"><span>Tiene emojis</span><button type="button" data-review-action="quitar-emojis">Quitar emojis</button></p>' : "";
       const actions = r.status === "pending"
         ? `<button class="accept" data-review-action="publish">Publicar</button><button data-review-action="reject">Rechazar</button>`
         : r.status === "published"
           ? `<button data-review-action="feature">${r.is_featured ? "Quitar del inicio" : "Destacar en inicio"}</button><button data-review-action="verify">${r.verified_purchase ? "Quitar compra verificada" : "Marcar compra verificada"}</button><button data-review-action="reject">Ocultar</button>`
           : `<button data-review-action="pending">Volver a pendientes</button><button data-review-action="publish">Publicar</button>`;
-      return `<article class="review-card" data-review-id="${escapeHTML(r.id)}"><div class="review-card__head"><div><strong>${escapeHTML(r.author_name)}</strong><small>${escapeHTML(r.city || "Sin ciudad")} · ${escapeHTML(date)}</small></div><span class="pill ${r.status === "published" ? "" : "pill--draft"}">${r.status === "pending" ? "Pendiente" : r.status === "published" ? "Publicada" : "Rechazada"}</span></div><div class="review-card__rating" aria-label="${escapeHTML(r.rating || "Sin")} estrellas">${stars}</div><blockquote>${escapeHTML(r.body)}</blockquote><div class="review-card__perfume">${escapeHTML(perfumeName(r.perfume_id))}${r.is_featured ? " · Destacada" : ""}${r.verified_purchase ? " · Compra verificada" : ""}</div><div class="review-card__actions">${actions}<button class="danger" data-review-action="delete">Eliminar</button></div><small class="review-card__date">ID: ${escapeHTML(r.id)}</small></article>`;
+      return `<article class="review-card" data-review-id="${escapeHTML(r.id)}"><div class="review-card__head"><div><strong>${escapeHTML(r.author_name)}</strong><small>${escapeHTML(r.city || "Sin ciudad")} · ${escapeHTML(date)}</small></div><span class="pill ${r.status === "published" ? "" : "pill--draft"}">${r.status === "pending" ? "Pendiente" : r.status === "published" ? "Publicada" : "Rechazada"}</span></div><div class="review-card__rating" aria-label="${escapeHTML(r.rating || "Sin")} estrellas">${stars}</div><blockquote>${escapeHTML(r.body)}</blockquote>${emojis}<div class="review-card__perfume">${escapeHTML(perfumeName(r.perfume_id))}${r.is_featured ? " · Destacada" : ""}${r.verified_purchase ? " · Compra verificada" : ""}</div><div class="review-card__actions">${actions}<button data-review-action="editar">Editar</button><button class="danger" data-review-action="delete">Eliminar</button></div><small class="review-card__date">ID: ${escapeHTML(r.id)}</small></article>`;
     }).join("");
     $("#review-empty").hidden = rows.length > 0;
   }
 
+  /* Guarda cambios de texto de una reseña (editar o quitar emojis) */
+  async function guardarResena(current, changes) {
+    const updated = await request(`reviews?id=eq.${encodeURIComponent(current.id)}&select=*`, {
+      method: "PATCH", body: changes, prefer: "return=representation",
+    });
+    if (!Array.isArray(updated) || updated.length !== 1) throw new Error("No se actualizó la reseña.");
+    Object.assign(current, updated[0]);
+  }
+
+  const mensajeError = (error) => (/reviews_un_nombre_por_perfume|23505|duplicate/i.test(error.message)
+    ? "Ya hay otra reseña de ese perfume con el mismo nombre. Agrega un apellido o una inicial."
+    : error.message);
+
   async function updateReview(id, action, button) {
     const current = state.data.reviews.find((r) => r.id === id);
     if (!current) return;
+    if (action === "editar") { state.editandoResena = id; renderReviews(); $(`[data-review-id="${CSS.escape(id)}"] textarea`)?.focus(); return; }
+    if (action === "cancelar") { state.editandoResena = null; renderReviews(); return; }
+    if (action === "quitar-emojis-form") {
+      const form = button.closest("form");
+      ["author_name", "city", "body"].forEach((campo) => { form.elements[campo].value = sinEmojis(form.elements[campo].value); });
+      form.querySelector("[data-review-aviso]").textContent = "Listo: se quitaron los emojis. Revisa y guarda.";
+      return;
+    }
+    if (action === "quitar-emojis") {
+      const changes = { body: sinEmojis(current.body), author_name: sinEmojis(current.author_name) || current.author_name, city: sinEmojis(current.city) || null };
+      if (changes.body.length < 15) { state.editandoResena = id; renderReviews(); notify("Sin emojis queda muy corta: complétala y guarda.", true); return; }
+      button.disabled = true;
+      try {
+        await guardarResena(current, changes);
+        renderAll();
+        notify("Se quitaron los emojis de la reseña.");
+      } catch (error) {
+        button.disabled = false;
+        notify(mensajeError(error), true);
+      }
+      return;
+    }
     if (action === "delete" && !window.confirm(`¿Eliminar definitivamente la reseña de ${current.author_name}?`)) return;
     button.disabled = true;
     try {
@@ -1782,15 +1854,41 @@
 
   /* Mientras no se elija a mano, se propone el perfume cuya casa y nombre coinciden con lo
      escrito (solo si hay uno) */
-  function sugerirPerfumeLigado() {
-    if (!state.plan || state.plan.perfumeAMano || !conPerfumeLigado()) return;
+  /* Perfumes del catálogo con la casa y el nombre escritos en la tabla */
+  function perfumesQueCoinciden() {
     const casa = normalizar(planFields.brand.value);
     const nombre = normalizar(planFields.product_name.value);
-    const iguales = nombre ? perfumesLigables().filter((p) => normalizar(p.nombre) === nombre && (!casa || normalizar(p.casa) === casa)) : [];
-    planFields.perfume_id.value = iguales.length === 1 ? iguales[0].id : "";
-    $("#plan-perfume-ayuda").textContent = iguales.length > 1
-      ? `Hay ${iguales.length} versiones de ${planFields.product_name.value.trim()}: elige la que compró.`
-      : "Su tabla le pedirá una reseña de este perfume, que llega a la tienda como compra verificada.";
+    return nombre ? perfumesLigables().filter((p) => normalizar(p.nombre) === nombre && (!casa || normalizar(p.casa) === casa)) : [];
+  }
+
+  function sugerirPerfumeLigado() {
+    if (!state.plan) return;
+    if (!state.plan.perfumeAMano && conPerfumeLigado()) {
+      const iguales = perfumesQueCoinciden();
+      planFields.perfume_id.value = iguales.length === 1 ? iguales[0].id : "";
+      $("#plan-perfume-ayuda").textContent = iguales.length > 1
+        ? `Hay ${iguales.length} versiones de ${planFields.product_name.value.trim()}: elige la que compró.`
+        : "Su tabla le pedirá una reseña de este perfume, que llega a la tienda como compra verificada.";
+    }
+    fotoDelCatalogo();
+  }
+
+  /* La foto del perfume sale sola del catálogo cuando el nombre coincide (o al ligarlo a mano).
+     Nunca reemplaza una foto que subiste tú: solo llena el hueco o cambia la que puso ella
+     misma si cambias de perfume. */
+  function fotoDelCatalogo() {
+    const foto = state.plan?.fotos.image;
+    if (!foto || foto.blob || (foto.url && !foto.delCatalogo)) return;
+    const elegido = conPerfumeLigado() ? planFields.perfume_id.value : "";
+    const id = elegido || perfumesQueCoinciden()[0]?.id || "";
+    const p = id ? state.data.perfumes.find((item) => item.id === id) : null;
+    const url = p ? imageURL(p.primary_image) : "";
+    if (url === foto.url) return;
+    foto.url = url;
+    foto.delCatalogo = Boolean(url);
+    pintarFotos();
+    pintarVista(false);
+    mensajePlan(url ? `Usamos la foto de ${perfumeName(p.id)} del catálogo. Puedes cambiarla con «Cambiar foto».` : "");
   }
 
   /* Lo que lleva el formulario, sin validar: alimenta la vista previa mientras se escribe */
@@ -2334,7 +2432,10 @@
     if (event.target.name === "watermark") state.plan.aguaEditada = true;
     if (["client_name", "client_group"].includes(event.target.name)) sugerirJunto();
     if (event.target.name === "brand" && !state.plan.aguaEditada) planFields.watermark.value = TP.marcaDeAgua(event.target.value);
-    if (event.target.name === "perfume_id") state.plan.perfumeAMano = Boolean(event.target.value);
+    if (event.target.name === "perfume_id") {
+      state.plan.perfumeAMano = Boolean(event.target.value);
+      fotoDelCatalogo();
+    }
     if (["brand", "product_name"].includes(event.target.name)) sugerirPerfumeLigado();
     const campo = event.target.closest("[data-cuota]");
     if (campo) {
@@ -2565,6 +2666,36 @@
     if (reviewFilter) { state.reviewFilter = reviewFilter.dataset.reviewFilter; renderReviews(); }
     const action = event.target.closest("[data-review-action]");
     if (action) updateReview(action.closest("[data-review-id]").dataset.reviewId, action.dataset.reviewAction, action);
+  });
+
+  /* Guardar la reseña editada */
+  $("#review-list").addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-review-form]");
+    if (!form) return;
+    event.preventDefault();
+    const current = state.data.reviews.find((r) => r.id === form.closest("[data-review-id]").dataset.reviewId);
+    if (!current) return;
+    const aviso = form.querySelector("[data-review-aviso]");
+    const changes = {
+      author_name: nonempty(form.elements.author_name.value),
+      city: nonempty(form.elements.city.value) || null,
+      rating: form.elements.rating.value ? Number(form.elements.rating.value) : null,
+      body: nonempty(form.elements.body.value),
+    };
+    if (changes.author_name.length < 2) { aviso.textContent = "Escribe un nombre de al menos 2 letras."; return; }
+    if (changes.city && changes.city.length < 2) { aviso.textContent = "La ciudad necesita al menos 2 letras (o déjala vacía)."; return; }
+    if (changes.body.length < 15 || changes.body.length > 1500) { aviso.textContent = "La reseña debe tener entre 15 y 1500 caracteres."; return; }
+    const boton = form.querySelector("[type=submit]");
+    boton.disabled = true;
+    try {
+      await guardarResena(current, changes);
+      state.editandoResena = null;
+      renderAll();
+      notify("Reseña guardada.");
+    } catch (error) {
+      boton.disabled = false;
+      aviso.textContent = mensajeError(error);
+    }
   });
 
   (async () => {
