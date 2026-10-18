@@ -241,13 +241,21 @@
   function cuentaFidelidad(planes, extra = 0) {
     const porFecha = [...planes].sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || "")));
     const aMano = Array.from({ length: Math.max(0, Math.min(64, Math.floor(Number(extra) || 0))) }, () => ({ plan: null, sellada: true, fecha: "", pendiente: 0 }));
-    const compras = [...aMano, ...porFecha.map((plan) => {
+    const todas = porFecha.map((plan) => {
       const e = calcular(plan);
       return { plan, sellada: e.liquidado, fecha: e.ultimoAbono, pendiente: e.pendiente };
-    })];
-    const sellos = compras.filter((c) => c.sellada).length;
-    /* La tarjeta que se ve: la que tiene la compra más reciente (o la siguiente si la última se llenó) */
-    const vuelta = Math.floor(Math.max(compras.length - 1, 0) / SELLOS);
+    });
+    /* Los sellos se ponen en orden, del 1 en adelante, según se fueron ganando (primero los
+       agregados a mano, luego cada perfume por la fecha en que se terminó de pagar). Lo que
+       sigue pagando va después, punteado: nunca ocupa un lugar antes de un sello. */
+    const selladas = todas.filter((c) => c.sellada).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+    const enCurso = todas.filter((c) => !c.sellada);
+    const compras = [...aMano, ...selladas, ...enCurso];
+    const sellos = aMano.length + selladas.length;
+    /* La tarjeta que se ve: la que se está llenando. Si se acaba de llenar y no hay otra compra
+       en curso, se sigue viendo completa (con su premio) hasta que empiece la siguiente */
+    let vuelta = Math.floor(sellos / SELLOS);
+    if (sellos > 0 && sellos % SELLOS === 0 && !enCurso.length) vuelta -= 1;
     const enTarjeta = compras.slice(vuelta * SELLOS, vuelta * SELLOS + SELLOS);
     const selladosAqui = enTarjeta.filter((c) => c.sellada).length;
     return { compras, sellos, vuelta, enTarjeta, selladosAqui };
