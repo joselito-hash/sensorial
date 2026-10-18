@@ -804,6 +804,14 @@ body.buscando .buscar i { transform: scale(1.12); }
   transition: background-color 200ms, color 200ms, transform 200ms var(--suave);
 }
 .agregar:hover { background: var(--papel-2); }
+/* Junto a un botón grande ("Ver ficha" en Recién llegados y en la búsqueda) toma su mismo
+   tamaño: alto, relleno y letra, para que los dos se vean como pareja */
+.btn + .agregar {
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.7rem 1.4rem;
+  font-size: inherit;
+}
 .agregar:active { transform: scale(0.97); }
 .agregar[aria-pressed="true"] { background: var(--tinta); color: var(--papel); }
 
@@ -3831,7 +3839,8 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .novedad__pie .novedad__notas { display: none; }
   .novedad__pie .novedad__nombre { margin-top: 0.4rem; font-size: clamp(2rem, 9vw, 2.8rem); }
   .novedad__pie .novedad__acciones { margin-top: 1rem; }
-  .novedad__pie .btn { min-height: 2.6rem; padding: 0.5rem 1.1rem; }
+  .novedad__pie .btn,
+  .novedad__pie .btn + .agregar { min-height: 2.6rem; padding: 0.5rem 1.1rem; }
 
   /* Más vendidos en pantallas chicas: solo una fila de tarjetas grandes que se desliza de
      lado; la que se ve queda completa y las de los lados más chicas y atenuadas. */
