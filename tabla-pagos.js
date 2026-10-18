@@ -223,6 +223,98 @@
       </section>`;
   }
 
+  /* ---------- Tarjeta de fidelidad ----------
+     La misma tarjeta impresa de la tienda (crema, manchas negras con filo dorado, ocho círculos),
+     hecha página: es la última hoja del carrusel. 1 compra = 1 sello: cada tabla de la clienta
+     es una compra y se sella cuando la termina de pagar; la que sigue pagando aparece punteada.
+     Premios al 4.º y al 8.º sello; al llenarse, empieza una tarjeta nueva. */
+  const SELLOS = 8;
+  const PREMIOS = [
+    { sello: 4, titulo: "Un detalle especial", texto: "para ti, con tu siguiente pedido." },
+    { sello: 8, titulo: "$200 MXN de descuento", texto: "en tu siguiente compra." },
+  ];
+  const MANCHA = "M34 0C36 16 47 24 60 30C76 37 88 48 92 66C94 76 97 84 100 88V0Z";
+  const FILO = "M22 0C25 18 38 28 53 35C70 43 82 55 86 72C88 82 93 92 100 97";
+
+  function cuentaFidelidad(planes) {
+    const porFecha = [...planes].sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || "")));
+    const compras = porFecha.map((plan) => {
+      const e = calcular(plan);
+      return { plan, sellada: e.liquidado, fecha: e.ultimoAbono, pendiente: e.pendiente };
+    });
+    const sellos = compras.filter((c) => c.sellada).length;
+    /* La tarjeta que se ve: la que tiene la compra más reciente (o la siguiente si la última se llenó) */
+    const vuelta = Math.floor(Math.max(compras.length - 1, 0) / SELLOS);
+    const enTarjeta = compras.slice(vuelta * SELLOS, vuelta * SELLOS + SELLOS);
+    const selladosAqui = enTarjeta.filter((c) => c.sellada).length;
+    return { compras, sellos, vuelta, enTarjeta, selladosAqui };
+  }
+
+  function fidelidad(planes, opciones = {}) {
+    const f = cuentaFidelidad(planes);
+    const cliente = texto(planes[0]?.client_name);
+    const nombreCorto = (plan) => texto(plan.product_name) || "Perfume";
+    const circulos = Array.from({ length: SELLOS }, (_, i) => {
+      const compra = f.enTarjeta[i];
+      const premio = PREMIOS.find((p) => p.sello === i + 1);
+      const clase = compra?.sellada ? " is-sellado" : compra ? " is-curso" : "";
+      const centro = compra?.sellada
+        ? `<svg class="tf-sello__marca" viewBox="650 276 37 36" aria-hidden="true" focusable="false"><path d="${DESTELLO}"/></svg>`
+        : premio ? '<i class="ph ph-gift" aria-hidden="true"></i>' : "";
+      const leyenda = compra?.sellada ? `sellado: ${nombreCorto(compra.plan)}` : compra ? `${nombreCorto(compra.plan)}, se sella al terminar de pagar` : premio ? `premio: ${premio.titulo}` : "vacío";
+      return `<li class="tf-sello${premio ? " tf-sello--premio" : ""}${clase}"><span class="tp-oculto">Sello ${i + 1}, ${escapar(leyenda)}</span>${centro}<b aria-hidden="true">${i + 1}</b></li>`;
+    }).join("");
+    const faltan = (sello) => Math.max(sello - f.selladosAqui, 0);
+    const premios = PREMIOS.map((p) => {
+      const listo = f.selladosAqui >= p.sello;
+      const estado = listo ? "¡Ya es tuyo!" : `Te ${faltan(p.sello) === 1 ? "falta 1 sello" : `faltan ${faltan(p.sello)} sellos`}`;
+      return `<li class="tf-premio${listo ? " is-listo" : ""}">
+          <span class="tf-premio__icono" aria-hidden="true"><i class="ph ph-gift"></i></span>
+          <span class="tf-premio__texto"><small>Al sello ${p.sello}</small><b>${p.titulo}</b>${p.texto}</span>
+          <span class="tf-premio__estado">${listo ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${estado}</span>
+        </li>`;
+    }).join("");
+    const historial = f.enTarjeta.map((c, i) => `<li class="${c.sellada ? "is-sellado" : "is-curso"}">
+        <span class="tf-historial__num">${String(f.vuelta * SELLOS + i + 1).padStart(2, "0")}</span>
+        <span class="tf-historial__nombre"><b>${escapar([texto(c.plan.brand), nombreCorto(c.plan)].filter(Boolean).join(" "))}</b>
+          <small>${c.sellada ? `Sellado${c.fecha ? ` el ${fecha(c.fecha)}` : ""}` : `Se sella al terminar de pagar · faltan ${dinero(c.pendiente)}`}</small></span>
+        <i class="ph ${c.sellada ? "ph-seal-check" : "ph-hourglass-medium"}" aria-hidden="true"></i>
+      </li>`).join("");
+    const listo = PREMIOS.filter((p) => f.selladosAqui >= p.sello).at(-1);
+    const accion = listo && opciones.premio
+      ? `<a class="tp-contacto" href="${escapar(opciones.premio(listo))}" target="_blank" rel="noopener"><i class="ph ph-gift" aria-hidden="true"></i>Pedir mi premio</a>`
+      : opciones.siguiente ? `<a class="tp-contacto" href="${escapar(opciones.siguiente)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Sumar otro sello</a>` : "";
+    const mancha = (clase) => `<svg class="tf-mancha ${clase}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="tf-mancha__fondo" d="${MANCHA}"/><path class="tf-mancha__filo" d="${FILO}" pathLength="1"/></svg>`;
+
+    return `<article class="tp tp--fidelidad" data-tono="dorado" data-estado="fidelidad">
+      <header class="tp-cabeza">
+        ${logo()}
+        <h1 class="tp-titulo"><span class="tp-titulo__a">Tarjeta de</span> <span class="tp-titulo__b">Fidelidad</span></h1>
+      </header>
+      <div class="tf-escena">
+        <div class="tf-tarjeta" role="img" aria-label="Tarjeta de fidelidad de ${escapar(cliente)}: ${f.selladosAqui} de ${SELLOS} sellos">
+          ${mancha("tf-mancha--a")}${mancha("tf-mancha--b")}
+          <div class="tf-cara">
+            ${logo("tf-logo")}
+            <p class="tf-titulo">Tarjeta de fidelidad</p>
+            <p class="tf-regla"><span></span>1 compra = 1 sello<span></span></p>
+            <ol class="tf-sellos">${circulos}</ol>
+            <p class="tf-cliente">Cliente: <span>${escapar(cliente)}</span></p>
+            <p class="tf-gracias"><span></span>Gracias por ser parte<span></span></p>
+          </div>
+          <span class="tf-reflejo" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="tf-info">
+        <p class="tf-cuenta"><strong>${f.selladosAqui} de ${SELLOS}</strong> sellos${f.vuelta ? ` · tarjeta ${f.vuelta + 1}` : ""}</p>
+        <p class="tf-regla-web">Cada perfume que terminas de pagar suma un sello.</p>
+        <ul class="tf-premios">${premios}</ul>
+        ${historial ? `<div class="tf-historial"><h2>Tus sellos</h2><ol>${historial}</ol></div>` : ""}
+        ${accion ? `<div class="tp-acciones">${accion}</div>` : ""}
+      </div>
+    </article>`;
+  }
+
   /* El orden de cada pieza va en data-d; la hoja de estilos lo lee como --d */
   function ordenar(raiz) {
     raiz?.querySelectorAll("[data-d]").forEach((el) => el.style.setProperty("--d", el.dataset.d));
@@ -336,10 +428,10 @@
   function cabecera(estado = "en-curso") {
     const letras = (palabra) => `<span class="tp-letras">${[...palabra].map((l) => `<span class="tp-letra">${l}</span>`).join("")}</span>`;
     const titulo = (clave, a, b) => `<span class="tp-titulos__uno" data-titulo="${clave}"${clave === estado ? "" : ' aria-hidden="true"'}><span class="tp-titulo__a">${a}</span> <span class="tp-titulo__b">${letras(b)}</span></span>`;
-    return `<header class="tp tp--cabecera" data-estado="${estado === "liquidado" ? "liquidado" : "en-curso"}">
+    return `<header class="tp tp--cabecera" data-estado="${["liquidado", "fidelidad"].includes(estado) ? estado : "en-curso"}">
       <div class="tp-cabeza">
         ${logo()}
-        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}</h1>
+        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("fidelidad", "Tarjeta de", "Sellos")}</h1>
       </div>
     </header>`;
   }
@@ -1004,5 +1096,6 @@
   window.TablaPagos = {
     TONOS, calcular, pintar, cabecera, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
     dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar, resenaHecha, CALIFICACIONES,
+    fidelidad, cuentaFidelidad, SELLOS,
   };
 })();

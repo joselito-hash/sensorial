@@ -435,6 +435,137 @@
   .tp-resena__suyas { justify-content: center; }
 }
 
+/* ---------- Tarjeta de fidelidad ----------
+   La tarjeta impresa de la tienda, como objeto: papel crema, manchas tinta con filo dorado,
+   ocho círculos (el 4 y el 8 con regalo). Todo dentro de la tarjeta se mide con su propio ancho
+   (cqi), así conserva sus proporciones de tarjeta en cualquier pantalla. Debajo, en la página,
+   los premios y qué perfume dio cada sello. */
+.tp--fidelidad { grid-template-areas: "cabeza" "visual" "info"; }
+.tf-escena { grid-area: visual; width: 100%; margin-top: clamp(0.25rem, 3cqi, 1rem); perspective: 1400px; }
+.tf-tarjeta {
+  --tf-papel: #ece4d6;
+  --tf-tinta: #2b2427;
+  --tf-oro: #b8924f;
+  position: relative;
+  container-type: inline-size;
+  width: min(100%, 34rem);
+  aspect-ratio: 85.6 / 54;
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: 5.5cqi;
+  background:
+    radial-gradient(120% 90% at 30% 20%, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(90% 70% at 80% 100%, rgb(120 96 70 / 0.12), transparent 70%),
+    var(--tf-papel);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.5), 0 2.2rem 3rem -1.6rem rgb(5 3 4 / 0.85), 0 0.5rem 1rem -0.6rem rgb(5 3 4 / 0.6);
+  color: var(--tf-tinta);
+  transform: rotateX(var(--tf-rx, 0deg)) rotateY(var(--tf-ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.6s var(--tp-suave);
+}
+.tf-mancha { position: absolute; width: 34%; height: 40%; overflow: visible; pointer-events: none; }
+.tf-mancha--a { top: 0; right: 0; }
+.tf-mancha--b { bottom: 0; left: 0; width: 30%; height: 44%; rotate: 180deg; }
+.tf-mancha__fondo { fill: var(--tf-tinta); }
+.tf-mancha__filo { fill: none; stroke: #d9b878; stroke-width: 0.7; vector-effect: non-scaling-stroke; }
+.tf-cara { position: relative; display: grid; justify-items: center; align-content: center; height: 100%; padding: 3.5cqi 9cqi 3cqi; text-align: center; }
+.tf-logo { width: 27cqi; color: var(--tf-tinta); }
+.tf-logo .tp-logo__luz { display: none; }
+.tf-titulo { margin-top: 0.6cqi; font-size: 4.6cqi; font-weight: 500; letter-spacing: 0.14em; line-height: 1.1; }
+.tf-regla,
+.tf-gracias { display: flex; align-items: center; gap: 1.6cqi; color: rgb(43 36 39 / 0.75); font-size: 2.3cqi; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; }
+.tf-regla { margin-top: 0.6cqi; text-transform: none; letter-spacing: 0.14em; }
+.tf-regla span,
+.tf-gracias span { width: 5cqi; height: 1px; background: var(--tf-oro); }
+.tf-sellos { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1.4cqi; width: 100%; margin: 3cqi 0 2.4cqi; padding: 0; list-style: none; }
+.tf-sello {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 max(1px, 0.28cqi) var(--tf-oro);
+  font-size: 3.4cqi;
+  font-weight: 500;
+}
+.tf-sello > * { grid-area: 1 / 1; }
+.tf-sello b { font-weight: 500; }
+/* El 4 y el 8: círculo tinta con regalo dorado, como en la tarjeta */
+.tf-sello--premio { background: var(--tf-tinta); box-shadow: none; color: #d9b878; }
+.tf-sello--premio i { margin-top: -2.2cqi; font-size: 3.4cqi; }
+.tf-sello--premio b { margin-top: 3cqi; font-size: 3cqi; font-weight: 700; }
+/* Sellado: tinta con el destello del logo en dorado, un poco girado como un sello a mano */
+.tf-sello.is-sellado { background: var(--tf-tinta); box-shadow: inset 0 0 0 max(1px, 0.35cqi) #d9b878; color: #d9b878; rotate: var(--tf-giro, -8deg); }
+.tf-sello.is-sellado b { display: none; }
+.tf-sello__marca { width: 52%; height: 52%; fill: #e3c48c; }
+.tf-sello--premio.is-sellado { background: #d9b878; }
+.tf-sello--premio.is-sellado .tf-sello__marca { fill: var(--tf-tinta); }
+/* En curso: el círculo punteado, se sella al terminar de pagar */
+.tf-sello.is-curso { box-shadow: none; background: repeating-conic-gradient(var(--tf-oro) 0 6deg, transparent 6deg 15deg); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - max(1.5px, 0.4cqi)), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - max(1.5px, 0.4cqi)), #000 0); }
+.tf-sello.is-curso::after { content: ""; position: absolute; inset: 22%; border-radius: 50%; background: rgb(184 146 79 / 0.18); }
+.tf-sello--premio.is-curso { background: var(--tf-tinta); -webkit-mask: none; mask: none; box-shadow: 0 0 0 max(1px, 0.35cqi) var(--tf-papel), 0 0 0 max(2px, 0.7cqi) var(--tf-oro); }
+.tf-sello--premio.is-curso::after { display: none; }
+.tf-cliente { display: flex; align-items: baseline; gap: 1.4cqi; width: 70%; font-size: 2.9cqi; font-weight: 500; text-align: left; }
+.tf-cliente span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-bottom: 1px solid rgb(43 36 39 / 0.55);
+  font-family: "Ms Madi", cursive;
+  font-size: 5.2cqi;
+  line-height: 1.05;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tf-gracias { margin-top: 2cqi; font-size: 1.9cqi; }
+.tf-reflejo {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 60% at var(--tf-x, 30%) var(--tf-y, 0%), rgb(255 255 255 / 0.35), transparent 65%);
+  mix-blend-mode: soft-light;
+  opacity: var(--tf-luz, 0.6);
+  pointer-events: none;
+  transition: opacity 0.5s var(--tp-suave);
+}
+
+.tf-info { grid-area: info; display: grid; justify-items: center; width: min(100%, 29rem); margin-top: clamp(1.4rem, 6cqi, 2rem); }
+/* Sus piezas van una debajo de otra (no en las áreas de la tabla, como .tp-acciones) */
+.tf-info > * { grid-area: auto; }
+.tf-cuenta { font-size: clamp(1.15rem, 5cqi, 1.4rem); font-weight: 500; }
+.tf-cuenta strong { font-size: 1.5em; font-weight: 800; color: var(--tp-oro); font-variant-numeric: tabular-nums; }
+.tf-regla-web { margin-top: 0.2rem; color: var(--tp-tinta-2); font-size: clamp(0.95rem, 4cqi, 1.04rem); }
+.tf-premios { display: grid; gap: 0.7rem; width: 100%; margin: 1.3rem 0 0; padding: 0; list-style: none; }
+.tf-premio {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 0.02);
+  box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.28);
+  text-align: left;
+}
+.tf-premio__icono { display: grid; place-items: center; grid-row: span 2; width: 2.75rem; aspect-ratio: 1; border-radius: 50%; background: rgb(227 196 140 / 0.12); color: var(--tp-oro); font-size: 1.35rem; }
+.tf-premio__texto { color: var(--tp-tinta-2); font-size: 0.95rem; line-height: 1.35; }
+.tf-premio__texto small { display: block; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.tf-premio__texto b { display: block; color: var(--tp-tinta); font-size: 1.08rem; font-weight: 800; }
+.tf-premio__estado { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--tp-tinta-2); font-size: 0.82rem; font-weight: 700; }
+.tf-premio.is-listo { background: rgb(227 196 140 / 0.09); box-shadow: inset 0 0 0 1.5px var(--tp-oro); }
+.tf-premio.is-listo .tf-premio__icono { background: var(--tp-oro); color: #2a1f15; }
+.tf-premio.is-listo .tf-premio__estado { color: var(--tp-oro); }
+.tf-historial { width: 100%; margin-top: 1.6rem; padding-top: 1.3rem; border-top: 1px solid rgb(227 196 140 / 0.35); text-align: left; }
+.tf-historial h2 { margin: 0 0 0.6rem; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--tp-oro); }
+.tf-historial ol { margin: 0; padding: 0; list-style: none; }
+.tf-historial li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; padding: 0.65rem 0; border-top: 1px solid rgb(255 255 255 / 0.06); }
+.tf-historial li:first-child { border-top: 0; }
+.tf-historial__num { color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+.tf-historial__nombre b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-historial__nombre small { color: var(--tp-tinta-2); font-size: 0.82rem; }
+.tf-historial li > i { color: var(--tp-oro); font-size: 1.3rem; }
+.tf-historial li.is-curso > i { color: var(--tp-tinta-2); }
+
 /* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
    arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
 @container (min-width: 62rem) {
@@ -555,6 +686,15 @@
   .tp-resena__hecha.is-recien { animation: tp-sube 700ms var(--tp-suave) both; }
   .tp-resena__hecha.is-recien .tp-verificada { animation: tp-estampa 700ms cubic-bezier(0.3, 1.4, 0.5, 1) 250ms both; }
   .tp-resena__hecha.is-recien .tp-resena__suyas .tp-estrella { animation: tp-late 520ms cubic-bezier(0.3, 1.6, 0.5, 1) calc(600ms + var(--n, 0) * 70ms) both; }
+  /* Tarjeta de fidelidad: llega inclinada, los sellos se estampan uno tras otro y el de la
+     compra en curso gira despacio, esperando su sello */
+  /* backwards: al terminar, la tarjeta vuelve a seguir la inclinación del puntero */
+  .tf-tarjeta.is-vista { animation: tf-llega 1000ms var(--tp-suave) backwards; }
+  .tf-tarjeta.is-vista .tf-sello.is-sellado { animation: tp-estampa 650ms cubic-bezier(0.3, 1.4, 0.5, 1) calc(650ms + var(--k, 0) * 230ms) both; }
+  .tf-sello.is-curso:not(.tf-sello--premio) { animation: tf-gira 14s linear infinite; }
+  .tf-info.is-vista > * { animation: tp-sube 700ms var(--tp-suave) calc(var(--i, 0) * 110ms) both; }
+  @keyframes tf-llega { from { opacity: 0; transform: translateY(2.5rem) rotateX(24deg) scale(0.94); } }
+  @keyframes tf-gira { to { transform: rotate(1turn); } }
   @keyframes tp-late { 0% { transform: scale(0.6); } 55% { transform: scale(1.18); } 100% { transform: none; } }
   @keyframes tp-destello {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
@@ -690,12 +830,15 @@
     padding-bottom: 3rem;
   }
   .tp--liquidado:not(.tp--cabecera) { grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resena" "visual resumen" "visual contacto" "visual ."; }
+  .tp--fidelidad:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
+  .tp--fidelidad .tf-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 2.5rem; }
   .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
   /* Con varios perfumes, debajo del índice de arriba */
   .tp-escena--varias .tp:not(.tp--cabecera) .tp-visual { top: 6.25rem; --tp-alto: min(76svh, 42rem); }
 }
-.tp--cabecera[data-estado="en-curso"] [data-titulo="liquidado"],
-.tp--cabecera[data-estado="liquidado"] [data-titulo="en-curso"] { opacity: 0; filter: blur(6px); transform: translateY(0.25em); pointer-events: none; }
+.tp--cabecera[data-estado="en-curso"] [data-titulo]:not([data-titulo="en-curso"]),
+.tp--cabecera[data-estado="liquidado"] [data-titulo]:not([data-titulo="liquidado"]),
+.tp--cabecera[data-estado="fidelidad"] [data-titulo]:not([data-titulo="fidelidad"]) { opacity: 0; filter: blur(6px); transform: translateY(0.25em); pointer-events: none; }
 .tp-carrusel.is-arrastrando { cursor: grabbing; -webkit-user-select: none; user-select: none; }
 .tp-carrusel img { -webkit-user-drag: none; }
 

@@ -914,6 +914,9 @@
     const origen = ORIGEN_DE_URL[q.get("origen")] || "todos";
     const familia = familiaPorId.has(q.get("familia")) ? q.get("familia") : (q.get("familia") === "todas" ? "todas" : null);
     const publico = PUBLICOS.includes(q.get("para")) ? q.get("para") : "todos";
+    /* q: lo que se buscó con Enter; muestra el catálogo con lo que coincide */
+    const busqueda = (q.get("q") || "").trim().slice(0, 80);
+    if (busqueda) return { vista: "catalogo", paso: "catalogo", origen, familia: familia || "todas", publico, busqueda };
     if (q.has("todo") || (origen !== "todos" && familia)) {
       return { vista: "catalogo", paso: "catalogo", origen, familia: familia || "todas", publico };
     }
@@ -938,13 +941,15 @@
     if (ruta.origen !== "todos") q.set("origen", ORIGEN_URL[ruta.origen]);
     if (ruta.paso === "catalogo" && (ruta.familia !== "todas" || ruta.origen !== "todos")) q.set("familia", ruta.familia);
     if (ruta.paso === "catalogo" && ruta.publico && ruta.publico !== "todos") q.set("para", ruta.publico);
+    if (ruta.paso === "catalogo" && ruta.busqueda) q.set("q", ruta.busqueda);
     const texto = q.toString().replace("todo=", "todo");
     return `#catalogo${texto ? `?${texto}` : ""}`;
   }
   const direccion = (ruta) => `${location.pathname}${location.search}${hashDe(ruta)}`;
 
   const PUBLICO_EN_TITULO = { hombre: "para él", mujer: "para ella", unisex: "unisex" };
-  function tituloCatalogo({ origen, familia, publico = "todos" }) {
+  function tituloCatalogo({ origen, familia, publico = "todos", busqueda = "" }) {
+    if (busqueda) return `Resultados para “${busqueda}”`;
     const fam = familia !== "todas" ? familiaPorId.get(familia).nombre : null;
     const ori = ORIGEN_EN_TITULO[origen] || null;
     const para = PUBLICO_EN_TITULO[publico] ? ` ${PUBLICO_EN_TITULO[publico]}` : "";
@@ -1131,7 +1136,7 @@
       recorrido.dataset.paso = ruta.paso;
       if (ruta.paso === "familia") pintarEleccionFamilias(ruta.origen);
       if (ruta.paso === "catalogo") {
-        estado.filtros = { familia: ruta.familia, origen: ruta.origen, publico: ruta.publico || "todos" };
+        estado.filtros = { familia: ruta.familia, origen: ruta.origen, publico: ruta.publico || "todos", busqueda: ruta.busqueda || "" };
         aplicarFiltros();
         marcarRecorrido();
       }
@@ -1529,6 +1534,10 @@
     };
     pista.addEventListener("scroll", alMover, { passive: true });
     window.addEventListener("resize", alMover, { passive: true });
+    /* Al pintar, la sección todavía no tiene su tamaño final (fotos y letras cargando, o
+       aún oculta): las flechas se recalculan cada vez que cambia el tamaño de la fila */
+    if ("ResizeObserver" in window) new ResizeObserver(alMover).observe(pista);
+    window.addEventListener("load", alMover, { once: true });
     ajustarFlechas();
   }
 
@@ -1632,7 +1641,7 @@
       ? `<img src="${p.lamina}" alt="${nombreCompleto(p)} rodeado de sus notas" loading="lazy" width="1080" height="1080">`
       : `<img src="${url(p.foto, 800)}" srcset="${srcset(p.foto, [500, 800, 1200])}" sizes="(max-width: 40rem) 80vw, (max-width: 72rem) 45vw, 24rem" alt="${nombreCompleto(p)}" loading="lazy"${recortable(p.foto)}>`;
     return `
-      <li class="ficha" data-familia="${p.familia}" data-origen="${p.origen}" data-publico="${p.publico || ""}">
+      <li class="ficha" data-perfume="${p.id}" data-familia="${p.familia}" data-origen="${p.origen}" data-publico="${p.publico || ""}">
         <button class="ficha__abrir" type="button" data-ficha="${p.id}" aria-label="Ver la ficha de ${nombreCompleto(p)}">
           <span class="ficha__lamina${p.lamina ? " ficha__lamina--compuesta" : ""}">${imagen}${NOVEDADES.includes(p.id) ? '<span class="ficha__nuevo">Nuevo</span>' : ""}${calificacionFicha(p)}</span>
         </button>
@@ -1867,11 +1876,28 @@
     publico: () => [["todos", "Todos"], ["hombre", "Él"], ["mujer", "Ella"], ["unisex", "Unisex"]],
   };
 
+  /* Búsqueda en el catálogo (Enter en el buscador): los perfumes que coinciden con lo escrito.
+     Se guarda el último cálculo porque el índice pregunta muchas veces seguidas. */
+  let ultimaBusqueda = { texto: null, ids: null };
+  function idsBusqueda(texto) {
+    if (ultimaBusqueda.texto !== texto) ultimaBusqueda = { texto, ids: new Set(buscarPerfumes(texto, Infinity).map((p) => p.id)) };
+    return ultimaBusqueda.ids;
+  }
+
+  /* Si un perfume pasa los filtros. Buscando, "Todos" incluye también los nichos: se busca en
+     toda la tienda */
+  function pasaFiltros(p, f) {
+    const hallados = f.busqueda ? idsBusqueda(f.busqueda) : null;
+    if (hallados && !hallados.has(p.id)) return false;
+    return (f.familia === "todas" || p.familia === f.familia)
+      && (hallados && f.origen === "todos" ? true : delOrigen(p, f.origen))
+      && delPublico(p, f.publico);
+  }
+
   /* Cuántos perfumes quedarían si se cambia un filtro */
   function cuantosCon(cambio) {
-    const f = { publico: "todos", ...estado.filtros, ...cambio };
-    return PERFUMES.filter((p) => (f.familia === "todas" || p.familia === f.familia)
-      && delOrigen(p, f.origen) && delPublico(p, f.publico)).length;
+    const f = { publico: "todos", busqueda: "", ...estado.filtros, ...cambio };
+    return PERFUMES.filter((p) => pasaFiltros(p, f)).length;
   }
 
   function pintarIndice() {
@@ -1953,12 +1979,11 @@
 
   function aplicarFiltros() {
     if (!$("#capitulos")) return;
-    const { familia, origen, publico = "todos" } = estado.filtros;
+    const { familia, origen, publico = "todos", busqueda = "" } = estado.filtros;
     let visibles = 0;
     $$(".ficha, .nicho").forEach((ficha) => {
-      const pasa = (familia === "todas" || ficha.dataset.familia === familia)
-        && (origen === "todos" ? ficha.dataset.origen !== "Nicho" : ficha.dataset.origen === origen)
-        && delPublico({ publico: ficha.dataset.publico || null }, publico);
+      const p = porId.get(ficha.dataset.perfume);
+      const pasa = p ? pasaFiltros(p, { familia, origen, publico, busqueda }) : false;
       ficha.hidden = !pasa;
       if (pasa) visibles += 1;
     });
@@ -1981,11 +2006,18 @@
     if (sala) sala.dataset.cuantos = String($$(".nicho:not([hidden])").length);
     pintarIndice();
     $("#conteo").innerHTML = `<strong>${visibles}</strong> ${visibles === 1 ? "perfume" : "perfumes"}`;
-    $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos" && publico === "todos"; });
+    $$("[data-limpiar-filtros]").forEach((b) => { b.hidden = familia === "todas" && origen === "todos" && publico === "todos" && !busqueda; });
     resumirFiltros(visibles);
     $("#vacio").hidden = visibles > 0;
     const titulo = $("#titulo-catalogo");
     if (titulo) titulo.textContent = tituloCatalogo(estado.filtros);
+    /* Buscando: la pastilla con lo escrito y la x para volver al catálogo completo */
+    const aviso = $("#busqueda-activa");
+    if (aviso) {
+      aviso.hidden = !busqueda;
+      $("[data-busqueda-texto]", aviso).textContent = busqueda;
+    }
+    $("#paso-catalogo")?.classList.toggle("es-busqueda", Boolean(busqueda));
     ambienteNicho();
   }
 
@@ -2017,7 +2049,7 @@
   /* Los filtros del catálogo actualizan la dirección sin crear pasos nuevos en el historial */
   function sincronizarDireccion() {
     if (vistaActual !== "catalogo" || recorrido.dataset.paso !== "catalogo") return;
-    const ruta = { vista: "catalogo", paso: "catalogo", origen: estado.filtros.origen, familia: estado.filtros.familia, publico: estado.filtros.publico };
+    const ruta = { vista: "catalogo", paso: "catalogo", origen: estado.filtros.origen, familia: estado.filtros.familia, publico: estado.filtros.publico, busqueda: estado.filtros.busqueda || "" };
     rutaActual = ruta;
     history.replaceState(null, "", direccion(ruta));
     recordarCatalogo(ruta);
@@ -2156,7 +2188,8 @@
     return (suma / escritas.length) * 80;
   }
 
-  function buscarPerfumes(texto) {
+  /* limite: las sugerencias muestran 6; el catálogo (Enter) los muestra todos */
+  function buscarPerfumes(texto, limite = 6) {
     const consulta = limpiarBusqueda(texto);
     if (!consulta) return [];
     const encontrados = PERFUMES
@@ -2165,7 +2198,18 @@
       .sort((a, b) => b.puntaje - a.puntaje);
     /* Si algo coincide tal cual, no se mezclan resultados aproximados */
     const hayExactos = encontrados.length && encontrados[0].puntaje >= 100;
-    return encontrados.filter((r) => !hayExactos || r.puntaje >= 100).slice(0, 6).map((r) => r.p);
+    return encontrados.filter((r) => !hayExactos || r.puntaje >= 100).slice(0, limite).map((r) => r.p);
+  }
+
+  /* Enter (o "Ver los N en el catálogo"): el catálogo de siempre, con solo lo que coincide.
+     Sin coincidencias no se va a ningún lado: se queda el panel con la opción de preguntar. */
+  function verResultados(texto) {
+    const busqueda = String(texto || "").trim().slice(0, 80);
+    if (!busqueda || !buscarPerfumes(busqueda, Infinity).length) return;
+    cerrarSugerencias();
+    campoBusqueda.blur();
+    irA({ vista: "catalogo", paso: "catalogo", origen: "todos", familia: "todas", publico: "todos", busqueda });
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   /* Resalta la parte del nombre que coincide con lo escrito (sin distinguir acentos) */
@@ -2232,7 +2276,7 @@
     const exactos = resultados.some((p) => sinAcentos(`${p.casa} ${p.nombre}`).includes(consulta));
     const titulo = !consulta ? "Más vendidos"
       : !resultados.length ? ""
-      : exactos ? `${textoPerfumes(resultados.length)} para "${campoBusqueda.value.trim()}"`
+      : exactos ? `${textoPerfumes(buscarPerfumes(campoBusqueda.value, Infinity).length)} para "${campoBusqueda.value.trim()}"`
       : "Quizá buscabas";
 
     /* Si no está (o solo hay parecidos), se puede preguntar directo por WhatsApp con lo que
@@ -2245,11 +2289,20 @@
         <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
       </a>`;
 
+    /* Todos los que coinciden: la última fila lleva a verlos en el catálogo (también con Enter) */
+    const total = consulta ? buscarPerfumes(campoBusqueda.value, Infinity).length : 0;
+    const verTodos = total ? `
+      <button class="busqueda__ver-todos" type="button" data-ver-resultados>
+        <i class="ph ph-squares-four" aria-hidden="true"></i>
+        <span>Ver ${total === 1 ? "el resultado" : `los ${total} resultados`} en el catálogo</span>
+        <kbd aria-hidden="true">Enter</kbd>
+      </button>` : "";
     if (resultados.length) {
       panelSugerencias.innerHTML = `
         <div class="busqueda__lista">
           <p class="busqueda__titulo"></p>
           ${resultados.map((p) => filaSugerencia(p, consulta)).join("")}
+          ${verTodos}
           ${consulta && !exactos ? consultar("busqueda__consulta--discreta", "¿No es ninguno? Pregúntanos por él") : ""}
         </div>
         <div class="busqueda__vista" id="busqueda-vista" aria-live="polite"></div>`;
@@ -2970,8 +3023,14 @@
       abrirFiltros();
     } else if (boton.id === "cerrar-filtros" || boton.id === "aplicar-filtros") {
       cerrarFiltros();
+    } else if ("quitarBusqueda" in boton.dataset) {
+      estado.filtros.busqueda = "";
+      aplicarFiltros();
+      sincronizarDireccion();
+    } else if ("verResultados" in boton.dataset) {
+      verResultados(campoBusqueda.value);
     } else if (boton.id === "limpiar-filtros" || "limpiarFiltros" in boton.dataset) {
-      estado.filtros = { familia: "todas", origen: "todos", publico: "todos" };
+      estado.filtros = { familia: "todas", origen: "todos", publico: "todos", busqueda: "" };
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.dataset.sugerencia) {
@@ -3002,7 +3061,7 @@
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.id === "quitar-filtros") {
-      estado.filtros = { familia: "todas", origen: "todos", publico: "todos" };
+      estado.filtros = { familia: "todas", origen: "todos", publico: "todos", busqueda: "" };
       aplicarFiltros();
       sincronizarDireccion();
     } else if (boton.id === "vaciar" || boton.id === "vaciar-pedido") {
@@ -3066,7 +3125,7 @@
     }
   });
   panelSugerencias.addEventListener("keydown", (evento) => {
-    const botones = $$(".buscar__sugerencia", panelSugerencias);
+    const botones = $$(".buscar__sugerencia, .busqueda__ver-todos", panelSugerencias);
     const i = botones.indexOf(document.activeElement);
     if (evento.key === "Escape") {
       cerrarSugerencias();
@@ -3086,9 +3145,7 @@
   }));
   $("#buscar").addEventListener("submit", (evento) => {
     evento.preventDefault();
-    if (!campoBusqueda.value.trim()) return;
-    const primera = $(".buscar__sugerencia", panelSugerencias);
-    if (primera) primera.click();
+    verResultados(campoBusqueda.value);
   });
 
   /* ---------- Inicio ---------- */

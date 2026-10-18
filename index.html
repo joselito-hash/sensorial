@@ -260,6 +260,12 @@
         <section class="paso contenedor catalogo" id="paso-catalogo" aria-labelledby="titulo-catalogo" hidden>
           <div class="paso__cabecera">
             <h1 id="titulo-catalogo">Todo el catálogo</h1>
+            <!-- Buscando (Enter en el buscador): lo escrito y la x para ver todo otra vez -->
+            <p class="busqueda-activa" id="busqueda-activa" hidden>
+              <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+              <span>Buscando <b data-busqueda-texto></b></span>
+              <button type="button" data-quitar-busqueda aria-label="Quitar la búsqueda y ver todo el catálogo"><i class="ph ph-x" aria-hidden="true"></i></button>
+            </p>
             <p>Cada tarjeta muestra las tres notas principales del perfume. Toca uno para ver su ficha, o agrégalo a tu lista y pídelos todos en un solo mensaje.</p>
           </div>
 

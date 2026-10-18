@@ -149,6 +149,50 @@
     };
   };
 
+  /* Tarjeta de fidelidad: WhatsApp para pedir el premio ganado o para sumar otro sello */
+  const opcionesFidelidad = (grupo) => {
+    const cliente = grupo[0]?.client_name || "";
+    return {
+      premio: (p) => whatsapp(`Hola, soy ${cliente}. Ya junté ${p.sello} sellos en mi tarjeta de fidelidad y quiero mi premio: ${p.titulo}.`),
+      siguiente: whatsapp(`Hola, soy ${cliente}. Quiero sumar otro sello a mi tarjeta de fidelidad: me gustaría elegir mi siguiente perfume.`),
+    };
+  };
+
+  /* La tarjeta se inclina con el mouse y el reflejo del papel lo sigue; los sellos se estampan
+     la primera vez que la clienta llega a ella */
+  function iniciarFidelidad(hoja) {
+    const tarjeta = hoja?.querySelector(".tf-tarjeta");
+    if (!tarjeta) return () => {};
+    hoja.querySelectorAll(".tf-sello.is-sellado").forEach((sello, k) => {
+      sello.style.setProperty("--k", k);
+      sello.style.setProperty("--tf-giro", `${[-9, 6, -4, 10, -7, 3, -11, 8][k % 8]}deg`);
+    });
+    hoja.querySelectorAll(".tf-info > *").forEach((el, i) => el.style.setProperty("--i", i));
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches && !reducido()) {
+      tarjeta.addEventListener("pointermove", (evento) => {
+        if (evento.pointerType !== "mouse" || evento.buttons) return;
+        const caja = tarjeta.getBoundingClientRect();
+        const x = (evento.clientX - caja.left) / caja.width;
+        const y = (evento.clientY - caja.top) / caja.height;
+        tarjeta.style.setProperty("--tf-ry", `${((x - 0.5) * 14).toFixed(2)}deg`);
+        tarjeta.style.setProperty("--tf-rx", `${((0.5 - y) * 10).toFixed(2)}deg`);
+        tarjeta.style.setProperty("--tf-x", `${(x * 100).toFixed(1)}%`);
+        tarjeta.style.setProperty("--tf-y", `${(y * 100).toFixed(1)}%`);
+        tarjeta.style.setProperty("--tf-luz", "1");
+      });
+      tarjeta.addEventListener("pointerleave", () => {
+        ["--tf-rx", "--tf-ry", "--tf-x", "--tf-y", "--tf-luz"].forEach((v) => tarjeta.style.removeProperty(v));
+      });
+    }
+    let vista = false;
+    return () => {
+      if (vista) return;
+      vista = true;
+      tarjeta.classList.add("is-vista");
+      hoja.querySelector(".tf-info")?.classList.add("is-vista");
+    };
+  }
+
   /* ---------- Reseñas ----------
      Pregunta a Supabase qué perfume del catálogo puede reseñar cada tabla y si ya lo hizo. Si
      no responde a tiempo, la tabla se muestra igual, sin el bloque de la reseña. */
@@ -375,13 +419,21 @@
         + `<span class="tp-frascos__texto" aria-hidden="true"><b>${T.escapar(cortoDe(plan))}</b><small>${e.liquidado ? '<i class="ph ph-check" aria-hidden="true"></i>' : ""}${T.escapar(estado)}</small></span>`
         + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     }).join("");
+    /* Al final, deslizando a la izquierda: la tarjeta de fidelidad, con su botón en el índice */
+    const f = T.cuentaFidelidad(grupo);
+    const sellos = `${f.selladosAqui} de ${T.SELLOS} sellos`;
+    const tarjeta = `<div class="tp-hoja tp-hoja--fidelidad" role="group" aria-roledescription="tarjeta" aria-label="Tarjeta de fidelidad">${T.fidelidad(grupo, opcionesFidelidad(grupo))}</div>`;
+    const botonTarjeta = `<button class="tp-frascos__boton tp-frascos__boton--fidelidad" type="button" data-hoja="${grupo.length}" data-avance="${(f.selladosAqui / T.SELLOS).toFixed(3)}" aria-label="Tarjeta de fidelidad, ${sellos}">`
+      + '<span class="tp-frascos__num" aria-hidden="true"><i class="ph ph-seal-check"></i></span>'
+      + `<span class="tp-frascos__texto" aria-hidden="true"><b>Fidelidad</b><small>${sellos}</small></span>`
+      + '<span class="tp-frascos__barra" aria-hidden="true"></span></button>';
     /* De cuatro en adelante, el índice va compacto (ver .tp-frascos--compacto) */
-    return `<nav class="tp-frascos${grupo.length > 3 ? " tp-frascos--compacto" : ""}" aria-label="Elige un perfume">
-        <div class="tp-frascos__lista">${botones}</div>
+    return `<nav class="tp-frascos${grupo.length + 1 > 3 ? " tp-frascos--compacto" : ""}" aria-label="Elige un perfume o tu tarjeta">
+        <div class="tp-frascos__lista">${botones}${botonTarjeta}</div>
         <p class="tp-frascos__aviso" aria-hidden="true"><i class="ph ph-check" aria-hidden="true"></i><span></span></p>
       </nav>
       ${T.cabecera(T.calcular(grupo[inicial]).liquidado ? "liquidado" : "en-curso")}
-      <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes"><div class="tp-carrusel__pista">${hojas}</div></div>
+      <div class="tp-carrusel" role="region" aria-roledescription="carrusel" aria-label="Tus perfumes y tu tarjeta de fidelidad"><div class="tp-carrusel__pista">${hojas}${tarjeta}</div></div>
       <p class="tp-oculto" aria-live="polite" data-tp-anuncio></p>`;
   }
 
@@ -583,12 +635,15 @@
       : -1;
     const celebra = recien >= 0 && !reducido();
     const inicial = celebra ? recien : principal;
-    escena.classList.toggle("tp-escena--varias", varias);
-    escena.innerHTML = varias ? carruselHTML(grupo, inicial) : T.pintar(grupo[0], opcionesDe(grupo[0]));
+    /* Siempre hay carrusel: aunque tenga un solo perfume, a su izquierda queda su tarjeta de
+       fidelidad. El logo y el título viven en el encabezado fijo, fuera de las hojas. */
+    escena.classList.add("tp-escena--varias");
+    escena.innerHTML = carruselHTML(grupo, inicial);
     iniciarResenas();
-    /* Con varios perfumes, el logo y el título viven en el encabezado fijo, fuera de las hojas */
     const cabecera = escena.querySelector(".tp--cabecera");
-    const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera)")];
+    const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera):not(.tp--fidelidad)")];
+    const hojaTarjeta = escena.querySelector(".tp-hoja--fidelidad");
+    const verTarjeta = iniciarFidelidad(hojaTarjeta);
     const descargas = tablas.map((tabla, i) => prepararDescarga(tabla, grupo[i]));
     const cliente = grupo[inicial].client_name;
     document.title = `${varias ? "Tablas" : "Tabla"} de pagos de ${cliente} | Sensorial Boutique`;
@@ -605,7 +660,7 @@
     /* Si la clienta toca, arrastra o cambia de perfume, la página ya no se mueve sola */
     let tomoElControl = false;
     let pasoAutomatico = false;
-    if (varias) {
+    {
       const frascos = escena.querySelector(".tp-frascos");
       const botones = [...frascos.querySelectorAll("[data-hoja]")];
       /* Lo pagado de cada perfume llena su línea. Se pone desde aquí y no con style="" en el
@@ -633,11 +688,18 @@
         alCambiar(i) {
           if (!pasoAutomatico) tomoElControl = true;
           marcar(i);
-          /* El título fijo cambia con un desvanecido: "Tabla de Pagos" o "Pago completo" */
-          const estado = T.calcular(grupo[i]).liquidado ? "liquidado" : "en-curso";
+          /* El título fijo cambia con un desvanecido: "Tabla de Pagos", "Pago completo" o, en la
+             última hoja, "Tarjeta de Sellos" */
+          const esTarjeta = i === grupo.length;
+          const estado = esTarjeta ? "fidelidad" : T.calcular(grupo[i]).liquidado ? "liquidado" : "en-curso";
           cabecera.dataset.estado = estado;
           cabecera.querySelectorAll("[data-titulo]").forEach((t) => t.toggleAttribute("aria-hidden", t.dataset.titulo !== estado));
-          document.body.dataset.tono = tonoDe(grupo[i]);
+          document.body.dataset.tono = esTarjeta ? "dorado" : tonoDe(grupo[i]);
+          if (esTarjeta) {
+            if (!frascos.classList.contains("is-avisa")) anuncio.textContent = "Tu tarjeta de fidelidad";
+            setTimeout(verTarjeta, 250);
+            return;
+          }
           if (!frascos.classList.contains("is-avisa")) anuncio.textContent = `Perfume ${i + 1} de ${grupo.length}: ${nombreDe(grupo[i])}`;
           setTimeout(descargas[i], 1500);
         },
@@ -658,7 +720,7 @@
     abrir(() => (cabecera || tabla).querySelector(".tp-cabeza .tp-logo"), () => {
       if (cabecera) T.montar(cabecera, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion });
       T.montar(tabla, { entrada: conAnimacion, inicio: 450, recibe: conAnimacion && !cabecera });
-      if (varias && conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
+      if (conAnimacion) escena.querySelector(".tp-frascos").classList.replace("tp-frascos--espera", "tp-frascos--entra");
       if (celebra) {
         /* El sello se estampa y saltan las chispas (cerca de 3.5 s); entonces la pastilla avisa
            y la página pasa sola al perfume que sigue, que entra con su animación */
@@ -683,8 +745,8 @@
       } else if (recien >= 0) {
         /* Movimiento reducido: sin celebración, solo el aviso sobre el perfume principal */
         avisar(`${cortoDe(grupo[recien])} pagado · Sigue ${cortoDe(grupo[principal])}`, 4500);
-      } else if (varias && conAnimacion) {
-        /* Y el frasco del otro perfume, en la pastilla, destella una vez */
+      } else if (conAnimacion) {
+        /* Y el perfume de junto (o la tarjeta de fidelidad), en la pastilla, destella una vez */
         setTimeout(() => {
           if (tomoElControl) return;
           const otro = pasar.asomar();

@@ -460,6 +460,40 @@ body.buscando .buscar i { transform: scale(1.12); }
 .buscar__sin-resultados span { color: var(--tinta); font-size: 1rem; font-weight: 600; }
 
 /* "Pregúntanos por este perfume": acceso directo a WhatsApp con lo que se buscó escrito */
+/* Última fila de las sugerencias: ver todos los resultados como catálogo (o Enter) */
+.busqueda__ver-todos {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.8rem 0.9rem;
+  border: 0;
+  border-top: 1px solid var(--linea);
+  border-radius: 0 0 1rem 1rem;
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 200ms;
+}
+.busqueda__ver-todos:hover,
+.busqueda__ver-todos:focus-visible { background: rgb(255 255 255 / 0.06); outline: none; }
+.busqueda__ver-todos > i { color: var(--tinta-2); font-size: 1.2rem; }
+.busqueda__ver-todos span { flex: 1; }
+.busqueda__ver-todos kbd {
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.45rem;
+  box-shadow: inset 0 0 0 1px var(--linea);
+  color: var(--tinta-2);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+@media (hover: none) { .busqueda__ver-todos kbd { display: none; } }
 .busqueda__consulta {
   display: flex;
   align-items: center;
@@ -2713,11 +2747,14 @@ html:has(.detalle[open]) { overflow: hidden; }
 .clientes__flechas button:active:not(:disabled) { transform: scale(0.94); }
 .clientes__flechas button:disabled { opacity: 0.3; cursor: default; }
 
+/* La fila se desliza de lado, y una caja que se desliza recorta lo que se sale: el relleno de
+   arriba y de abajo deja espacio para que la tarjeta suba al pasar el mouse sin cortarse (y
+   para su sombra); los márgenes negativos lo compensan para que nada se mueva de lugar */
 .clientes__pista {
   display: flex;
   gap: 1rem;
-  margin-right: calc(var(--borde) * -1);
-  padding: 0 var(--borde) 0.25rem 0;
+  margin: -0.75rem calc(var(--borde) * -1) -1.5rem 0;
+  padding: 0.75rem var(--borde) 1.5rem 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -2740,9 +2777,12 @@ html:has(.detalle[open]) { overflow: hidden; }
     #2a2227;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.05);
   scroll-snap-align: start;
-  transition: transform 450ms var(--suave);
+  transition: transform 450ms var(--suave), box-shadow 450ms var(--suave);
 }
-.voz:hover { transform: translateY(-4px); }
+.voz:hover {
+  transform: translateY(-4px);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1.2rem 1.6rem -1.1rem rgb(0 0 0 / 0.7);
+}
 .voz figure { display: grid; gap: 1.1rem; margin: 0; }
 .voz__arriba { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .voz__arriba time { color: var(--tinta-2); font-size: 0.8125rem; }
@@ -3035,6 +3075,38 @@ html:has(.detalle[open]) { overflow: hidden; }
 .paso__cabecera h1 { max-width: 18ch; font-size: clamp(2.2rem, 4vw, 3.6rem); }
 .paso__cabecera p { max-width: 50ch; margin-top: 1rem; color: var(--tinta-2); font-size: 1.15rem; }
 .paso__cabecera .enlace { margin-top: 1rem; }
+/* Buscando: una pastilla con lo escrito; el texto de ayuda del catálogo no hace falta */
+.paso__cabecera .busqueda-activa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 100%;
+  margin-top: 1rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  color: var(--tinta-2);
+  font-size: 0.95rem;
+}
+.paso__cabecera .busqueda-activa[hidden] { display: none; }
+.busqueda-activa b { color: var(--tinta); font-weight: 700; overflow-wrap: anywhere; }
+.busqueda-activa button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.1rem;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--tinta);
+  cursor: pointer;
+  transition: background-color 200ms, transform 200ms var(--suave);
+}
+.busqueda-activa button:hover { background: rgb(255 255 255 / 0.16); }
+.busqueda-activa button:active { transform: scale(0.94); }
+.catalogo.es-busqueda .paso__cabecera > p:not(.busqueda-activa) { display: none; }
 
 .volver {
   display: inline-flex;
@@ -3982,7 +4054,11 @@ body.con-lista .paso__pie { bottom: 5.75rem; }
   .voz { flex-basis: 85%; min-height: 20rem; padding: 1.35rem 1.25rem 1.1rem; }
   .voz:hover { transform: none; }
   .clientes__nota strong { font-size: 2.75rem; }
-  .clientes__flechas { display: none; }
+  /* En el teléfono también hay flechas (además de deslizar con el dedo), al lado de la nota */
+  .clientes__cabecera { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .clientes__cabecera h2 { grid-column: 1 / -1; }
+  .clientes__flechas { grid-column: 2; justify-self: end; }
+  .clientes__flechas button { width: 2.6rem; height: 2.6rem; }
   .resenas__resumen { grid-template-columns: auto minmax(0, 1fr); }
   .resenas__reparto { grid-column: 1 / -1; justify-self: stretch; width: 100%; }
 
