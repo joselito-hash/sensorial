@@ -777,6 +777,10 @@
 /* hidden antes de clip: los navegadores que no conocen clip igual recortan las otras hojas */
 .tp-carrusel { --tp-hueco: 3rem; width: 100%; overflow: hidden; overflow-x: clip; overflow-y: visible; touch-action: pan-y; }
 .tp-carrusel__pista { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; column-gap: var(--tp-hueco); align-items: start; }
+/* Las hojas que no se ven (a los lados) se recortan al alto del carrusel (pagos.js lo pone en
+   --tp-carrusel-alto): si no, una hoja más alta que la que se ve (un perfume junto a la
+   tarjeta de sellos) seguía alargando la página con espacio vacío abajo */
+.tp-carrusel .tp-hoja[inert] { max-height: var(--tp-carrusel-alto, none); overflow: clip; }
 .tp-hoja { min-width: 0; padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right)); }
 /* El logo y el título se quedan quietos arriba (encabezado compartido) y solo se desliza el
    perfume: cada hoja pierde su propio encabezado y empieza en el frasco */
@@ -794,6 +798,10 @@
   transition: opacity 0.5s var(--tp-suave), filter 0.5s var(--tp-suave), transform 0.5s var(--tp-suave);
 }
 .tp-titulos__uno[data-titulo="liquidado"] .tp-titulo__a { justify-self: start; translate: 0.06em 0; }
+/* "Tarjeta de Fidelidad": la palabra grande es más larga, va un poco más chica y sin
+   encimarse con la "j" de arriba */
+.tp-titulos__uno[data-titulo="fidelidad"] .tp-titulo__a { translate: 0.35em 0; }
+.tp-titulos__uno[data-titulo="fidelidad"] .tp-titulo__b { margin-top: -0.06em; font-size: clamp(2.9rem, 14.5cqi, 4.6rem); }
 /* Pantallas anchas (computadora), varios perfumes: cada hoja conserva su acomodo de frasco a
    la izquierda e información a la derecha, con el logo y el título arriba de la columna
    derecha, junto al nombre del perfume. El encabezado compartido se pone encima de ese lugar

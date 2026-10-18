@@ -442,7 +442,7 @@
     return `<header class="tp tp--cabecera" data-estado="${["liquidado", "fidelidad"].includes(estado) ? estado : "en-curso"}">
       <div class="tp-cabeza">
         ${logo()}
-        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("fidelidad", "Tarjeta de", "Sellos")}</h1>
+        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("fidelidad", "Tarjeta de", "Fidelidad")}</h1>
       </div>
     </header>`;
   }

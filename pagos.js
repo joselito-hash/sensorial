@@ -491,7 +491,12 @@
       const matriz = getComputedStyle(pista).transform;
       return matriz && matriz !== "none" ? new DOMMatrixReadOnly(matriz).m41 : 0;
     };
-    const ajustarAlto = () => { raiz.style.height = `${hojas[actual].offsetHeight}px`; };
+    /* El alto también va en --tp-carrusel-alto: las hojas de los lados se recortan a él */
+    const fijarAlto = (px) => {
+      raiz.style.height = `${px}px`;
+      raiz.style.setProperty("--tp-carrusel-alto", `${px}px`);
+    };
+    const ajustarAlto = () => fijarAlto(hojas[actual].offsetHeight);
     const detener = () => {
       if (!movimiento) return;
       const x = posicion();
@@ -521,7 +526,7 @@
          terminar el paso, y si la clienta estaba más abajo de donde termina, la página sube */
       const nuevo = hojas[destino].offsetHeight;
       const sobra = raiz.offsetHeight - nuevo;
-      if (sobra < 0) raiz.style.height = `${nuevo}px`;
+      if (sobra < 0) fijarAlto(nuevo);
       else if (sobra > 0) {
         const tope = document.documentElement.scrollHeight - sobra - window.innerHeight;
         if (window.scrollY > tope) window.scrollTo({ top: Math.max(0, tope), behavior: reducido() ? "auto" : "smooth" });
