@@ -566,6 +566,160 @@
 .tf-historial li > i { color: var(--tp-oro); font-size: 1.3rem; }
 .tf-historial li.is-curso > i { color: var(--tp-tinta-2); }
 
+/* ---------- Datos de pago ----------
+   Como la imagen de la tienda: la tarjeta dorada inclinada y, abajo, el panel oscuro con la
+   transferencia. La CLABE y el nombre del concepto se copian con un toque. Debajo, la
+   tarjeta "¿Mi perfume es original?" que abre el video. */
+.tp--pago { grid-template-areas: "cabeza" "visual" "info"; }
+.tq-escena { grid-area: visual; display: grid; place-items: center; width: 100%; padding: clamp(1rem, 6cqi, 2rem) 0 clamp(0.5rem, 3cqi, 1rem); perspective: 1200px; }
+.tq-plastico {
+  position: relative;
+  width: min(78%, 22rem);
+  aspect-ratio: 85.6 / 54;
+  border-radius: 7% / 11%;
+  background:
+    radial-gradient(120% 90% at 20% 10%, rgb(255 255 255 / 0.4), transparent 55%),
+    linear-gradient(135deg, #f6d995 0%, #e9c27a 45%, #d9ad62 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 2rem 3rem -1.4rem rgb(5 3 4 / 0.9);
+  rotate: 8deg;
+  transform: rotateY(var(--tq-ry, -6deg)) rotateX(var(--tq-rx, 4deg));
+  transition: transform 0.7s var(--tp-suave);
+}
+.tq-plastico__chip { position: absolute; left: 9%; top: 15%; width: 15%; aspect-ratio: 1.05; border-radius: 18%; background: #231c20; }
+.tq-plastico__linea { position: absolute; height: 5.5%; border-radius: 99px; background: #231c20; }
+.tq-plastico__linea--a { left: 8%; top: 52%; width: 14%; }
+.tq-plastico__linea--b { left: 26%; top: 55%; width: 13%; }
+.tq-plastico__linea--c { left: 43%; top: 58%; width: 13%; }
+.tq-plastico__linea--larga { left: 8%; top: 66%; width: 48%; rotate: 5deg; transform-origin: left center; }
+.tq-plastico__circulos { position: absolute; right: 7%; bottom: 14%; display: flex; }
+.tq-plastico__circulos i { width: clamp(1.9rem, 10cqi, 3rem); aspect-ratio: 1; border-radius: 50%; background: #f7f2ea; }
+.tq-plastico__circulos i + i { margin-left: -0.9rem; background: #1a1517; }
+.tq-plastico__banco { position: absolute; right: 8%; top: 13%; color: rgb(35 28 32 / 0.75); font-size: clamp(0.8rem, 3.6cqi, 1.05rem); font-weight: 800; letter-spacing: 0.08em; }
+
+.tq-info { grid-area: info; display: grid; justify-items: center; gap: 1rem; width: min(100%, 29rem); margin-top: 0.5rem; }
+.tq-info > * { grid-area: auto; }
+.tq-etiqueta { display: flex; align-items: center; gap: 0.8rem; }
+.tq-etiqueta { padding: 0; color: var(--tp-tinta); font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
+.tq-etiqueta span { width: 2.2rem; height: 2px; border-radius: 1px; background: var(--tp-tinta); opacity: 0.85; }
+.tq-datos {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 1.4rem 1.2rem 1.25rem;
+  border-radius: 1.75rem;
+  background: rgb(255 255 255 / 0.03);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9);
+}
+.tq-titular { font-size: clamp(1.9rem, 9cqi, 2.6rem); font-weight: 400; line-height: 1.05; letter-spacing: -0.01em; }
+.tq-banco { margin-top: 0.35rem; font-size: 1.15rem; font-weight: 800; }
+.tq-numero { display: grid; justify-items: center; gap: 0.35rem; width: 100%; margin-top: 0.9rem; padding: 0.95rem 0.8rem 1rem; border-radius: 1.25rem; background: rgb(255 255 255 / 0.04); }
+.tq-numero__etiqueta { color: var(--tp-tinta-2); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.tq-numero__cifra { font-size: clamp(1.25rem, 6.4cqi, 1.75rem); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; word-break: break-word; text-align: center; }
+.tq-copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tp-oro);
+  color: #2a1f15;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.25s var(--tp-suave), background-color 0.25s;
+}
+.tq-copiar:hover { background: #ecd3a3; }
+.tq-copiar:active { transform: scale(0.97); }
+.tq-copiar.is-copiado { background: #b2d7c2; }
+.tq-copiar--chico { padding: 0.45rem 0.9rem; border: 1.5px solid rgb(227 196 140 / 0.7); background: transparent; color: var(--tp-oro); font-size: 0.85rem; }
+.tq-copiar--chico:hover { background: rgb(227 196 140 / 0.1); }
+.tq-copiar--chico.is-copiado { border-color: #b2d7c2; background: transparent; color: #b2d7c2; }
+.tq-concepto { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.35rem 0.75rem; width: 100%; padding: 0 0.25rem; text-align: left; }
+.tq-concepto > i { margin-top: 0.15rem; color: var(--tp-oro); font-size: 1.35rem; }
+.tq-concepto p { color: var(--tp-tinta-2); font-size: 0.95rem; line-height: 1.45; }
+.tq-concepto strong { display: block; color: var(--tp-tinta); font-weight: 700; }
+.tq-concepto b { color: var(--tp-oro); font-weight: 700; }
+.tq-concepto .tq-copiar { grid-column: 2; justify-self: start; margin-top: 0.2rem; }
+
+/* La tarjeta que crece hasta el video */
+.tq-original {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1.1rem 0.75rem 0.75rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgb(227 196 140 / 0.14), rgb(255 255 255 / 0.03));
+  box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.35);
+  color: var(--tp-tinta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.35s var(--tp-suave), box-shadow 0.35s;
+}
+.tq-original:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--tp-oro), 0 1.4rem 2rem -1.4rem rgb(0 0 0 / 0.8); }
+.tq-original:active { transform: scale(0.98); }
+.tq-original:focus-visible { outline: 2px solid var(--tp-tono); outline-offset: 3px; }
+.tq-original__foto { position: relative; display: grid; place-items: center; width: 5.25rem; aspect-ratio: 9 / 13; overflow: hidden; border-radius: 1rem; background: #1a1517; }
+.tq-original__foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.tq-original__play { position: relative; display: grid; place-items: center; width: 2.4rem; aspect-ratio: 1; border-radius: 50%; background: var(--tp-oro); color: #2a1f15; font-size: 1rem; box-shadow: 0 0.5rem 1rem -0.4rem rgb(0 0 0 / 0.7); }
+.tq-original__texto { display: grid; gap: 0.2rem; }
+.tq-original__texto small { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.tq-original__texto b { font-size: clamp(1.1rem, 5cqi, 1.3rem); font-weight: 800; line-height: 1.15; }
+.tq-original__texto > span { color: var(--tp-tinta-2); font-size: 0.9rem; line-height: 1.4; }
+.tq-original__abrir { color: var(--tp-oro); font-size: 1.3rem; }
+
+/* La tarjeta de fidelidad, como tercera parte de la misma hoja */
+.tq-fidelidad { display: grid; justify-items: center; width: 100%; margin-top: 1.5rem; padding-top: 1.6rem; border-top: 1px solid rgb(227 196 140 / 0.35); }
+.tq-seccion { display: flex; align-items: center; gap: 0.8rem; margin: 0 0 1rem; color: var(--tp-tinta); font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
+.tq-seccion span { width: 2.2rem; height: 2px; border-radius: 1px; background: var(--tp-tinta); opacity: 0.85; }
+/* Sus piezas van una debajo de otra, no en las áreas de su hoja propia ("visual", "info") */
+.tq-fidelidad > * { grid-area: auto; }
+.tq-fidelidad .tf-escena { margin: 0; }
+.tq-fidelidad .tf-info { width: 100%; margin-top: 1.25rem; }
+
+/* El video: la tarjeta crece hasta aquí (pagos.js anima desde su lugar) */
+.tq-video { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); }
+.tq-video__fondo { position: absolute; inset: 0; background: rgb(14 10 12 / 0.86); }
+.tq-video__marco {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: #120e10;
+  box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.3), 0 3rem 5rem -2rem rgb(0 0 0 / 0.9);
+  transform-origin: top left;
+}
+.tq-video--vertical .tq-video__marco { height: min(88svh, calc((100vw - 2rem) * 16 / 9)); aspect-ratio: 9 / 16; }
+.tq-video--horizontal .tq-video__marco { width: min(90vw, calc((100svh - 6rem) * 16 / 9), 72rem); aspect-ratio: 16 / 9; }
+.tq-video__marco video { display: block; width: 100%; height: 100%; object-fit: cover; background: #120e10; }
+.tq-video__cerrar {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  right: 1rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(247 242 244 / 0.12);
+  color: var(--tp-tinta);
+  font-size: 1.3rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.tq-video__cerrar:hover { background: rgb(247 242 244 / 0.22); }
+.tq-video__cerrar:focus-visible { outline: 2px solid var(--tp-oro); outline-offset: 2px; }
+.tp-pagina.con-video { overflow: hidden; }
+
 /* Pantallas anchas: el frasco a la izquierda y la información a la derecha. Las filas 1fr de
    arriba y abajo absorben la altura del frasco para que la columna derecha no se separe. */
 @container (min-width: 62rem) {
@@ -840,13 +994,17 @@
   .tp--liquidado:not(.tp--cabecera) { grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resena" "visual resumen" "visual contacto" "visual ."; }
   .tp--fidelidad:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
   .tp--fidelidad .tf-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 2.5rem; }
+  .tp--pago:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
+  .tp--pago .tq-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 3rem; }
+  .tp--pago .tq-plastico { width: min(82%, 26rem); }
   .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
   /* Con varios perfumes, debajo del índice de arriba */
   .tp-escena--varias .tp:not(.tp--cabecera) .tp-visual { top: 6.25rem; --tp-alto: min(76svh, 42rem); }
 }
 .tp--cabecera[data-estado="en-curso"] [data-titulo]:not([data-titulo="en-curso"]),
 .tp--cabecera[data-estado="liquidado"] [data-titulo]:not([data-titulo="liquidado"]),
-.tp--cabecera[data-estado="fidelidad"] [data-titulo]:not([data-titulo="fidelidad"]) { opacity: 0; filter: blur(6px); transform: translateY(0.25em); pointer-events: none; }
+.tp--cabecera[data-estado="fidelidad"] [data-titulo]:not([data-titulo="fidelidad"]),
+.tp--cabecera[data-estado="pago"] [data-titulo]:not([data-titulo="pago"]) { opacity: 0; filter: blur(6px); transform: translateY(0.25em); pointer-events: none; }
 .tp-carrusel.is-arrastrando { cursor: grabbing; -webkit-user-select: none; user-select: none; }
 .tp-carrusel img { -webkit-user-drag: none; }
 

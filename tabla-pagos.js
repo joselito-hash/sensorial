@@ -261,7 +261,9 @@
     return { compras, sellos, vuelta, enTarjeta, selladosAqui };
   }
 
-  function fidelidad(planes, opciones = {}, extra = 0) {
+  /* Las piezas de la tarjeta: la tarjeta impresa (tarjeta) y, debajo, premios y sellos (info).
+     fidelidad() las arma como hoja propia; datosPago() las pone dentro de su hoja. */
+  function fidelidadPartes(planes, opciones = {}, extra = 0) {
     const f = cuentaFidelidad(planes, extra);
     const cliente = texto(planes[0]?.client_name);
     const nombreCorto = (plan) => (plan ? texto(plan.product_name) || "Perfume" : "Compra en tienda");
@@ -297,12 +299,7 @@
       : opciones.siguiente ? `<a class="tp-contacto" href="${escapar(opciones.siguiente)}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo" aria-hidden="true"></i>Sumar otro sello</a>` : "";
     const mancha = (clase) => `<svg class="tf-mancha ${clase}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="tf-mancha__fondo" d="${MANCHA}"/><path class="tf-mancha__filo" d="${FILO}" pathLength="1"/></svg>`;
 
-    return `<article class="tp tp--fidelidad" data-tono="dorado" data-estado="fidelidad">
-      <header class="tp-cabeza">
-        ${logo()}
-        <h1 class="tp-titulo"><span class="tp-titulo__a">Tarjeta de</span> <span class="tp-titulo__b">Fidelidad</span></h1>
-      </header>
-      <div class="tf-escena">
+    const tarjeta = `<div class="tf-escena">
         <div class="tf-tarjeta" role="img" aria-label="Tarjeta de fidelidad de ${escapar(cliente)}: ${f.selladosAqui} de ${SELLOS} sellos">
           ${mancha("tf-mancha--a")}${mancha("tf-mancha--b")}
           <div class="tf-cara">
@@ -315,13 +312,87 @@
           </div>
           <span class="tf-reflejo" aria-hidden="true"></span>
         </div>
-      </div>
-      <div class="tf-info">
+      </div>`;
+    const info = `<div class="tf-info">
         <p class="tf-cuenta"><strong>${f.selladosAqui} de ${SELLOS}</strong> sellos${f.vuelta ? ` · tarjeta ${f.vuelta + 1}` : ""}</p>
         <p class="tf-regla-web">Cada perfume que terminas de pagar suma un sello.</p>
         <ul class="tf-premios">${premios}</ul>
         ${historial ? `<div class="tf-historial"><h2>Tus sellos</h2><ol>${historial}</ol></div>` : ""}
         ${accion ? `<div class="tp-acciones">${accion}</div>` : ""}
+      </div>`;
+    return { tarjeta, info, f };
+  }
+
+  function fidelidad(planes, opciones = {}, extra = 0) {
+    const { tarjeta, info } = fidelidadPartes(planes, opciones, extra);
+    return `<article class="tp tp--fidelidad" data-tono="dorado" data-estado="fidelidad">
+      <header class="tp-cabeza">
+        ${logo()}
+        <h1 class="tp-titulo"><span class="tp-titulo__a">Tarjeta de</span> <span class="tp-titulo__b">Fidelidad</span></h1>
+      </header>
+      ${tarjeta}
+      ${info}
+    </article>`;
+  }
+
+  /* ---------- Datos de pago, "¿mi perfume es original?" y tarjeta de fidelidad ----------
+     Una sola hoja, a la izquierda de las tablas: la tarjeta dorada con los datos para
+     transferir (con botones para copiar la CLABE y el nombre que va en el concepto), la tarjeta
+     que al tocarla crece hasta llenar la pantalla con el video de cómo comprobar que el perfume
+     es original (pagos.js hace la animación) y, si está prendida, la tarjeta de fidelidad.
+     d: { titular, banco, etiqueta, numero, poster, fidelidad: { planes, opciones, extra } } */
+  const agrupar = (numero) => (/^\d{18}$/.test(numero)
+    ? `${numero.slice(0, 3)} ${numero.slice(3, 6)} ${numero.slice(6, 17)} ${numero.slice(17)}`
+    : numero.replace(/(\d{4})(?=\d)/g, "$1 "));
+
+  function datosPago(planes, d) {
+    const cliente = texto(planes[0]?.client_name);
+    const numero = texto(d.numero).replace(/\s+/g, "");
+    const sello = d.fidelidad ? fidelidadPartes(d.fidelidad.planes || planes, d.fidelidad.opciones, d.fidelidad.extra) : null;
+    return `<article class="tp tp--pago" data-tono="dorado" data-estado="pago">
+      <header class="tp-cabeza">
+        ${logo()}
+        <h1 class="tp-titulo"><span class="tp-titulo__a">Datos de</span> <span class="tp-titulo__b">Pago</span></h1>
+      </header>
+      <div class="tq-escena" aria-hidden="true">
+        <div class="tq-plastico">
+          <span class="tq-plastico__chip"></span>
+          <span class="tq-plastico__linea tq-plastico__linea--a"></span><span class="tq-plastico__linea tq-plastico__linea--b"></span><span class="tq-plastico__linea tq-plastico__linea--c"></span>
+          <span class="tq-plastico__linea tq-plastico__linea--larga"></span>
+          <span class="tq-plastico__circulos"><i></i><i></i></span>
+          <span class="tq-plastico__banco">${escapar(d.banco)}</span>
+        </div>
+      </div>
+      <div class="tq-info">
+        <p class="tq-etiqueta"><span></span>Transferencia bancaria<span></span></p>
+        <div class="tq-datos">
+          <p class="tq-titular">${escapar(d.titular)}</p>
+          <p class="tq-banco">Banco ${escapar(d.banco)}</p>
+          <div class="tq-numero">
+            <span class="tq-numero__etiqueta">${escapar(d.etiqueta)}</span>
+            <strong class="tq-numero__cifra">${escapar(agrupar(numero))}</strong>
+            <button class="tq-copiar" type="button" data-copiar="${escapar(numero)}" data-copiado="${escapar(d.etiqueta)} copiada"><i class="ph ph-copy" aria-hidden="true"></i><span>Copiar ${escapar(d.etiqueta)}</span></button>
+          </div>
+        </div>
+        <div class="tq-concepto">
+          <i class="ph ph-note-pencil" aria-hidden="true"></i>
+          <p><strong>No olvides poner tu nombre en el concepto de pago.</strong>${cliente ? ` Escribe <b>${escapar(cliente)}</b> para que tu abono quede en tu tabla.` : ""}</p>
+          ${cliente ? `<button class="tq-copiar tq-copiar--chico" type="button" data-copiar="${escapar(cliente)}" data-copiado="Nombre copiado"><i class="ph ph-copy" aria-hidden="true"></i><span>Copiar nombre</span></button>` : ""}
+        </div>
+        <button class="tq-original" type="button" data-video-original aria-haspopup="dialog">
+          <span class="tq-original__foto"><img src="${escapar(d.poster)}" alt="" decoding="async" loading="lazy"><span class="tq-original__play" aria-hidden="true"><i class="ph-fill ph-play"></i></span></span>
+          <span class="tq-original__texto">
+            <small><i class="ph ph-seal-check" aria-hidden="true"></i>Garantía Sensorial</small>
+            <b>¿Mi perfume es original?</b>
+            <span>Te enseñamos a comprobarlo con su código de lote. Dura 1 minuto.</span>
+          </span>
+          <i class="ph ph-arrows-out-simple tq-original__abrir" aria-hidden="true"></i>
+        </button>
+        ${sello ? `<section class="tq-fidelidad" aria-labelledby="tq-fidelidad-${logos}">
+          <h2 class="tq-seccion" id="tq-fidelidad-${logos}"><span></span>Tu tarjeta de fidelidad<span></span></h2>
+          ${sello.tarjeta}
+          ${sello.info}
+        </section>` : ""}
       </div>
     </article>`;
   }
@@ -439,10 +510,10 @@
   function cabecera(estado = "en-curso") {
     const letras = (palabra) => `<span class="tp-letras">${[...palabra].map((l) => `<span class="tp-letra">${l}</span>`).join("")}</span>`;
     const titulo = (clave, a, b) => `<span class="tp-titulos__uno" data-titulo="${clave}"${clave === estado ? "" : ' aria-hidden="true"'}><span class="tp-titulo__a">${a}</span> <span class="tp-titulo__b">${letras(b)}</span></span>`;
-    return `<header class="tp tp--cabecera" data-estado="${["liquidado", "fidelidad"].includes(estado) ? estado : "en-curso"}">
+    return `<header class="tp tp--cabecera" data-estado="${["liquidado", "fidelidad", "pago"].includes(estado) ? estado : "en-curso"}">
       <div class="tp-cabeza">
         ${logo()}
-        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("fidelidad", "Tarjeta de", "Fidelidad")}</h1>
+        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("pago", "Datos de", "Pago")}${titulo("fidelidad", "Tarjeta de", "Fidelidad")}</h1>
       </div>
     </header>`;
   }
@@ -1107,6 +1178,6 @@
   window.TablaPagos = {
     TONOS, calcular, pintar, cabecera, montar, intro, telon, logo, parallax, fondo, archivo, guardar,
     dinero, fecha, imagen, marcaDeAgua, nombrePago, escapar, resenaHecha, CALIFICACIONES,
-    fidelidad, cuentaFidelidad, SELLOS,
+    fidelidad, cuentaFidelidad, SELLOS, datosPago,
   };
 })();
