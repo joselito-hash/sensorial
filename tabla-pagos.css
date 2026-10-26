@@ -1018,7 +1018,9 @@
   .tp--fidelidad:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
   .tp--fidelidad .tf-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 2.5rem; }
   .tp--pago:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
-  .tp--pago .tq-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 3rem; }
+  /* La tarjeta dorada al centro de la columna izquierda (a media pantalla, bajo el índice) y
+     ahí se queda mientras se baja por los datos */
+  .tp--pago .tq-escena { position: sticky; top: 6.25rem; align-self: start; height: calc(100svh - 7.5rem); min-height: 22rem; margin-top: 0; padding: 0; }
   .tp--pago .tq-plastico { width: min(82%, 26rem); }
   .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
   /* Con varios perfumes, debajo del índice de arriba */
