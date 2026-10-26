@@ -20,6 +20,9 @@
     horizontal: "videos/original-horizontal.mp4",
     poster: "videos/original-vertical.webp",
     posterHorizontal: "videos/original-horizontal.webp",
+    /* El primer cuadro exacto de cada video: va debajo mientras arranca (sin parpadeo) */
+    inicioVertical: "videos/original-vertical-inicio.webp",
+    inicioHorizontal: "videos/original-horizontal-inicio.webp",
   };
   const T = window.TablaPagos;
   const reducido = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -439,66 +442,134 @@
   }
 
   /* ---------- "¿Mi perfume es original?" ----------
-     La tarjeta crece desde su lugar hasta llenar la pantalla y ahí se reproduce el video (con
-     sonido: lo pidió la clienta al tocar). Vertical en el teléfono, horizontal en computadora.
+     La tarjeta crece desde su lugar hasta llenar la pantalla y ahí sigue el video, sin
+     controles: tocarlo pausa o continúa, y una línea dorada marca el avance. Vertical en el
+     teléfono, horizontal en computadora. Para que no haya jalones ni parpadeos:
+       - el video se precarga en cuanto la clienta llega a la hoja de pago;
+       - empieza a reproducirse en el mismo toque (también así se oye en el iPhone);
+       - el marco crece cambiando su caja, no con escala, y el video nunca se estira;
+       - debajo del video está su primer cuadro exacto, así no hay hueco mientras arranca.
      Se cierra con la x, con Esc o tocando fuera, y la tarjeta regresa a su lugar. */
+  const esVertical = () => window.matchMedia("(max-width: 47.99rem), (orientation: portrait)").matches;
+  const fuenteVideo = () => (esVertical()
+    ? { src: VIDEO_ORIGINAL.vertical, inicio: VIDEO_ORIGINAL.inicioVertical, ancho: 9, alto: 16 }
+    : { src: VIDEO_ORIGINAL.horizontal, inicio: VIDEO_ORIGINAL.inicioHorizontal, ancho: 16, alto: 9 });
+  let videoListo = null;
+  function precargarVideo() {
+    const { src, inicio } = fuenteVideo();
+    if (videoListo?.dataset.src === src) return videoListo;
+    videoListo = Object.assign(document.createElement("video"), { preload: "auto", playsInline: true, src });
+    videoListo.dataset.src = src;
+    videoListo.setAttribute("playsinline", "");
+    videoListo.load();
+    new Image().src = inicio;
+    return videoListo;
+  }
+
+  /* El lugar final del video: centrado, lo más grande que quepa con su forma */
+  function cajaFinal({ ancho, alto }) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const w = ancho < alto
+      ? Math.min((vh * 0.88) * (ancho / alto), vw - 32)
+      : Math.min(vw * 0.9, (vh - 96) * (ancho / alto), 1152);
+    const h = w * (alto / ancho);
+    return { left: (vw - w) / 2, top: (vh - h) / 2, width: w, height: h };
+  }
+  const comoCaja = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+
   function abrirVideoOriginal(tarjeta) {
     if (document.querySelector(".tq-video")) return;
-    const vertical = window.matchMedia("(max-width: 47.99rem), (orientation: portrait)").matches;
+    const fuente = fuenteVideo();
+    const video = precargarVideo();
+    videoListo = null;
+    if (video.currentTime) video.currentTime = 0;
     const capa = document.createElement("div");
-    capa.className = `tq-video tq-video--${vertical ? "vertical" : "horizontal"}`;
+    capa.className = "tq-video";
     capa.setAttribute("role", "dialog");
     capa.setAttribute("aria-modal", "true");
     capa.setAttribute("aria-label", "Cómo saber si tu perfume es original");
     capa.innerHTML = `<div class="tq-video__fondo"></div>
-      <div class="tq-video__marco"><video playsinline controls preload="auto" poster="${T.escapar(vertical ? VIDEO_ORIGINAL.poster : VIDEO_ORIGINAL.posterHorizontal)}" src="${T.escapar(vertical ? VIDEO_ORIGINAL.vertical : VIDEO_ORIGINAL.horizontal)}"></video></div>
+      <div class="tq-video__marco" role="button" tabindex="0" aria-label="Pausar o seguir el video">
+        <span class="tq-video__pausa" aria-hidden="true"><i class="ph-fill ph-play"></i></span>
+        <span class="tq-video__avance" aria-hidden="true"><span></span></span>
+      </div>
       <button class="tq-video__cerrar" type="button" aria-label="Cerrar el video"><i class="ph ph-x" aria-hidden="true"></i></button>`;
-    document.body.append(capa);
-    document.body.classList.add("con-video");
     const marco = capa.querySelector(".tq-video__marco");
     const fondo = capa.querySelector(".tq-video__fondo");
-    const video = capa.querySelector("video");
     const cerrarBoton = capa.querySelector(".tq-video__cerrar");
-    escena.inert = true;
+    const linea = capa.querySelector(".tq-video__avance");
+    marco.style.backgroundImage = `url("${fuente.inicio}")`;
+    marco.prepend(video);
 
-    /* De la tarjeta al video: el marco empieza con el tamaño y lugar de la tarjeta (FLIP) */
+    /* Arranca ya, en el toque; si el navegador no deja con sonido, arranca sin sonido */
+    video.muted = false;
+    video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
+
     const desde = tarjeta.getBoundingClientRect();
-    const hasta = marco.getBoundingClientRect();
-    const inicio = `translate(${desde.left - hasta.left}px, ${desde.top - hasta.top}px) scale(${desde.width / hasta.width}, ${desde.height / hasta.height})`;
-    const curva = "cubic-bezier(0.22, 1, 0.36, 1)";
-    const dura = reducido() ? 0 : 650;
+    const hasta = cajaFinal(fuente);
+    Object.assign(marco.style, comoCaja(hasta));
+    document.body.append(capa);
+    document.body.classList.add("con-video");
+    escena.inert = true;
     tarjeta.style.visibility = "hidden";
-    marco.animate([{ transform: inicio, borderRadius: "1.5rem" }, { transform: "none", borderRadius: "1.5rem" }], { duration: dura, easing: curva });
-    fondo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dura * 0.8, easing: "ease-out" });
-    cerrarBoton.animate([{ opacity: 0, transform: "scale(0.8)" }, { opacity: 1, transform: "none" }], { duration: 300, delay: dura * 0.7, fill: "backwards" });
-    video.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, delay: dura * 0.5, fill: "backwards" });
-    setTimeout(() => { video.play().catch(() => {}); }, dura);
+
+    const lento = reducido() ? 0 : 620;
+    const curva = "cubic-bezier(0.22, 1, 0.36, 1)";
+    marco.animate([comoCaja(desde), comoCaja(hasta)], { duration: lento, easing: curva });
+    fondo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: lento * 0.8, easing: "ease-out" });
+    cerrarBoton.animate([{ opacity: 0, transform: "scale(0.8)" }, { opacity: 1, transform: "none" }], { duration: 280, delay: lento * 0.7, easing: curva, fill: "backwards" });
     cerrarBoton.focus({ preventScroll: true });
 
+    /* La línea de avance sigue al video cuadro a cuadro (sin los saltos de "timeupdate") */
+    let cuadro = 0;
+    const avanzar = () => {
+      if (video.duration) linea.style.setProperty("--avance", (video.currentTime / video.duration).toFixed(4));
+      cuadro = requestAnimationFrame(avanzar);
+    };
+    cuadro = requestAnimationFrame(avanzar);
+    const marcarPausa = () => capa.classList.toggle("is-pausado", video.paused);
+    video.addEventListener("play", marcarPausa);
+    video.addEventListener("pause", marcarPausa);
+    const alternar = () => (video.paused || video.ended ? video.play().catch(() => {}) : video.pause());
+    marco.addEventListener("click", alternar);
+    marco.addEventListener("keydown", (evento) => {
+      if (evento.key === " " || evento.key === "Enter") { evento.preventDefault(); alternar(); }
+    });
+
     let cerrando = false;
-    const cerrar = () => {
+    const teclas = (evento) => { if (evento.key === "Escape") cerrar(); };
+    /* Si gira el teléfono o cambia la ventana, el video se reacomoda */
+    const reacomodar = () => { if (!cerrando) Object.assign(marco.style, comoCaja(cajaFinal(fuente))); };
+    function cerrar() {
       if (cerrando) return;
       cerrando = true;
       video.pause();
+      cancelAnimationFrame(cuadro);
       const ahora = marco.getBoundingClientRect();
       const destino = tarjeta.getBoundingClientRect();
-      const fin = `translate(${destino.left - ahora.left}px, ${destino.top - ahora.top}px) scale(${destino.width / ahora.width}, ${destino.height / ahora.height})`;
-      const salida = reducido() ? 0 : 480;
-      video.animate([{ opacity: 1 }, { opacity: 0 }], { duration: salida * 0.5, fill: "forwards" });
-      cerrarBoton.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: "forwards" });
-      fondo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: salida, fill: "forwards" });
-      marco.animate([{ transform: "none" }, { transform: fin }], { duration: salida, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "forwards" })
+      const salida = reducido() ? 0 : 460;
+      const suave = "cubic-bezier(0.65, 0, 0.35, 1)";
+      cerrarBoton.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
+      fondo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: salida, easing: "ease-in", fill: "forwards" });
+      linea.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: "forwards" });
+      marco.animate([{ ...comoCaja(ahora), opacity: 1 }, { ...comoCaja(destino), opacity: 0.6 }], { duration: salida, easing: suave, fill: "forwards" })
         .finished.catch(() => {}).finally(() => {
           tarjeta.style.visibility = "";
           capa.remove();
+          video.removeAttribute("src");
+          video.load();
           document.body.classList.remove("con-video");
           escena.inert = false;
           document.removeEventListener("keydown", teclas);
+          window.removeEventListener("resize", reacomodar);
           tarjeta.focus({ preventScroll: true });
         });
-    };
-    const teclas = (evento) => { if (evento.key === "Escape") cerrar(); };
+    }
+    /* Cuando termina, se cierra solo y la tarjeta regresa */
+    video.addEventListener("ended", () => setTimeout(cerrar, 500), { once: true });
     document.addEventListener("keydown", teclas);
+    window.addEventListener("resize", reacomodar);
     cerrarBoton.addEventListener("click", cerrar);
     fondo.addEventListener("click", cerrar);
   }
@@ -511,6 +582,13 @@
       const original = evento.target.closest("[data-video-original]");
       if (original) abrirVideoOriginal(original);
     });
+    /* Por si llega a la tarjeta sin pasar por la hoja: se precarga al acercarse */
+    escena.addEventListener("pointerover", (evento) => {
+      if (evento.target.closest("[data-video-original]")) precargarVideo();
+    });
+    escena.addEventListener("touchstart", (evento) => {
+      if (evento.target.closest("[data-video-original]")) precargarVideo();
+    }, { passive: true });
     escena.querySelectorAll(".tp-resena__resto").forEach((resto) => { resto.inert = true; });
     escena.addEventListener("change", (evento) => {
       const estrella = evento.target.closest(".tp-estrellas__op input");
@@ -852,6 +930,7 @@
           cabecera.querySelectorAll("[data-titulo]").forEach((t) => t.toggleAttribute("aria-hidden", t.dataset.titulo !== estado));
           document.body.dataset.tono = esPago ? "dorado" : tonoDe(grupo[k]);
           if (esPago) {
+            precargarVideo();
             if (!frascos.classList.contains("is-avisa")) anuncio.textContent = tarjeta.activa ? "Tus datos de pago y tu tarjeta de fidelidad" : "Tus datos de pago";
             setTimeout(verTarjeta, 250);
             return;
