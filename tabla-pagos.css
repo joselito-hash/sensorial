@@ -638,6 +638,11 @@
 /* La tarjeta de fidelidad, al tamaño de la cartera */
 .tw-carta .tf-escena { width: 100%; height: 100%; margin: 0; padding: 0; }
 .tw-carta .tf-tarjeta { width: 100%; height: 100%; border-radius: 7% / 11%; }
+/* En la cartera solo se mueve con el barajeo: sin su entrada propia (subía inclinada en 3D y
+   se cruzaba con el barajeo) ni la inclinación con el mouse */
+.tw-carta .tf-escena { perspective: none; }
+.tw-carta .tf-tarjeta,
+.tw-carta .tf-tarjeta.is-vista { transform: none; animation: none; transition: none; }
 /* Sus manchas tinta se perdían con el fondo oscuro y la tarjeta se veía más chica: un filo
    dorado fino (encima de todo) dibuja su contorno completo, igual que la del video */
 .tw-carta .tf-tarjeta::after {
@@ -687,8 +692,10 @@
 .tw-panel { display: grid; justify-items: center; gap: 0.5rem; width: 100%; padding: 1.35rem 1.2rem 1.3rem; border-radius: 1.75rem; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9); }
 /* Los paneles van encimados en la misma celda: la caja siempre mide lo del más alto y al
    cambiar de tarjeta no se mueve nada de la página. El oculto no se ve ni se puede tocar. */
-.tw-paneles { display: grid; width: 100%; }
-.tw-panel { grid-area: 1 / 1; align-content: start; }
+.tw-paneles { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+/* min-width 0: la fila de sellos (que se desliza) no ensancha el panel */
+.tw-panel { grid-area: 1 / 1; grid-template-columns: minmax(0, 1fr); align-content: center; min-width: 0; }
+.tw-panel .tf-info, .tw-panel .tf-historial { min-width: 0; max-width: 100%; }
 .tw-panel[hidden] { display: grid; visibility: hidden; opacity: 0; pointer-events: none; }
 .tw-sobre { display: flex; align-items: center; gap: 0.7rem; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
 .tw-sobre span { width: 1.6rem; height: 1px; background: currentColor; opacity: 0.7; }
@@ -740,7 +747,7 @@
 .tw-panel .tf-info { width: 100%; margin-top: 0; }
 .tw-panel .tf-info > * { grid-area: auto; }
 .tw-panel .tf-cuenta { font-size: 1.1rem; }
-.tw-panel .tf-regla-web { font-size: 0.9rem; }
+.tw-panel .tf-regla-web { display: none; }
 .tw-panel .tf-premios { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.6rem; margin-top: 0.8rem; }
 .tw-panel .tf-premio { grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.7rem; padding: 0.75rem 0.85rem; border-radius: 1.2rem; }
 .tw-panel .tf-premio__icono { width: 2.3rem; font-size: 1.15rem; }
@@ -748,8 +755,20 @@
 .tw-panel .tf-premio__texto b { font-size: 0.98rem; }
 .tw-panel .tf-historial { margin-top: 0.9rem; padding-top: 0.8rem; }
 .tw-panel .tf-historial h2 { margin-bottom: 0.5rem; }
-.tw-panel .tf-historial ol { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.tw-panel .tf-historial li { display: inline-flex; gap: 0.4rem; padding: 0.35rem 0.7rem 0.35rem 0.6rem; border: 0; border-radius: 999px; background: rgb(255 255 255 / 0.05); font-size: 0.82rem; }
+/* Una sola fila que se desliza de lado: el panel mide lo mismo con 2 sellos que con 8 */
+.tw-panel .tf-historial ol {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
+  padding-right: 2rem;
+}
+.tw-panel .tf-historial ol::-webkit-scrollbar { display: none; }
+.tw-panel .tf-historial li { flex: none; scroll-snap-align: start; white-space: nowrap; display: inline-flex; gap: 0.4rem; padding: 0.35rem 0.7rem 0.35rem 0.6rem; border: 0; border-radius: 999px; background: rgb(255 255 255 / 0.05); font-size: 0.82rem; }
 .tw-panel .tf-historial li.is-curso { background: none; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); color: var(--tp-tinta-2); }
 .tw-panel .tf-historial__nombre b { font-weight: 600; }
 .tw-panel .tf-historial__nombre small { display: none; }

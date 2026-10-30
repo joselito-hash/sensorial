@@ -613,7 +613,9 @@
       }
       colocar();
       if (!reducido()) {
-        const atras = 10 - desde;
+        /* Al subir va por detrás de todas (capa 1): las demás ya cambiaron de lugar y, con la
+           misma capa, la que sigue en la página se dibujaba encima */
+        const atras = 1;
         /* Arriba de todo: su borde de abajo queda por encima de la tarjeta del frente */
         const arriba = "translateY(-106%) rotate(-2.5deg) scale(0.95)";
         barajeo = carta.animate([
@@ -812,7 +814,7 @@
     raiz.addEventListener("pointerdown", (evento) => {
       if (!evento.isPrimary || evento.button !== 0) return;
       /* Escribiendo la reseña (o eligiendo texto) no se cambia de perfume */
-      if (evento.target.closest("input, textarea, label, .tp-resena__captcha")) return;
+      if (evento.target.closest("input, textarea, label, .tp-resena__captcha, .tf-historial ol")) return;
       arrastre = { id: evento.pointerId, x0: evento.clientX, y0: evento.clientY, lado: false, desde: 0, muestras: [[evento.timeStamp, evento.clientX]] };
     });
     raiz.addEventListener("pointermove", (evento) => {
@@ -867,6 +869,8 @@
     let ruedaUsada = false;
     window.addEventListener("wheel", (evento) => {
       if (Math.abs(evento.deltaX) <= Math.abs(evento.deltaY)) return;
+      /* La fila de sellos se desliza sola de lado: ahí el trackpad no cambia de hoja */
+      if (evento.target.closest?.(".tf-historial ol")) return;
       evento.preventDefault();
       clearTimeout(ruedaPausa);
       ruedaPausa = setTimeout(() => { rueda = 0; ruedaUsada = false; }, 220);
@@ -952,7 +956,7 @@
     const cabecera = escena.querySelector(".tp--cabecera");
     const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera):not(.tp--fidelidad):not(.tp--pago)")];
     const verTarjeta = iniciarFidelidad(escena.querySelector(".tp-hoja--pago"));
-    iniciarCartera(escena.querySelector(".tp-hoja--pago"), { alElegir: (clave) => { if (clave === "sellos") setTimeout(verTarjeta, 350); } });
+    iniciarCartera(escena.querySelector(".tp-hoja--pago"), { alElegir: (clave) => { if (clave === "sellos") setTimeout(verTarjeta, reducido() ? 0 : 900); } });
     /* La hoja 0 es la de pago: la de cada perfume es su lugar en el grupo + 1 */
     const HOJA = (k) => k + 1;
     const descargas = tablas.map((tabla, i) => prepararDescarga(tabla, grupo[i]));
