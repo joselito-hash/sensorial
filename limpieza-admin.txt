@@ -1,0 +1,44 @@
+﻿
+=== Es administrador ===
+True
+
+=== Exclusiones de Defender ANTES ===
+Rutas:       
+Procesos:    
+Extensiones: 
+IPs:         
+
+=== Quitando las exclusiones del malware ===
+Quitada exclusion de proceso FirefoxSetup.exe
+Quitada exclusion de ruta C:\Users\Public\dEplOYradF423F\
+Quitada exclusion de ruta C:\Users\Public\dEplOYradF423F
+
+=== Exclusiones de Defender DESPUES ===
+Rutas:       
+Procesos:    
+
+=== Estado de Defender (que no lo hayan apagado) ===
+Antivirus activo:        True
+Proteccion en tiempo real: True
+Proteccion contra alteraciones: True
+DisableRealtimeMonitoring: False
+DisableBehaviorMonitoring: False
+DisableIOAVProtection:     False
+SubmitSamplesConsent:      1
+MAPSReporting:             2
+
+=== Archivos de tareas programadas modificados desde el 29/10 00:30 ===
+
+LastWriteTime             FullName                                                                             
+-------------             --------                                                                             
+29/10/2026 12:43:54 a. m. C:\Windows\System32\Tasks\Microsoft\Windows\Flighting\OneSettings\RefreshCache       
+29/10/2026 12:44:24 a. m. C:\Windows\System32\Tasks\Microsoft\Windows\SoftwareProtectionPlatform\SvcRestartTask
+
+
+
+
+=== Tareas cuyo XML menciona el malware ===
+C:\Windows\System32\Tasks\Microsoft\Windows\AppxDeploymentClient\Pre-staged app cleanup: <URI>\Microsoft\Windows\AppxDeploymentClient\Pre-staged app cleanup</URI>
+C:\Windows\System32\Tasks\Microsoft\Windows\AppxDeploymentClient\UCPD velocity: <URI>\Microsoft\Windows\AppxDeploymentClient\UCPD velocity</URI>
+
+=== Tareas ocultas (sin descriptor de seguridad) en el registro ===

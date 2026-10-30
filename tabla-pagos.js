@@ -335,12 +335,13 @@
     </article>`;
   }
 
-  /* ---------- Datos de pago, "¿mi perfume es original?" y tarjeta de fidelidad ----------
-     Una sola hoja, a la izquierda de las tablas: la tarjeta dorada con los datos para
-     transferir (con botones para copiar la CLABE y el nombre que va en el concepto), la tarjeta
-     que al tocarla crece hasta llenar la pantalla con el video de cómo comprobar que el perfume
-     es original (pagos.js hace la animación) y, si está prendida, la tarjeta de fidelidad.
-     d: { titular, banco, etiqueta, numero, poster, fidelidad: { planes, opciones, extra } } */
+  /* ---------- Tu cartera: datos de pago, "¿mi perfume es original?" y sellos ----------
+     Una sola hoja, a la izquierda de las tablas, hecha como una cartera: las tarjetas van
+     apiladas (la dorada de pago, la del video y, si está prendida, la de fidelidad). Tocar una
+     tarjeta o su pestaña la saca de la pila, la pone al frente y muestra solo su información,
+     al lado en computadora y debajo en el teléfono: todo cabe en una pantalla, sin bajar.
+     pagos.js mueve la pila y abre el video. d: { titular, banco, etiqueta, numero, poster,
+     fidelidad: { planes, opciones, extra } } */
   const agrupar = (numero) => (/^\d{18}$/.test(numero)
     ? `${numero.slice(0, 3)} ${numero.slice(3, 6)} ${numero.slice(6, 17)} ${numero.slice(17)}`
     : numero.replace(/(\d{4})(?=\d)/g, "$1 "));
@@ -349,50 +350,75 @@
     const cliente = texto(planes[0]?.client_name);
     const numero = texto(d.numero).replace(/\s+/g, "");
     const sello = d.fidelidad ? fidelidadPartes(d.fidelidad.planes || planes, d.fidelidad.opciones, d.fidelidad.extra) : null;
-    return `<article class="tp tp--pago" data-tono="dorado" data-estado="pago">
-      <header class="tp-cabeza">
-        ${logo()}
-        <h1 class="tp-titulo"><span class="tp-titulo__a">Datos de</span> <span class="tp-titulo__b">Pago</span></h1>
-      </header>
-      <div class="tq-escena" aria-hidden="true">
-        <div class="tq-plastico">
+    logos += 1;
+    const id = `tw-${logos}`;
+    const cartas = [
+      { clave: "pago", pestana: "Pagar", icono: "ph-credit-card" },
+      { clave: "original", pestana: "¿Es original?", icono: "ph-seal-check" },
+      ...(sello ? [{ clave: "sellos", pestana: "Mis sellos", icono: "ph-stamp" }] : []),
+    ];
+
+    const carta = {
+      pago: `<div class="tq-plastico">
           <span class="tq-plastico__chip"></span>
           <span class="tq-plastico__linea tq-plastico__linea--a"></span><span class="tq-plastico__linea tq-plastico__linea--b"></span><span class="tq-plastico__linea tq-plastico__linea--c"></span>
           <span class="tq-plastico__linea tq-plastico__linea--larga"></span>
           <span class="tq-plastico__circulos"><i></i><i></i></span>
           <span class="tq-plastico__banco">${escapar(d.banco)}</span>
-        </div>
-      </div>
-      <div class="tq-info">
-        <p class="tq-etiqueta"><span></span>Transferencia bancaria<span></span></p>
-        <div class="tq-datos">
-          <p class="tq-titular">${escapar(d.titular)}</p>
-          <p class="tq-banco">Banco ${escapar(d.banco)}</p>
-          <div class="tq-numero">
-            <span class="tq-numero__etiqueta">${escapar(d.etiqueta)}</span>
-            <strong class="tq-numero__cifra">${escapar(agrupar(numero))}</strong>
-            <button class="tq-copiar" type="button" data-copiar="${escapar(numero)}" data-copiado="${escapar(d.etiqueta)} copiada"><i class="ph ph-copy" aria-hidden="true"></i><span>Copiar ${escapar(d.etiqueta)}</span></button>
-          </div>
+          <span class="tq-plastico__titular">${escapar(d.titular)}</span>
+        </div>`,
+      original: `<div class="tw-original">
+          <img src="${escapar(d.poster)}" alt="" decoding="async">
+          <span class="tw-original__velo"></span>
+          <span class="tw-original__marca"><i class="ph ph-seal-check"></i>Garantía Sensorial</span>
+          <span class="tw-original__titulo">¿Mi perfume<br>es original?</span>
+          <span class="tw-original__play"><i class="ph-fill ph-play"></i></span>
+        </div>`,
+      sellos: sello ? sello.tarjeta : "",
+    };
+
+    const panel = {
+      pago: `<p class="tw-sobre"><span></span>Transferencia bancaria<span></span></p>
+        <p class="tq-titular">${escapar(d.titular)}</p>
+        <p class="tq-banco">Banco ${escapar(d.banco)}</p>
+        <div class="tq-numero">
+          <span class="tq-numero__etiqueta">${escapar(d.etiqueta)}</span>
+          <strong class="tq-numero__cifra">${escapar(agrupar(numero))}</strong>
+          <button class="tq-copiar" type="button" data-copiar="${escapar(numero)}" data-copiado="${escapar(d.etiqueta)} copiada"><i class="ph ph-copy" aria-hidden="true"></i><span>Copiar ${escapar(d.etiqueta)}</span></button>
         </div>
         <div class="tq-concepto">
           <i class="ph ph-note-pencil" aria-hidden="true"></i>
-          <p><strong>No olvides poner tu nombre en el concepto de pago.</strong>${cliente ? ` Escribe <b>${escapar(cliente)}</b> para que tu abono quede en tu tabla.` : ""}</p>
+          <p><strong>Pon tu nombre en el concepto de pago.</strong>${cliente ? ` Escribe <b>${escapar(cliente)}</b> para que tu abono quede en tu tabla.` : ""}</p>
           ${cliente ? `<button class="tq-copiar tq-copiar--chico" type="button" data-copiar="${escapar(cliente)}" data-copiado="Nombre copiado"><i class="ph ph-copy" aria-hidden="true"></i><span>Copiar nombre</span></button>` : ""}
+        </div>`,
+      original: `<p class="tw-sobre"><span></span>Garantía Sensorial<span></span></p>
+        <h3 class="tw-titulo">¿Mi perfume es original?</h3>
+        <p class="tw-texto">Compruébalo tú misma con el código de lote de tu frasco. Te enseñamos cómo en un minuto.</p>
+        <ol class="tw-pasos">
+          <li><b>01</b><span>Escanea el código QR</span></li>
+          <li><b>02</b><span>Busca el código de lote en la base del frasco</span></li>
+          <li><b>03</b><span>Consulta su fecha de fabricación</span></li>
+        </ol>
+        <button class="tq-copiar tw-ver" type="button" data-video-original aria-haspopup="dialog"><i class="ph-fill ph-play" aria-hidden="true"></i><span>Ver el video · 1 min</span></button>`,
+      sellos: sello ? `<p class="tw-sobre"><span></span>Tu tarjeta de fidelidad<span></span></p>${sello.info}` : "",
+    };
+
+    return `<article class="tp tp--pago" data-tono="dorado" data-estado="pago">
+      <header class="tp-cabeza">
+        ${logo()}
+        <h1 class="tp-titulo"><span class="tp-titulo__a">Tu</span> <span class="tp-titulo__b">Cartera</span></h1>
+      </header>
+      <div class="tw" data-cartera>
+        <div class="tw-pila" aria-hidden="true" data-cartas="${cartas.length}">
+          <span class="tw-hueco"></span>
+          ${cartas.map((c, i) => `<div class="tw-carta tw-carta--${c.clave}" data-carta="${c.clave}" data-pos="${i}">${carta[c.clave]}</div>`).join("")}
         </div>
-        <button class="tq-original" type="button" data-video-original aria-haspopup="dialog">
-          <span class="tq-original__foto"><img src="${escapar(d.poster)}" alt="" decoding="async" loading="lazy"><span class="tq-original__play" aria-hidden="true"><i class="ph-fill ph-play"></i></span></span>
-          <span class="tq-original__texto">
-            <small><i class="ph ph-seal-check" aria-hidden="true"></i>Garantía Sensorial</small>
-            <b>¿Mi perfume es original?</b>
-            <span>Te enseñamos a comprobarlo con su código de lote. Dura 1 minuto.</span>
-          </span>
-          <i class="ph ph-arrows-out-simple tq-original__abrir" aria-hidden="true"></i>
-        </button>
-        ${sello ? `<section class="tq-fidelidad" aria-labelledby="tq-fidelidad-${logos}">
-          <h2 class="tq-seccion" id="tq-fidelidad-${logos}"><span></span>Tu tarjeta de fidelidad<span></span></h2>
-          ${sello.tarjeta}
-          ${sello.info}
-        </section>` : ""}
+        <div class="tw-lado">
+          <div class="tw-pestanas" role="tablist" aria-label="Tu cartera">
+            ${cartas.map((c, i) => `<button class="tw-pestana" type="button" role="tab" id="${id}-t-${c.clave}" aria-controls="${id}-p-${c.clave}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-pestana="${c.clave}"><i class="ph ${c.icono}" aria-hidden="true"></i>${c.pestana}</button>`).join("")}
+          </div>
+          ${cartas.map((c, i) => `<section class="tw-panel tw-panel--${c.clave}" role="tabpanel" id="${id}-p-${c.clave}" aria-labelledby="${id}-t-${c.clave}" data-panel="${c.clave}"${i === 0 ? "" : " hidden"}>${panel[c.clave]}</section>`).join("")}
+        </div>
       </div>
     </article>`;
   }
@@ -513,7 +539,7 @@
     return `<header class="tp tp--cabecera" data-estado="${["liquidado", "fidelidad", "pago"].includes(estado) ? estado : "en-curso"}">
       <div class="tp-cabeza">
         ${logo()}
-        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("pago", "Datos de", "Pago")}${titulo("fidelidad", "Tarjeta de", "Fidelidad")}</h1>
+        <h1 class="tp-titulo tp-titulos">${titulo("en-curso", "Tabla de", "Pagos")}${titulo("liquidado", "Pago", "completo")}${titulo("pago", "Tu", "Cartera")}${titulo("fidelidad", "Tarjeta de", "Fidelidad")}</h1>
       </div>
     </header>`;
   }

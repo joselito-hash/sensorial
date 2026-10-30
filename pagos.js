@@ -20,6 +20,8 @@
     horizontal: "videos/original-horizontal.mp4",
     poster: "videos/original-vertical.webp",
     posterHorizontal: "videos/original-horizontal.webp",
+    /* Fondo de la tarjeta del video en la cartera: la base de un frasco con su código de lote */
+    tarjeta: "videos/original-tarjeta.webp",
     /* El primer cuadro exacto de cada video: va debajo mientras arranca (sin parpadeo) */
     inicioVertical: "videos/original-vertical-inicio.webp",
     inicioHorizontal: "videos/original-horizontal-inicio.webp",
@@ -574,13 +576,75 @@
     fondo.addEventListener("click", cerrar);
   }
 
+  /* ---------- Tu cartera ----------
+     Las tarjetas apiladas (pago, original y, si está prendida, sellos). Elegir una (tocándola
+     o con su pestaña) la saca de la pila con un pequeño arco y la pone al frente; las demás
+     se recorren hacia atrás conservando su orden. Al frente, la del video abre el video. */
+  function iniciarCartera(hoja, { alElegir } = {}) {
+    const cartera = hoja?.querySelector("[data-cartera]");
+    if (!cartera) return;
+    const pila = cartera.querySelector(".tw-pila");
+    const cartas = [...pila.querySelectorAll("[data-carta]")];
+    const pestanas = [...cartera.querySelectorAll("[data-pestana]")];
+    pila.style.setProperty("--tw-n", cartas.length);
+    let orden = cartas.map((c) => c.dataset.carta);
+    const colocar = () => orden.forEach((clave, pos) => {
+      const carta = cartas.find((c) => c.dataset.carta === clave);
+      carta.dataset.pos = pos;
+      carta.style.setProperty("--pos", pos);
+    });
+    colocar();
+
+    function elegir(clave, { enfocar = false } = {}) {
+      if (orden[0] === clave) return;
+      const carta = cartas.find((c) => c.dataset.carta === clave);
+      const antes = getComputedStyle(carta).transform;
+      orden = [clave, ...orden.filter((c) => c !== clave)];
+      colocar();
+      /* Sale por arriba de la pila y baja al frente (las demás se recorren con su transición) */
+      if (!reducido()) {
+        carta.style.zIndex = "5";
+        carta.animate([
+          { transform: antes },
+          { transform: "translateY(-58%) rotate(-4deg) scale(0.97)", offset: 0.42 },
+          { transform: "translateY(0) scale(1)" },
+        ], { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+        setTimeout(() => { carta.style.zIndex = ""; }, 300);
+      }
+      pestanas.forEach((p) => {
+        const activa = p.dataset.pestana === clave;
+        p.setAttribute("aria-selected", String(activa));
+        p.tabIndex = activa ? 0 : -1;
+        if (activa && enfocar) p.focus();
+      });
+      cartera.querySelectorAll("[data-panel]").forEach((panel) => { panel.hidden = panel.dataset.panel !== clave; });
+      if (clave === "original") precargarVideo();
+      alElegir?.(clave);
+    }
+
+    cartas.forEach((carta) => carta.addEventListener("click", () => {
+      if (carta.dataset.pos !== "0") elegir(carta.dataset.carta);
+      else if (carta.dataset.carta === "original") abrirVideoOriginal(carta);
+    }));
+    pestanas.forEach((p, i) => {
+      p.addEventListener("click", () => elegir(p.dataset.pestana));
+      p.addEventListener("keydown", (evento) => {
+        const paso = { ArrowRight: 1, ArrowLeft: -1 }[evento.key];
+        if (!paso) return;
+        evento.preventDefault();
+        evento.stopPropagation();
+        elegir(pestanas[(i + paso + pestanas.length) % pestanas.length].dataset.pestana, { enfocar: true });
+      });
+    });
+  }
+
   /* Un solo juego de eventos para todas las hojas (cada perfume tiene su reseña) */
   function iniciarResenas() {
     escena.addEventListener("click", (evento) => {
       const boton = evento.target.closest("[data-copiar]");
       if (boton) copiar(boton);
       const original = evento.target.closest("[data-video-original]");
-      if (original) abrirVideoOriginal(original);
+      if (original) abrirVideoOriginal(original.closest(".tp-hoja")?.querySelector(".tw-carta--original") || original);
     });
     /* Por si llega a la tarjeta sin pasar por la hoja: se precarga al acercarse */
     escena.addEventListener("pointerover", (evento) => {
@@ -643,7 +707,7 @@
     const f = T.cuentaFidelidad(grupo, tarjeta.extra);
     const hojaPago = `<div class="tp-hoja tp-hoja--pago" role="group" aria-roledescription="hoja" aria-label="Datos de pago${conTarjeta ? " y tarjeta de fidelidad" : ""}">${T.datosPago(grupo, {
       ...DATOS_PAGO,
-      poster: VIDEO_ORIGINAL.poster,
+      poster: VIDEO_ORIGINAL.tarjeta,
       fidelidad: conTarjeta ? { planes: grupo, opciones: opcionesFidelidad(grupo), extra: tarjeta.extra } : null,
     })}</div>`;
     const resumen = conTarjeta ? `CLABE · ${f.selladosAqui}/${T.SELLOS} sellos` : "CLABE y garantía";
@@ -875,6 +939,7 @@
     const cabecera = escena.querySelector(".tp--cabecera");
     const tablas = [...escena.querySelectorAll(".tp:not(.tp--cabecera):not(.tp--fidelidad):not(.tp--pago)")];
     const verTarjeta = iniciarFidelidad(escena.querySelector(".tp-hoja--pago"));
+    iniciarCartera(escena.querySelector(".tp-hoja--pago"), { alElegir: (clave) => { if (clave === "sellos") setTimeout(verTarjeta, 350); } });
     /* La hoja 0 es la de pago: la de cada perfume es su lugar en el grupo + 1 */
     const HOJA = (k) => k + 1;
     const descargas = tablas.map((tabla, i) => prepararDescarga(tabla, grupo[i]));
@@ -931,8 +996,7 @@
           document.body.dataset.tono = esPago ? "dorado" : tonoDe(grupo[k]);
           if (esPago) {
             precargarVideo();
-            if (!frascos.classList.contains("is-avisa")) anuncio.textContent = tarjeta.activa ? "Tus datos de pago y tu tarjeta de fidelidad" : "Tus datos de pago";
-            setTimeout(verTarjeta, 250);
+            if (!frascos.classList.contains("is-avisa")) anuncio.textContent = "Tu cartera: datos de pago, garantía" + (tarjeta.activa ? " y tarjeta de fidelidad" : "");
             return;
           }
           if (!frascos.classList.contains("is-avisa")) anuncio.textContent = `Perfume ${k + 1} de ${grupo.length}: ${nombreDe(grupo[k])}`;

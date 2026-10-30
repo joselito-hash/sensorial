@@ -566,61 +566,128 @@
 .tf-historial li > i { color: var(--tp-oro); font-size: 1.3rem; }
 .tf-historial li.is-curso > i { color: var(--tp-tinta-2); }
 
-/* ---------- Datos de pago ----------
-   Como la imagen de la tienda: la tarjeta dorada inclinada y, abajo, el panel oscuro con la
-   transferencia. La CLABE y el nombre del concepto se copian con un toque. Debajo, la
-   tarjeta "¿Mi perfume es original?" que abre el video. */
-.tp--pago { grid-template-areas: "cabeza" "visual" "info"; }
-.tq-escena { grid-area: visual; display: grid; place-items: center; width: 100%; padding: clamp(1rem, 6cqi, 2rem) 0 clamp(0.5rem, 3cqi, 1rem); perspective: 1200px; }
+/* ---------- Tu cartera ----------
+   Las tarjetas van apiladas como en una cartera: la del frente completa y las de atrás
+   asomando por arriba, un poco más chicas y en penumbra. Al elegir otra (tocándola o con su
+   pestaña) sale de la pila y se pone al frente. Al lado (computadora) o debajo (teléfono),
+   solo la información de la tarjeta del frente: todo cabe en una pantalla.
+   --pos: 0 al frente, 1 y 2 detrás (pagos.js los cambia). */
+.tp--pago { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cabeza" "info"; }
+.tw { grid-area: info; display: grid; justify-items: center; gap: 1.4rem; width: 100%; margin-top: clamp(0.75rem, 4cqi, 1.5rem); }
+.tw > * { grid-area: auto; }
+
+.tw-pila {
+  --tw-asoma: 15%;
+  position: relative;
+  width: min(100%, 23rem);
+  /* Espacio arriba para lo que asoman las de atrás: n - 1 franjas del 15% de su alto */
+  padding-top: calc((var(--tw-n, 3) - 1) * 0.15 * 54 / 85.6 * 100%);
+}
+.tw-hueco { display: block; width: 100%; aspect-ratio: 85.6 / 54; }
+.tw-carta {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  aspect-ratio: 85.6 / 54;
+  z-index: calc(10 - var(--pos, 0));
+  transform-origin: 50% 0;
+  transform: translateY(calc(var(--pos, 0) * var(--tw-asoma) * -1)) scale(calc(1 - var(--pos, 0) * 0.06));
+  filter: brightness(calc(1 - var(--pos, 0) * 0.16));
+  cursor: pointer;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), filter 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.tw-carta[data-pos="0"] { cursor: default; }
+.tw-carta--original[data-pos="0"] { cursor: pointer; }
+.tw-carta:not([data-pos="0"]):hover { transform: translateY(calc(var(--pos, 0) * var(--tw-asoma) * -1 - 3%)) scale(calc(1 - var(--pos, 0) * 0.06)); }
+
+/* La tarjeta dorada (pago) */
 .tq-plastico {
   position: relative;
-  width: min(78%, 22rem);
-  aspect-ratio: 85.6 / 54;
+  width: 100%;
+  height: 100%;
+  container-type: inline-size;
   border-radius: 7% / 11%;
   background:
     radial-gradient(120% 90% at 20% 10%, rgb(255 255 255 / 0.4), transparent 55%),
     linear-gradient(135deg, #f6d995 0%, #e9c27a 45%, #d9ad62 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 2rem 3rem -1.4rem rgb(5 3 4 / 0.9);
-  rotate: 8deg;
-  transform: rotateY(var(--tq-ry, -6deg)) rotateX(var(--tq-rx, 4deg));
-  transition: transform 0.7s var(--tp-suave);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 1.6rem 2.4rem -1.4rem rgb(5 3 4 / 0.9);
 }
-.tq-plastico__chip { position: absolute; left: 9%; top: 15%; width: 15%; aspect-ratio: 1.05; border-radius: 18%; background: #231c20; }
-.tq-plastico__linea { position: absolute; height: 5.5%; border-radius: 99px; background: #231c20; }
-.tq-plastico__linea--a { left: 8%; top: 52%; width: 14%; }
-.tq-plastico__linea--b { left: 26%; top: 55%; width: 13%; }
-.tq-plastico__linea--c { left: 43%; top: 58%; width: 13%; }
-.tq-plastico__linea--larga { left: 8%; top: 66%; width: 48%; rotate: 5deg; transform-origin: left center; }
-.tq-plastico__circulos { position: absolute; right: 7%; bottom: 14%; display: flex; }
-.tq-plastico__circulos i { width: clamp(1.9rem, 10cqi, 3rem); aspect-ratio: 1; border-radius: 50%; background: #f7f2ea; }
-.tq-plastico__circulos i + i { margin-left: -0.9rem; background: #1a1517; }
-.tq-plastico__banco { position: absolute; right: 8%; top: 13%; color: rgb(35 28 32 / 0.75); font-size: clamp(0.8rem, 3.6cqi, 1.05rem); font-weight: 800; letter-spacing: 0.08em; }
+.tq-plastico__chip { position: absolute; left: 8%; top: 14%; width: 14%; aspect-ratio: 1.05; border-radius: 18%; background: #231c20; }
+.tq-plastico__linea { position: absolute; height: 5%; border-radius: 99px; background: #231c20; }
+.tq-plastico__linea--a { left: 8%; top: 47%; width: 13%; }
+.tq-plastico__linea--b { left: 24%; top: 50%; width: 12%; }
+.tq-plastico__linea--c { left: 39%; top: 53%; width: 12%; }
+.tq-plastico__linea--larga { left: 8%; top: 60%; width: 44%; rotate: 5deg; transform-origin: left center; }
+.tq-plastico__circulos { position: absolute; right: 7%; bottom: 12%; display: flex; }
+.tq-plastico__circulos i { width: 13cqi; aspect-ratio: 1; border-radius: 50%; background: #f7f2ea; }
+.tq-plastico__circulos i + i { margin-left: -4cqi; background: #1a1517; }
+.tq-plastico__banco { position: absolute; right: 8%; top: 12%; color: rgb(35 28 32 / 0.75); font-size: 4.6cqi; font-weight: 800; letter-spacing: 0.08em; }
+.tq-plastico__titular { position: absolute; left: 8%; bottom: 13%; color: rgb(35 28 32 / 0.82); font-size: 5cqi; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 
-.tq-info { grid-area: info; display: grid; justify-items: center; gap: 1rem; width: min(100%, 29rem); margin-top: 0.5rem; }
-.tq-info > * { grid-area: auto; }
-.tq-etiqueta { display: flex; align-items: center; gap: 0.8rem; }
-.tq-etiqueta { padding: 0; color: var(--tp-tinta); font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
-.tq-etiqueta span { width: 2.2rem; height: 2px; border-radius: 1px; background: var(--tp-tinta); opacity: 0.85; }
-.tq-datos {
-  display: grid;
-  justify-items: center;
-  gap: 0.15rem;
-  width: 100%;
-  padding: 1.4rem 1.2rem 1.25rem;
-  border-radius: 1.75rem;
-  background: rgb(255 255 255 / 0.03);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9);
+/* La tarjeta del video (original) */
+.tw-original { position: relative; width: 100%; height: 100%; overflow: hidden; container-type: inline-size; border-radius: 7% / 11%; background: #1a1517; box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.35), 0 1.6rem 2.4rem -1.4rem rgb(5 3 4 / 0.9); }
+.tw-original img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+.tw-original__velo { position: absolute; inset: 0; background: linear-gradient(to top, rgb(20 15 18 / 0.95) 18%, rgb(20 15 18 / 0.45) 58%, rgb(20 15 18 / 0.6) 100%); }
+.tw-original__marca { position: absolute; left: 8%; top: 13%; display: inline-flex; align-items: center; gap: 1.4cqi; color: var(--tp-oro); font-size: 3.6cqi; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.tw-original__titulo { position: absolute; left: 8%; bottom: 14%; color: var(--tp-tinta); font-size: 7.6cqi; font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; }
+.tw-original__play { position: absolute; right: 8%; bottom: 14%; display: grid; place-items: center; width: 15cqi; aspect-ratio: 1; border-radius: 50%; background: var(--tp-oro); color: #2a1f15; font-size: 5.6cqi; box-shadow: 0 0.6rem 1.2rem -0.5rem rgb(0 0 0 / 0.7); transition: transform 0.35s var(--tp-suave); }
+.tw-carta--original[data-pos="0"]:hover .tw-original__play { transform: scale(1.08); }
+
+/* La tarjeta de fidelidad, al tamaño de la cartera */
+.tw-carta .tf-escena { width: 100%; height: 100%; margin: 0; padding: 0; }
+.tw-carta .tf-tarjeta { width: 100%; height: 100%; }
+
+/* Pestañas: las tres tarjetas, como control segmentado */
+.tw-lado { display: grid; justify-items: center; gap: 1rem; width: min(100%, 29rem); }
+.tw-pestanas { display: flex; gap: 0.2rem; padding: 0.3rem; border-radius: 999px; background: rgb(255 255 255 / 0.05); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07); }
+.tw-pestana {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tp-tinta-2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.3s var(--tp-suave), color 0.3s var(--tp-suave);
 }
-.tq-titular { font-size: clamp(1.9rem, 9cqi, 2.6rem); font-weight: 400; line-height: 1.05; letter-spacing: -0.01em; }
-.tq-banco { margin-top: 0.35rem; font-size: 1.15rem; font-weight: 800; }
-.tq-numero { display: grid; justify-items: center; gap: 0.35rem; width: 100%; margin-top: 0.9rem; padding: 0.95rem 0.8rem 1rem; border-radius: 1.25rem; background: rgb(255 255 255 / 0.04); }
-.tq-numero__etiqueta { color: var(--tp-tinta-2); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
-.tq-numero__cifra { font-size: clamp(1.25rem, 6.4cqi, 1.75rem); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; word-break: break-word; text-align: center; }
+.tw-pestana i { font-size: 1.05rem; }
+.tw-pestana:hover { color: var(--tp-tinta); }
+.tw-pestana[aria-selected="true"] { background: var(--tp-oro); color: #2a1f15; }
+.tw-pestana:focus-visible { outline: 2px solid var(--tp-tono); outline-offset: 2px; }
+.tw-pestana:active { transform: scale(0.97); }
+/* Teléfonos angostos: las tres pestañas caben sin empujar la hoja */
+@container (max-width: 26rem) {
+  .tw-pestanas { max-width: 100%; }
+  .tw-pestana { gap: 0.3rem; padding: 0.55rem 0.7rem; font-size: 0.82rem; }
+  .tw-pestana i { font-size: 0.95rem; }
+}
+@container (max-width: 22rem) {
+  .tw-pestana i { display: none; }
+}
+
+/* El panel de la tarjeta del frente */
+.tw-panel { display: grid; justify-items: center; gap: 0.5rem; width: 100%; padding: 1.35rem 1.2rem 1.3rem; border-radius: 1.75rem; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9); }
+.tw-panel[hidden] { display: none; }
+.tw-sobre { display: flex; align-items: center; gap: 0.7rem; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.tw-sobre span { width: 1.6rem; height: 1px; background: currentColor; opacity: 0.7; }
+.tq-titular { font-size: clamp(1.8rem, 8cqi, 2.4rem); font-weight: 400; line-height: 1.05; letter-spacing: -0.01em; }
+.tq-banco { font-size: 1.05rem; font-weight: 800; }
+.tq-numero { display: grid; justify-items: center; gap: 0.3rem; width: 100%; margin-top: 0.4rem; padding: 0.85rem 0.8rem 0.95rem; border-radius: 1.25rem; background: rgb(255 255 255 / 0.04); }
+.tq-numero__etiqueta { color: var(--tp-tinta-2); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.tq-numero__cifra { font-size: clamp(1.2rem, 6cqi, 1.6rem); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; text-align: center; }
 .tq-copiar {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  margin-top: 0.3rem;
+  margin-top: 0.25rem;
   padding: 0.6rem 1.1rem;
   border: 0;
   border-radius: 999px;
@@ -638,52 +705,50 @@
 .tq-copiar--chico { padding: 0.45rem 0.9rem; border: 1.5px solid rgb(227 196 140 / 0.7); background: transparent; color: var(--tp-oro); font-size: 0.85rem; }
 .tq-copiar--chico:hover { background: rgb(227 196 140 / 0.1); }
 .tq-copiar--chico.is-copiado { border-color: #b2d7c2; background: transparent; color: #b2d7c2; }
-.tq-concepto { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.35rem 0.75rem; width: 100%; padding: 0 0.25rem; text-align: left; }
-.tq-concepto > i { margin-top: 0.15rem; color: var(--tp-oro); font-size: 1.35rem; }
-.tq-concepto p { color: var(--tp-tinta-2); font-size: 0.95rem; line-height: 1.45; }
+.tq-concepto { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.3rem 0.7rem; width: 100%; margin-top: 0.6rem; padding-top: 0.9rem; border-top: 1px solid rgb(255 255 255 / 0.07); text-align: left; }
+.tq-concepto > i { margin-top: 0.1rem; color: var(--tp-oro); font-size: 1.3rem; }
+.tq-concepto p { color: var(--tp-tinta-2); font-size: 0.92rem; line-height: 1.45; }
 .tq-concepto strong { display: block; color: var(--tp-tinta); font-weight: 700; }
 .tq-concepto b { color: var(--tp-oro); font-weight: 700; }
-.tq-concepto .tq-copiar { grid-column: 2; justify-self: start; margin-top: 0.2rem; }
+.tq-concepto .tq-copiar { grid-column: 2; justify-self: start; margin-top: 0.15rem; }
 
-/* La tarjeta que crece hasta el video */
-.tq-original {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.75rem 1.1rem 0.75rem 0.75rem;
-  border: 0;
-  border-radius: 1.5rem;
-  background: linear-gradient(135deg, rgb(227 196 140 / 0.14), rgb(255 255 255 / 0.03));
-  box-shadow: inset 0 0 0 1px rgb(227 196 140 / 0.35);
-  color: var(--tp-tinta);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.35s var(--tp-suave), box-shadow 0.35s;
+.tw-titulo { margin: 0; font-size: clamp(1.4rem, 6.5cqi, 1.75rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+.tw-texto { max-width: 32ch; color: var(--tp-tinta-2); font-size: 0.95rem; line-height: 1.45; }
+.tw-pasos { display: grid; gap: 0.5rem; width: 100%; margin: 0.4rem 0 0.2rem; padding: 0; list-style: none; text-align: left; }
+.tw-pasos li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; border-radius: 1rem; background: rgb(255 255 255 / 0.04); font-size: 0.92rem; font-weight: 600; }
+.tw-pasos b { color: var(--tp-oro); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
+.tw-ver { margin-top: 0.3rem; padding: 0.75rem 1.3rem; font-size: 0.98rem; }
+
+/* La tarjeta de fidelidad en su panel: compacta para que quepa en una pantalla. Sus piezas
+   van una debajo de otra (no en las áreas de su hoja propia), los premios lado a lado y los
+   sellos como etiquetas (la tarjeta de la pila ya los muestra en sus círculos) */
+.tw-panel > * { grid-area: auto; }
+.tw-panel .tf-info { width: 100%; margin-top: 0; }
+.tw-panel .tf-info > * { grid-area: auto; }
+.tw-panel .tf-cuenta { font-size: 1.1rem; }
+.tw-panel .tf-regla-web { font-size: 0.9rem; }
+.tw-panel .tf-premios { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.6rem; margin-top: 0.8rem; }
+.tw-panel .tf-premio { grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.7rem; padding: 0.75rem 0.85rem; border-radius: 1.2rem; }
+.tw-panel .tf-premio__icono { width: 2.3rem; font-size: 1.15rem; }
+.tw-panel .tf-premio__texto { font-size: 0.85rem; }
+.tw-panel .tf-premio__texto b { font-size: 0.98rem; }
+.tw-panel .tf-historial { margin-top: 0.9rem; padding-top: 0.8rem; }
+.tw-panel .tf-historial h2 { margin-bottom: 0.5rem; }
+.tw-panel .tf-historial ol { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tw-panel .tf-historial li { display: inline-flex; gap: 0.4rem; padding: 0.35rem 0.7rem 0.35rem 0.6rem; border: 0; border-radius: 999px; background: rgb(255 255 255 / 0.05); font-size: 0.82rem; }
+.tw-panel .tf-historial li.is-curso { background: none; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); color: var(--tp-tinta-2); }
+.tw-panel .tf-historial__nombre b { font-weight: 600; }
+.tw-panel .tf-historial__nombre small { display: none; }
+.tw-panel .tf-historial li > i { font-size: 1rem; }
+.tw-panel .tp-acciones { margin-top: 0.9rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tw-panel:not([hidden]) { animation: tw-entra 0.5s var(--tp-suave) both; }
+  @keyframes tw-entra { from { opacity: 0; transform: translateY(0.6rem); } }
 }
-.tq-original:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--tp-oro), 0 1.4rem 2rem -1.4rem rgb(0 0 0 / 0.8); }
-.tq-original:active { transform: scale(0.98); }
-.tq-original:focus-visible { outline: 2px solid var(--tp-tono); outline-offset: 3px; }
-.tq-original__foto { position: relative; display: grid; place-items: center; width: 5.25rem; aspect-ratio: 9 / 13; overflow: hidden; border-radius: 1rem; background: #1a1517; }
-.tq-original__foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
-.tq-original__play { position: relative; display: grid; place-items: center; width: 2.4rem; aspect-ratio: 1; border-radius: 50%; background: var(--tp-oro); color: #2a1f15; font-size: 1rem; box-shadow: 0 0.5rem 1rem -0.4rem rgb(0 0 0 / 0.7); }
-.tq-original__texto { display: grid; gap: 0.2rem; }
-.tq-original__texto small { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-.tq-original__texto b { font-size: clamp(1.1rem, 5cqi, 1.3rem); font-weight: 800; line-height: 1.15; }
-.tq-original__texto > span { color: var(--tp-tinta-2); font-size: 0.9rem; line-height: 1.4; }
-.tq-original__abrir { color: var(--tp-oro); font-size: 1.3rem; }
-
-/* La tarjeta de fidelidad, como tercera parte de la misma hoja */
-.tq-fidelidad { display: grid; justify-items: center; width: 100%; margin-top: 1.5rem; padding-top: 1.6rem; border-top: 1px solid rgb(227 196 140 / 0.35); }
-.tq-seccion { display: flex; align-items: center; gap: 0.8rem; margin: 0 0 1rem; color: var(--tp-tinta); font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
-.tq-seccion span { width: 2.2rem; height: 2px; border-radius: 1px; background: var(--tp-tinta); opacity: 0.85; }
-/* Sus piezas van una debajo de otra, no en las áreas de su hoja propia ("visual", "info") */
-.tq-fidelidad > * { grid-area: auto; }
-.tq-fidelidad .tf-escena { margin: 0; }
-.tq-fidelidad .tf-info { width: 100%; margin-top: 1.25rem; }
+@media (prefers-reduced-motion: reduce) {
+  .tw-carta { transition: none; }
+}
 
 /* El video: la tarjeta crece hasta aquí. pagos.js le da al marco el lugar y tamaño de la
    tarjeta y lo lleva al de la pantalla cambiando su caja (no con escala), así el video nunca
@@ -1017,11 +1082,12 @@
   .tp--liquidado:not(.tp--cabecera) { grid-template-areas: "visual cabeza" "visual nombre" "visual saldo" "visual tarjeta" "visual resena" "visual resumen" "visual contacto" "visual ."; }
   .tp--fidelidad:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
   .tp--fidelidad .tf-escena { position: sticky; top: 6.25rem; align-self: start; margin-top: 2.5rem; }
-  .tp--pago:not(.tp--cabecera) { grid-template-rows: auto auto 1fr; grid-template-areas: "visual cabeza" "visual info" "visual ."; }
-  /* La tarjeta dorada al centro de la columna izquierda (a media pantalla, bajo el índice) y
-     ahí se queda mientras se baja por los datos */
-  .tp--pago .tq-escena { position: sticky; top: 6.25rem; align-self: start; height: calc(100svh - 7.5rem); min-height: 22rem; margin-top: 0; padding: 0; }
-  .tp--pago .tq-plastico { width: min(82%, 26rem); }
+  /* Computadora: la pila a la izquierda, al centro de la pantalla; a la derecha, pestañas y
+     panel. Ambos a la vista sin bajar. */
+  .tp--pago:not(.tp--cabecera) { grid-template-rows: auto 1fr; grid-template-areas: ". cabeza" "info info"; }
+  .tw { grid-template-columns: minmax(0, 1.05fr) minmax(0, 30rem); align-items: center; column-gap: clamp(2rem, 5cqi, 5rem); margin-top: 0.5rem; }
+  .tw-pila { justify-self: center; width: min(88%, 30rem); }
+  .tw-lado { justify-self: stretch; width: 100%; }
   .tp:not(.tp--cabecera) .tp-visual { position: sticky; top: 1.5rem; align-self: start; --tp-alto: min(82svh, 44rem); }
   /* Con varios perfumes, debajo del índice de arriba */
   .tp-escena--varias .tp:not(.tp--cabecera) .tp-visual { top: 6.25rem; --tp-alto: min(76svh, 42rem); }

@@ -1,0 +1,138 @@
+﻿
+=== Es administrador ===
+True
+
+=== Prefetch: programas ejecutados por primera vez desde las 00:30 (o con nombre sospechoso) ===
+
+CreationTime              LastWriteTime             Name                                  
+------------              -------------             ----                                  
+29/10/2026 12:30:33 a. m. 29/10/2026 12:30:33 a. m. RUNDLL32.EXE-FDCBB5A1.pf              
+29/10/2026 12:32:36 a. m. 29/10/2026 12:32:38 a. m. BACKGROUNDTRANSFERHOST.EXE-E7B7D877.pf
+29/10/2026 12:34:01 a. m. 29/10/2026 12:34:01 a. m. POWERSHELL.EXE-AE8EDC9B.pf            
+29/10/2026 12:34:01 a. m. 29/10/2026 12:34:01 a. m. PING.EXE-0314C2F7.pf                  
+29/10/2026 12:34:01 a. m. 29/10/2026 12:34:01 a. m. CMD.EXE-6D6290C5.pf                   
+29/10/2026 12:34:01 a. m. 29/10/2026 12:34:02 a. m. SCHTASKS.EXE-DC1676CD.pf              
+29/10/2026 12:34:02 a. m. 29/10/2026 12:34:02 a. m. MSIEXEC.EXE-8FFB1633.pf               
+29/10/2026 12:34:03 a. m. 29/10/2026 12:34:03 a. m. MSIEXEC.EXE-CDBFC0F7.pf               
+29/10/2026 12:36:50 a. m. 29/10/2026 12:43:09 a. m. CHCP.COM-2CF9B15C.pf                  
+29/10/2026 12:39:19 a. m. 29/10/2026 12:39:19 a. m. SVCHOST.EXE-62677B80.pf               
+29/10/2026 12:39:41 a. m. 29/10/2026 12:40:01 a. m. SECHEALTHUI.EXE-5BABE360.pf           
+29/10/2026 12:39:42 a. m. 29/10/2026 12:39:42 a. m. SVCHOST.EXE-9481872C.pf               
+29/10/2026 12:39:42 a. m. 29/10/2026 12:39:42 a. m. SVCHOST.EXE-8C0617FB.pf               
+29/10/2026 12:39:57 a. m. 29/10/2026 12:39:57 a. m. CVTRES.EXE-BBD3ED93.pf                
+29/10/2026 12:39:57 a. m. 29/10/2026 12:39:57 a. m. CSC.EXE-B6D5E435.pf                   
+29/10/2026 12:40:04 a. m. 29/10/2026 12:40:04 a. m. RUNTIMEBROKER.EXE-2ED200B0.pf         
+29/10/2026 12:40:12 a. m. 29/10/2026 12:40:12 a. m. MPCMDRUN.EXE-2C9109F9.pf              
+
+
+
+
+=== BAM: ejecutables registrados desde las 00:30 ===
+2026-10-29 00:30:11  Claude_pzs8sxrjxfjjc
+2026-10-29 00:30:17  \Device\HarddiskVolume3\Windows\System32\DataExchangeHost.exe
+2026-10-29 00:30:33  \Device\HarddiskVolume3\Windows\System32\rundll32.exe
+2026-10-29 00:30:56  AdvancedMicroDevicesInc-2.AMDRadeonSoftware_0a9344xs7nr4m
+2026-10-29 00:30:58  Microsoft.WindowsTerminal_8wekyb3d8bbwe
+2026-10-29 00:33:17  Microsoft.YourPhone_8wekyb3d8bbwe
+2026-10-29 00:34:02  Microsoft.WindowsFeedbackHub_8wekyb3d8bbwe
+2026-10-29 00:34:10  Microsoft.WindowsStore_8wekyb3d8bbwe
+2026-10-29 00:35:53  \Device\HarddiskVolume3\Windows\System32\ShellHost.exe
+2026-10-29 00:37:28  Microsoft.ZuneMusic_8wekyb3d8bbwe
+2026-10-29 00:38:12  OpenAI.Codex_2p2nqsd0c76g0
+2026-10-29 00:38:50  Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy
+2026-10-29 00:39:22  \Device\HarddiskVolume3\Windows\System32\svchost.exe
+2026-10-29 00:41:51  \Device\HarddiskVolume3\Windows\System32\WerFault.exe
+2026-10-29 00:42:21  Microsoft.SecHealthUI_8wekyb3d8bbwe
+2026-10-29 00:42:32  B9ECED6F.ASUSPCAssistant_qmba6cd70vzyy
+2026-10-29 00:43:09  \Device\HarddiskVolume3\Windows\System32\cmd.exe
+2026-10-29 00:43:58  B9ECED6F.Glidex_qmba6cd70vzyy
+2026-10-29 00:43:58  Microsoft.WindowsNotepad_8wekyb3d8bbwe
+2026-10-29 00:44:07  \Device\HarddiskVolume3\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+2026-10-29 00:44:50  MicrosoftWindows.Client.CBS_cw5n1h2txyewy
+2026-10-29 00:44:57  \Device\HarddiskVolume3\Windows\System32\conhost.exe
+2026-10-29 00:44:57  \Device\HarddiskVolume3\Windows\System32\consent.exe
+2026-10-29 00:44:57  \Device\HarddiskVolume3\Windows\System32\dllhost.exe
+2026-10-29 00:44:57  windows.immersivecontrolpanel_cw5n1h2txyewy
+2026-10-29 00:45:00  \Device\HarddiskVolume3\Windows\System32\ctfmon.exe
+2026-10-29 00:45:00  \Device\HarddiskVolume3\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+=== Eventos 4688 (procesos creados) entre 00:30 y 01:00 ===
+Sin eventos (auditoria desactivada normalmente): No se encontraron eventos que coincidan con los criterios de selección especificados.
+
+=== Procesos corriendo fuera de Windows / Program Files ===
+
+ProcessId Name                         ExecutablePath                                                                                                                                           
+--------- ----                         --------------                                                                                                                                           
+    28800 claude.exe                   C:\Users\fayui\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\2.1.309\9078b9c1d466\claude.exe                                                
+    56144 claude.exe                   C:\Users\fayui\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\2.1.309\9078b9c1d466\claude.exe                                                
+    13720 codex.exe                    C:\Users\fayui\AppData\Local\OpenAI\Codex\bin\08d187884f2330d1\codex.exe                                                                                 
+    51544 codex.exe                    C:\Users\fayui\AppData\Local\OpenAI\Codex\bin\08d187884f2330d1\codex.exe                                                                                 
+    21196 codex-code-mode-host.exe     C:\Users\fayui\AppData\Local\OpenAI\Codex\bin\08d187884f2330d1\codex-code-mode-host.exe                                                                  
+    36200 codex-computer-use-swift.exe C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_modules\@oai\sky\bin\windows\swift\x64\codex-computer-use-swift.exe
+    20584 conhost.exe                  \\?\C:\Windows\system32\conhost.exe                                                                                                                      
+    44224 conhost.exe                  \\?\C:\Windows\system32\conhost.exe                                                                                                                      
+    44660 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    46128 node.exe                     C:\Users\fayui\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe                                                                
+    37088 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    30452 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    14148 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    15112 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    45164 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    28524 node.exe                     C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node.exe                                                                
+    18492 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    21528 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    18708 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    43036 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    32680 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    13468 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    54044 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+    43576 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+     4336 node_repl.exe                C:\Users\fayui\AppData\Local\OpenAI\Codex\runtimes\cua_node\e8c74e7ee9bd567e\bin\node_repl.exe                                                           
+
+
+
+
+=== Archivos creados entre 00:33 y 00:45 en carpetas protegidas ===
+
+CreationTime                Length FullName                                                                                                                                                                     
+------------                ------ --------                                                                                                                                                                     
+29/10/2026 12:33:58 a. m.     8003 C:\ProgramData\Microsoft\Windows Defender\Scans\History\Store\CED922979E5C1DA4F10E06C36262251F                                                                               
+29/10/2026 12:33:58 a. m.      350 C:\ProgramData\Microsoft\Windows Defender\Scans\RtSigs\Data\08eae5635dce1fe9296b442b98ab857b9e88ddd3                                                                         
+29/10/2026 12:33:58 a. m.      350 C:\ProgramData\Microsoft\Windows Defender\Scans\RtSigs\Data\08b0abc90ae505312de95f5cc8949d339070c470                                                                         
+29/10/2026 12:39:10 a. m.    16384 C:\ProgramData\USOShared\Logs\User\UpdateUx.d474aa88-9fdf-46c2-b592-d99f634a3e9d.1.etl                                                                                       
+29/10/2026 12:39:31 a. m.          C:\ProgramData\Microsoft\Windows\AppRepository\Families\Microsoft.SecHealthUI_8wekyb3d8bbwe                                                                                  
+29/10/2026 12:39:31 a. m.          C:\ProgramData\Microsoft\Windows\AppRepository\Families\Microsoft.SecHealthUI_8wekyb3d8bbwe\SharedLocal                                                                      
+29/10/2026 12:41:30 a. m.    11952 C:\ProgramData\Microsoft\Windows Defender\Scans\History\Results\Quick\{C6B9C27B-8322-4E42-BCFB-6F9E847D2628}                                                                 
+29/10/2026 12:41:41 a. m.          C:\ProgramData\Microsoft\Windows Defender\Definition Updates\{0215D254-7841-449A-91F3-DBAA9330DEBF}                                                                          
+29/10/2026 12:41:41 a. m. 19368808 C:\ProgramData\Microsoft\Windows Defender\Definition Updates\{0215D254-7841-449A-91F3-DBAA9330DEBF}\mpengine.dll                                                             
+29/10/2026 12:41:51 a. m.          C:\ProgramData\Microsoft\Windows\WER\ReportArchive\AppHang_Microsoft.SecHea_a4f04c2891becf535d7121da7d57689496f1bb74_863d7e9b_34a663bc-2744-4b7b-b1c5-e64b14c131b1           
+29/10/2026 12:41:51 a. m.    43244 C:\ProgramData\Microsoft\Windows\WER\ReportArchive\AppHang_Microsoft.SecHea_a4f04c2891becf535d7121da7d57689496f1bb74_863d7e9b_34a663bc-2744-4b7b-b1c5-e64b14c131b1\Report.wer
+
+
+
+
+=== Tareas programadas con acciones sospechosas ===
+\ZoomUpdateTaskUser-S-1-5-21-3885457455-2146754295-4052498042-1001  ->  "C:\Users\fayui\AppData\Roaming\Zoom\bin\Zoom.exe" --action=UpdateSchedule
+
+=== Persistencia WMI ===
+
+
+Name                : SCM Event Log Consumer
+CommandLineTemplate : 
+ScriptText          : 
+
+
+
+
+
+
+Filter   : __EventFilter (Name = "SCM Event Log Filter")
+Consumer : NTEventLogEventConsumer (Name = "SCM Event Log Consumer")
+
+
+
+
+
+=== Defender: detecciones ===
+
+Sin detecciones desde las 00:30.
