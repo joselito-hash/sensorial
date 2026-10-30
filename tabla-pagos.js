@@ -417,7 +417,9 @@
           <div class="tw-pestanas" role="tablist" aria-label="Tu cartera">
             ${cartas.map((c, i) => `<button class="tw-pestana" type="button" role="tab" id="${id}-t-${c.clave}" aria-controls="${id}-p-${c.clave}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-pestana="${c.clave}"><i class="ph ${c.icono}" aria-hidden="true"></i>${c.pestana}</button>`).join("")}
           </div>
-          ${cartas.map((c, i) => `<section class="tw-panel tw-panel--${c.clave}" role="tabpanel" id="${id}-p-${c.clave}" aria-labelledby="${id}-t-${c.clave}" data-panel="${c.clave}"${i === 0 ? "" : " hidden"}>${panel[c.clave]}</section>`).join("")}
+          <div class="tw-paneles">
+            ${cartas.map((c, i) => `<section class="tw-panel tw-panel--${c.clave}" role="tabpanel" id="${id}-p-${c.clave}" aria-labelledby="${id}-t-${c.clave}" data-panel="${c.clave}"${i === 0 ? "" : " hidden"}>${panel[c.clave]}</section>`).join("")}
+          </div>
         </div>
       </div>
     </article>`;

@@ -595,9 +595,9 @@
     });
     colocar();
 
-    /* Barajeo: la elegida sale de lado fuera de la pila (todavía por detrás), cambia de capa
-       ya afuera y regresa al frente; mientras regresa, las demás se recorren hacia atrás.
-       Nunca se atraviesan. */
+    /* Barajeo: la elegida sube por arriba de la pila (todavía por detrás), ya afuera cambia
+       de capa y baja al frente; mientras baja, las demás se recorren hacia atrás. Nunca se
+       atraviesan. */
     let barajeo = null;
     function elegir(clave, { enfocar = false } = {}) {
       if (orden[0] === clave) return;
@@ -613,15 +613,15 @@
       }
       colocar();
       if (!reducido()) {
-        const fuera = window.matchMedia("(max-width: 40rem)").matches ? 48 : 76;
-        const alto = desde * 15;
         const atras = 10 - desde;
+        /* Arriba de todo: su borde de abajo queda por encima de la tarjeta del frente */
+        const arriba = "translateY(-106%) rotate(-2.5deg) scale(0.95)";
         barajeo = carta.animate([
           { transform: antes, zIndex: atras, easing: "cubic-bezier(0.3, 0.7, 0.4, 1)" },
-          { transform: `translate(${fuera}%, ${-alto * 0.6}%) rotate(7deg) scale(0.97)`, zIndex: atras, offset: 0.44 },
-          { transform: `translate(${fuera}%, ${-alto * 0.6}%) rotate(7deg) scale(0.97)`, zIndex: 20, offset: 0.45, easing: "cubic-bezier(0.5, 0, 0.15, 1)" },
-          { transform: "translate(0, 0) rotate(0deg) scale(1)", zIndex: 20 },
-        ], { duration: 820 });
+          { transform: arriba, zIndex: atras, offset: 0.46 },
+          { transform: arriba, zIndex: 20, offset: 0.47, easing: "cubic-bezier(0.5, 0, 0.15, 1)" },
+          { transform: "translateY(0) rotate(0deg) scale(1)", zIndex: 20 },
+        ], { duration: 860 });
         barajeo.finished.then(() => { barajeo = null; }).catch(() => {});
       }
       pestanas.forEach((p) => {

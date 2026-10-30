@@ -685,7 +685,11 @@
 
 /* El panel de la tarjeta del frente */
 .tw-panel { display: grid; justify-items: center; gap: 0.5rem; width: 100%; padding: 1.35rem 1.2rem 1.3rem; border-radius: 1.75rem; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 2rem 3.5rem -2rem rgb(8 4 7 / 0.9); }
-.tw-panel[hidden] { display: none; }
+/* Los paneles van encimados en la misma celda: la caja siempre mide lo del más alto y al
+   cambiar de tarjeta no se mueve nada de la página. El oculto no se ve ni se puede tocar. */
+.tw-paneles { display: grid; width: 100%; }
+.tw-panel { grid-area: 1 / 1; align-content: start; }
+.tw-panel[hidden] { display: grid; visibility: hidden; opacity: 0; pointer-events: none; }
 .tw-sobre { display: flex; align-items: center; gap: 0.7rem; color: var(--tp-oro); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
 .tw-sobre span { width: 1.6rem; height: 1px; background: currentColor; opacity: 0.7; }
 .tq-titular { font-size: clamp(1.8rem, 8cqi, 2.4rem); font-weight: 400; line-height: 1.05; letter-spacing: -0.01em; }
@@ -732,7 +736,7 @@
 /* La tarjeta de fidelidad en su panel: compacta para que quepa en una pantalla. Sus piezas
    van una debajo de otra (no en las áreas de su hoja propia), los premios lado a lado y los
    sellos como etiquetas (la tarjeta de la pila ya los muestra en sus círculos) */
-.tw-panel > * { grid-area: auto; }
+.tw-panel > *, .tw-paneles > .tw-panel > * { grid-area: auto; }
 .tw-panel .tf-info { width: 100%; margin-top: 0; }
 .tw-panel .tf-info > * { grid-area: auto; }
 .tw-panel .tf-cuenta { font-size: 1.1rem; }
