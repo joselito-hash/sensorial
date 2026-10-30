@@ -354,8 +354,8 @@
     const id = `tw-${logos}`;
     const cartas = [
       { clave: "pago", pestana: "Pagar", icono: "ph-credit-card" },
-      { clave: "original", pestana: "¿Es original?", icono: "ph-seal-check" },
       ...(sello ? [{ clave: "sellos", pestana: "Mis sellos", icono: "ph-stamp" }] : []),
+      { clave: "original", pestana: "¿Es original?", icono: "ph-seal-check" },
     ];
 
     const carta = {

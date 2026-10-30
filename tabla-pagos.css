@@ -637,7 +637,17 @@
 
 /* La tarjeta de fidelidad, al tamaño de la cartera */
 .tw-carta .tf-escena { width: 100%; height: 100%; margin: 0; padding: 0; }
-.tw-carta .tf-tarjeta { width: 100%; height: 100%; }
+.tw-carta .tf-tarjeta { width: 100%; height: 100%; border-radius: 7% / 11%; }
+/* Sus manchas tinta se perdían con el fondo oscuro y la tarjeta se veía más chica: un filo
+   dorado fino (encima de todo) dibuja su contorno completo, igual que la del video */
+.tw-carta .tf-tarjeta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px rgb(227 196 140 / 0.6);
+  pointer-events: none;
+}
 
 /* Pestañas: las tres tarjetas, como control segmentado */
 .tw-lado { display: grid; justify-items: center; gap: 1rem; width: min(100%, 29rem); }

@@ -595,21 +595,34 @@
     });
     colocar();
 
+    /* Barajeo: la elegida sale de lado fuera de la pila (todavía por detrás), cambia de capa
+       ya afuera y regresa al frente; mientras regresa, las demás se recorren hacia atrás.
+       Nunca se atraviesan. */
+    let barajeo = null;
     function elegir(clave, { enfocar = false } = {}) {
       if (orden[0] === clave) return;
       const carta = cartas.find((c) => c.dataset.carta === clave);
+      const desde = Number(carta.dataset.pos);
       const antes = getComputedStyle(carta).transform;
       orden = [clave, ...orden.filter((c) => c !== clave)];
-      colocar();
-      /* Sale por arriba de la pila y baja al frente (las demás se recorren con su transición) */
+      barajeo?.cancel();
       if (!reducido()) {
-        carta.style.zIndex = "5";
-        carta.animate([
-          { transform: antes },
-          { transform: "translateY(-58%) rotate(-4deg) scale(0.97)", offset: 0.42 },
-          { transform: "translateY(0) scale(1)" },
-        ], { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
-        setTimeout(() => { carta.style.zIndex = ""; }, 300);
+        /* Las demás esperan a que la elegida ya esté afuera para recorrerse */
+        cartas.forEach((c) => { if (c !== carta) c.style.transitionDelay = "0.3s"; });
+        setTimeout(() => cartas.forEach((c) => { c.style.transitionDelay = ""; }), 950);
+      }
+      colocar();
+      if (!reducido()) {
+        const fuera = window.matchMedia("(max-width: 40rem)").matches ? 48 : 76;
+        const alto = desde * 15;
+        const atras = 10 - desde;
+        barajeo = carta.animate([
+          { transform: antes, zIndex: atras, easing: "cubic-bezier(0.3, 0.7, 0.4, 1)" },
+          { transform: `translate(${fuera}%, ${-alto * 0.6}%) rotate(7deg) scale(0.97)`, zIndex: atras, offset: 0.44 },
+          { transform: `translate(${fuera}%, ${-alto * 0.6}%) rotate(7deg) scale(0.97)`, zIndex: 20, offset: 0.45, easing: "cubic-bezier(0.5, 0, 0.15, 1)" },
+          { transform: "translate(0, 0) rotate(0deg) scale(1)", zIndex: 20 },
+        ], { duration: 820 });
+        barajeo.finished.then(() => { barajeo = null; }).catch(() => {});
       }
       pestanas.forEach((p) => {
         const activa = p.dataset.pestana === clave;
