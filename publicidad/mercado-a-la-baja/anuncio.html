@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mercado a la baja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Urbanist:ital,wght@0,300..800;1,300..800&display=block" rel="stylesheet">
+<style>
+  /* Publicidad 1080×1350 (post vertical). Mismos tokens que styles.css de la tienda. */
+  :root {
+    --papel: #221c20;
+    --papel-2: #332a30;
+    --tinta: #f7f2f4;
+    --tinta-2: #cbbfc6;
+    --linea: rgb(255 255 255 / 0.10);
+    --blanco: oklch(0.99 0.003 95);
+    --rojo: #ff3347;
+    --rojo-hondo: #c8102e;
+    --r-marco: 1.5rem;
+    --r-tarjeta: 1.25rem;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--papel); }
+
+  .anuncio {
+    position: relative;
+    width: 1080px;
+    height: 1350px;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 45% at 85% 8%, rgb(255 51 71 / 0.16), transparent 70%),
+      radial-gradient(70% 50% at 10% 100%, rgb(255 51 71 / 0.10), transparent 70%),
+      var(--papel);
+    color: var(--tinta);
+    font-family: "Urbanist", sans-serif;
+  }
+
+  /* Cuadrícula de pantalla de bolsa */
+  .rejilla {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--linea) 1px, transparent 1px),
+      linear-gradient(90deg, var(--linea) 1px, transparent 1px);
+    background-size: 90px 90px;
+    mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 80%);
+  }
+
+  /* La gráfica en caída */
+  .grafica { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; }
+
+  .cabecera {
+    position: absolute; top: 56px; left: 64px; right: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cabecera img { height: 58px; }
+  .bolsa {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 12px 22px 12px 16px;
+    border-radius: 999px;
+    background: rgb(255 51 71 / 0.14);
+    border: 1.5px solid rgb(255 51 71 / 0.55);
+    color: #ff8a96;
+    font-weight: 700; font-size: 20px; letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .bolsa::before {
+    content: ""; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--rojo); box-shadow: 0 0 0 6px rgb(255 51 71 / 0.25);
+  }
+
+  .titular { position: absolute; top: 250px; left: 64px; width: 640px; }
+  .titular .antetitulo {
+    font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 500;
+    font-size: 66px; line-height: 1.02; color: var(--tinta-2);
+  }
+  .titular h1 {
+    margin-top: 14px;
+    font-weight: 800; font-size: 100px; line-height: 0.92; letter-spacing: -0.035em;
+  }
+  .titular h1 em {
+    font-style: normal; color: var(--rojo);
+    text-shadow: 0 0 40px rgb(255 51 71 / 0.45);
+  }
+
+  /* Flecha enorme */
+  .flechota {
+    position: absolute; right: 56px; top: 170px;
+    width: 300px; height: 470px;
+    filter: drop-shadow(0 0 36px rgb(255 51 71 / 0.55));
+  }
+
+  .productos {
+    position: absolute; left: 48px; right: 48px; top: 640px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  }
+  .producto {
+    position: relative;
+    background: var(--papel-2);
+    border-radius: 2rem;
+    padding: 14px 14px 22px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.7);
+  }
+  .producto .foto {
+    height: 330px;
+    border-radius: var(--r-marco);
+    background: #f4eef1;
+    display: grid; place-items: center;
+    overflow: hidden;
+  }
+  /* Las fotos traen fondo blanco: multiply lo funde con el marco */
+  .producto .foto img { max-width: 92%; max-height: 92%; object-fit: contain; mix-blend-mode: multiply; }
+  .producto .foto img.ancha { max-width: 118%; max-height: 112%; }
+
+  .producto .marca {
+    margin: 20px 8px 0;
+    font-size: 17px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tinta-2);
+  }
+  .producto .nombre {
+    margin: 4px 8px 0;
+    font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 500;
+    font-size: 38px; line-height: 1.05;
+  }
+  .producto .precio {
+    margin: 16px 8px 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .producto .precio svg { width: 40px; height: 48px; flex: none; filter: drop-shadow(0 0 12px rgb(255 51 71 / 0.6)); }
+  .producto .precio span {
+    font-weight: 800; font-size: 50px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+  .producto .precio small { font-size: 22px; font-weight: 600; color: var(--tinta-2); margin-left: 2px; letter-spacing: 0; }
+
+  /* Cinta tipo tablero de cotizaciones */
+  .cinta {
+    position: absolute; left: 0; right: 0; bottom: 100px;
+    height: 72px;
+    background: var(--rojo-hondo);
+    display: flex; align-items: center; gap: 36px;
+    white-space: nowrap;
+    transform: rotate(-2.2deg) scale(1.04);
+    box-shadow: 0 20px 50px -20px rgb(200 16 46 / 0.8);
+    font-weight: 800; font-size: 26px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding-left: 20px;
+  }
+  .cinta b { color: #ffd2d7; font-weight: 800; }
+
+  .pie {
+    position: absolute; left: 64px; right: 64px; bottom: 30px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 22px; color: var(--tinta-2);
+  }
+  .pie strong { color: var(--tinta); font-weight: 700; }
+  .pie .marca-pie { font-family: "Cormorant Garamond", serif; font-style: italic; font-size: 28px; color: var(--tinta); }
+</style>
+</head>
+<body>
+<div class="anuncio">
+  <div class="rejilla"></div>
+
+  <!-- Gráfica de bolsa en caída -->
+  <svg class="grafica" viewBox="0 0 1080 1350" aria-hidden="true">
+    <defs>
+      <linearGradient id="relleno" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff3347" stop-opacity="0.28"/>
+        <stop offset="1" stop-color="#ff3347" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="brillo" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="8" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M-10 140 L100 128 L170 165 L250 148 L330 190 L410 172 L490 212 L570 196 L650 232 L740 214 L815 262 L815 1350 L-10 1350 Z" fill="url(#relleno)" opacity="0.35"/>
+    <polyline points="-10,140 100,128 170,165 250,148 330,190 410,172 490,212 570,196 650,232 740,214 815,262"
+      fill="none" stroke="#ff3347" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" filter="url(#brillo)" opacity="0.9"/>
+  </svg>
+
+  <header class="cabecera">
+    <img src="sensorial-logo.svg" alt="Sensorial Boutique">
+    <span class="bolsa">Mercado en caída</span>
+  </header>
+
+  <section class="titular">
+    <p class="antetitulo">El mercado va a la baja…</p>
+    <h1>y nuestros precios <em>también.</em></h1>
+  </section>
+
+  <!-- Flecha principal -->
+  <svg class="flechota" viewBox="0 0 300 470" aria-hidden="true">
+    <defs>
+      <linearGradient id="flecha" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff6b78"/>
+        <stop offset="1" stop-color="#e0112b"/>
+      </linearGradient>
+    </defs>
+    <path d="M105 0 H195 Q205 0 205 10 V300 H284 Q300 300 289 312 L162 462 Q150 474 138 462 L11 312 Q0 300 16 300 H95 V10 Q95 0 105 0 Z" fill="url(#flecha)"/>
+  </svg>
+
+  <section class="productos">
+    <article class="producto">
+      <div class="foto"><img src="ysl-libre.webp" alt="YSL Libre"></div>
+      <p class="marca">Yves Saint Laurent</p>
+      <p class="nombre">Libre</p>
+      <p class="precio">
+        <svg viewBox="0 0 40 48"><path d="M14 2h12v22h12L20 46 2 24h12z" fill="#ff3347"/></svg>
+        <span>$2,790</span>
+      </p>
+    </article>
+    <article class="producto">
+      <div class="foto"><img class="ancha" src="valentino-born-in-roma.webp" alt="Valentino Born in Roma"></div>
+      <p class="marca">Valentino</p>
+      <p class="nombre">Born in Roma</p>
+      <p class="precio">
+        <svg viewBox="0 0 40 48"><path d="M14 2h12v22h12L20 46 2 24h12z" fill="#ff3347"/></svg>
+        <span>$3,000</span>
+      </p>
+    </article>
+    <article class="producto">
+      <div class="foto"><img src="scandal.jpg" alt="Jean Paul Gaultier Scandal"></div>
+      <p class="marca">Jean Paul Gaultier</p>
+      <p class="nombre">Scandal</p>
+      <p class="precio">
+        <svg viewBox="0 0 40 48"><path d="M14 2h12v22h12L20 46 2 24h12z" fill="#ff3347"/></svg>
+        <span>$2,500</span>
+      </p>
+    </article>
+  </section>
+
+  <div class="cinta">
+    <span>▼ YSL Libre <b>$2,790</b></span>
+    <span>▼ Valentino <b>$3,000</b></span>
+    <span>▼ Scandal <b>$2,500</b></span>
+    <span>▼ YSL Libre <b>$2,790</b></span>
+    <span>▼ Valentino <b>$3,000</b></span>
+  </div>
+
+  <footer class="pie">
+    <span class="marca-pie">Sensorial Boutique</span>
+    <span>Pídelo por WhatsApp <strong>56 5056 9410</strong></span>
+  </footer>
+</div>
+</body>
+</html>
