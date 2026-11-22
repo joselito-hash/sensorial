@@ -8,16 +8,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Urbanist:ital,wght@0,300..800;1,300..800&display=block" rel="stylesheet">
 <style>
   /* Plantilla 1080×1920 (pantalla de celular / historia), un perfume por imagen.
-     Elige el perfume con ?p=ysl | valentino | scandal. Mismos tokens que styles.css. */
+     Elige el perfume con ?p=ysl | valentino | scandal. Tokens de styles.css, fondo más oscuro. */
   :root {
-    --papel: #221c20;
-    --papel-2: #332a30;
+    --papel: #130f11;
     --tinta: #f7f2f4;
     --tinta-2: #cbbfc6;
-    --linea: rgb(255 255 255 / 0.10);
+    --linea: rgb(255 255 255 / 0.07);
     --rojo: #ff3347;
     --rojo-hondo: #c8102e;
-    --r-marco: 1.5rem;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,8 +27,7 @@
     height: 1920px;
     overflow: hidden;
     background:
-      radial-gradient(60% 35% at 85% 10%, rgb(255 51 71 / 0.18), transparent 70%),
-      radial-gradient(70% 35% at 10% 100%, rgb(255 51 71 / 0.12), transparent 70%),
+      radial-gradient(55% 28% at 85% 30%, rgb(255 51 71 / 0.13), transparent 70%),
       var(--papel);
     color: var(--tinta);
     font-family: "Urbanist", sans-serif;
@@ -42,132 +39,122 @@
       linear-gradient(var(--linea) 1px, transparent 1px),
       linear-gradient(90deg, var(--linea) 1px, transparent 1px);
     background-size: 90px 90px;
-    mask-image: linear-gradient(180deg, #000 0%, #000 40%, transparent 62%);
+    mask-image: linear-gradient(180deg, transparent 4%, #000 14%, #000 40%, transparent 55%);
   }
-
-  .grafica { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
 
   .cabecera {
-    position: absolute; top: 130px; left: 64px; right: 64px;
-    display: flex; align-items: center; justify-content: space-between;
+    position: absolute; top: 110px; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 26px;
   }
-  .cabecera img { height: 66px; }
+  .cabecera img { height: 144px; }
   .bolsa {
     display: inline-flex; align-items: center; gap: 12px;
-    padding: 13px 24px 13px 18px;
+    padding: 11px 22px 11px 16px;
     border-radius: 999px;
-    background: rgb(255 51 71 / 0.14);
-    border: 1.5px solid rgb(255 51 71 / 0.55);
+    background: rgb(255 51 71 / 0.12);
+    border: 1.5px solid rgb(255 51 71 / 0.5);
     color: #ff8a96;
-    font-weight: 700; font-size: 22px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 700; font-size: 21px; letter-spacing: 0.16em; text-transform: uppercase;
   }
   .bolsa::before {
-    content: ""; width: 12px; height: 12px; border-radius: 50%;
-    background: var(--rojo); box-shadow: 0 0 0 6px rgb(255 51 71 / 0.25);
+    content: ""; width: 11px; height: 11px; border-radius: 50%;
+    background: var(--rojo); box-shadow: 0 0 0 6px rgb(255 51 71 / 0.22);
   }
 
-  .titular { position: absolute; top: 410px; left: 64px; width: 660px; }
+  .titular { position: absolute; top: 420px; left: 64px; width: 600px; }
   .titular .antetitulo {
     font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 500;
-    font-size: 70px; line-height: 1.02; color: var(--tinta-2);
+    font-size: 74px; line-height: 1; color: var(--tinta-2);
   }
   .titular h1 {
-    margin-top: 16px;
-    font-weight: 800; font-size: 110px; line-height: 0.92; letter-spacing: -0.035em;
+    margin-top: 22px;
+    font-weight: 800; font-size: 108px; line-height: 0.92; letter-spacing: -0.035em;
   }
   .titular h1 em {
     font-style: normal; color: var(--rojo);
     text-shadow: 0 0 40px rgb(255 51 71 / 0.45);
   }
 
-  .flechota {
-    position: absolute; right: 50px; top: 330px;
-    width: 300px; height: 520px;
-    filter: drop-shadow(0 0 40px rgb(255 51 71 / 0.6));
+  /* Flecha en escalera */
+  .escalera {
+    position: absolute; left: 0; top: 0; width: 1080px; height: 1920px;
+    overflow: visible;
   }
 
-  .producto {
-    position: absolute; left: 56px; right: 56px; top: 880px;
-    background: var(--papel-2);
-    border-radius: 2rem;
-    padding: 16px 16px 30px;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    box-shadow: 0 40px 80px -36px rgb(0 0 0 / 0.75);
+  /* Perfume sin fondo, flotando */
+  .escenario {
+    position: absolute; left: 0; right: 0; top: 920px; height: 520px;
+    display: flex; align-items: flex-end; justify-content: center;
   }
-  .producto .foto {
-    height: 520px;
-    border-radius: var(--r-marco);
-    background: #f4eef1;
-    position: relative;
-    overflow: hidden;
+  .escenario::before {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    width: 760px; height: 620px; transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgb(255 90 110 / 0.30), rgb(255 51 71 / 0.10) 55%, transparent);
   }
-  /* Las fotos traen fondo blanco: multiply lo funde con el marco */
-  .producto .foto img {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    height: calc(var(--alto, 0.92) * 100%);
-    width: auto; max-width: none;
-    mix-blend-mode: multiply;
+  .escenario::after {
+    content: ""; position: absolute; left: 50%; bottom: -16px;
+    width: 460px; height: 46px; transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.75), transparent);
+  }
+  .escenario img {
+    position: relative; z-index: 1;
+    height: calc(var(--alto, 1) * 100%);
+    width: auto;
+    filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.55));
   }
 
-  .producto .datos {
-    margin: 28px 14px 0;
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+  .datos { position: absolute; left: 0; right: 0; top: 1478px; text-align: center; }
+  .marca {
+    font-size: 24px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--tinta-2);
   }
-  .producto .marca {
-    font-size: 21px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tinta-2);
-  }
-  .producto .nombre {
-    margin-top: 6px;
+  .nombre {
+    margin-top: 8px;
     font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 500;
-    font-size: 66px; line-height: 1;
+    font-size: 76px; line-height: 1;
   }
-  .producto .precio { display: flex; align-items: center; gap: 14px; }
-  .producto .precio svg { width: 58px; height: 70px; flex: none; filter: drop-shadow(0 0 16px rgb(255 51 71 / 0.65)); }
-  .producto .precio span {
-    font-weight: 800; font-size: 104px; line-height: 0.9; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+  .precio {
+    margin-top: 22px;
+    display: inline-flex; align-items: center; gap: 22px;
+  }
+  .precio svg { width: 86px; height: 86px; flex: none; filter: drop-shadow(0 0 16px rgb(255 51 71 / 0.6)); }
+  .precio span {
+    font-weight: 800; font-size: 124px; line-height: 0.9; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
   }
 
   .cinta {
-    position: absolute; left: 0; right: 0; top: 1600px;
-    height: 80px;
+    position: absolute; left: 0; right: 0; top: 1765px;
+    height: 76px;
     background: var(--rojo-hondo);
     display: flex; align-items: center; gap: 40px;
     white-space: nowrap;
     transform: rotate(-2.2deg) scale(1.05);
     box-shadow: 0 20px 50px -20px rgb(200 16 46 / 0.8);
-    font-weight: 800; font-size: 28px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 800; font-size: 27px; letter-spacing: 0.08em; text-transform: uppercase;
     padding-left: 24px;
   }
   .cinta b { color: #ffd2d7; font-weight: 800; }
-
-  .pie {
-    position: absolute; left: 64px; right: 64px; top: 1745px;
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-size: 26px; color: var(--tinta-2);
-  }
-  .pie strong { color: var(--tinta); font-weight: 700; }
-  .pie .marca-pie { font-family: "Cormorant Garamond", serif; font-style: italic; font-size: 32px; color: var(--tinta); }
 </style>
 </head>
 <body>
 <div class="anuncio">
   <div class="rejilla"></div>
 
-  <svg class="grafica" viewBox="0 0 1080 1920" aria-hidden="true">
+  <svg class="escalera" viewBox="0 0 1080 1920" aria-hidden="true">
     <defs>
-      <linearGradient id="relleno" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ff3347" stop-opacity="0.28"/>
-        <stop offset="0.5" stop-color="#ff3347" stop-opacity="0"/>
+      <linearGradient id="rojoEscalera" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff7381"/>
+        <stop offset="1" stop-color="#e0112b"/>
       </linearGradient>
-      <filter id="brillo" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="8" result="b"/>
+      <filter id="brillo" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="18" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
-    <path d="M-10 250 L100 238 L170 278 L250 260 L330 304 L410 285 L490 326 L570 308 L650 348 L730 330 L810 382 L810 1920 L-10 1920 Z" fill="url(#relleno)" opacity="0.35"/>
-    <polyline points="-10,250 100,238 170,278 250,260 330,304 410,285 490,326 570,308 650,348 730,330 810,382"
-      fill="none" stroke="#ff3347" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" filter="url(#brillo)" opacity="0.9"/>
+    <g filter="url(#brillo)">
+      <polyline points="640,430 740,430 740,540 840,540 840,650 940,650 940,780"
+        fill="none" stroke="url(#rojoEscalera)" stroke-width="48" stroke-linejoin="miter" stroke-linecap="butt"/>
+      <path d="M868 770 H1012 L940 880 Z" fill="#e8152f" stroke="#e8152f" stroke-width="10" stroke-linejoin="round"/>
+    </g>
   </svg>
 
   <header class="cabecera">
@@ -176,47 +163,32 @@
   </header>
 
   <section class="titular">
-    <p class="antetitulo">El mercado va a la baja…</p>
+    <p class="antetitulo">El mercado<br>va a la baja…</p>
     <h1>y nuestros precios <em>también.</em></h1>
   </section>
 
-  <svg class="flechota" viewBox="0 0 300 520" aria-hidden="true">
-    <defs>
-      <linearGradient id="flecha" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ff6b78"/>
-        <stop offset="1" stop-color="#e0112b"/>
-      </linearGradient>
-    </defs>
-    <path d="M105 0 H195 Q205 0 205 10 V350 H284 Q300 350 289 362 L162 512 Q150 524 138 512 L11 362 Q0 350 16 350 H95 V10 Q95 0 105 0 Z" fill="url(#flecha)"/>
-  </svg>
+  <div class="escenario"><img id="foto" src="" alt=""></div>
 
-  <article class="producto">
-    <div class="foto"><img id="foto" src="" alt=""></div>
-    <div class="datos">
-      <div>
-        <p class="marca" id="marca"></p>
-        <p class="nombre" id="nombre"></p>
-      </div>
-      <p class="precio">
-        <svg viewBox="0 0 40 48"><path d="M14 2h12v22h12L20 46 2 24h12z" fill="#ff3347"/></svg>
-        <span id="precio"></span>
-      </p>
-    </div>
-  </article>
+  <section class="datos">
+    <p class="marca" id="marca"></p>
+    <p class="nombre" id="nombre"></p>
+    <p class="precio">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <polyline points="4,10 20,10 20,26 36,26 36,40" fill="none" stroke="#ff3347" stroke-width="10" stroke-linejoin="miter"/>
+        <path d="M24 38 H48 L36 56 Z" fill="#ff3347" stroke="#ff3347" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+      <span id="precio"></span>
+    </p>
+  </section>
 
   <div class="cinta" id="cinta"></div>
-
-  <footer class="pie">
-    <span class="marca-pie">Sensorial Boutique</span>
-    <span>Pídelo por WhatsApp <strong>56 5056 9410</strong></span>
-  </footer>
 </div>
 
 <script>
   const PERFUMES = {
-    ysl:       { marca: "Yves Saint Laurent", nombre: "Libre",        corto: "YSL Libre", precio: "$2,790", foto: "ysl-libre.webp",              alto: 0.94 },
-    valentino: { marca: "Valentino",          nombre: "Born in Roma", corto: "Valentino", precio: "$3,000", foto: "valentino-born-in-roma.webp", alto: 1.18 },
-    scandal:   { marca: "Jean Paul Gaultier", nombre: "Scandal",      corto: "Scandal",   precio: "$2,500", foto: "scandal.jpg",                 alto: 0.94 },
+    ysl:       { marca: "Yves Saint Laurent", nombre: "Libre Le Parfum",   corto: "YSL Libre Le Parfum",   precio: "$2,790", foto: "ysl-libre-le-parfum.png",         alto: 1 },
+    valentino: { marca: "Valentino",          nombre: "Donna Born in Roma", corto: "Donna Born in Roma",   precio: "$3,000", foto: "valentino-donna-born-in-roma.png", alto: 0.86 },
+    scandal:   { marca: "Jean Paul Gaultier", nombre: "Scandal Le Parfum", corto: "Scandal Le Parfum",     precio: "$2,500", foto: "jpg-scandal-le-parfum.png",        alto: 1 },
   };
   const p = PERFUMES[new URLSearchParams(location.search).get("p")] || PERFUMES.ysl;
   const foto = document.getElementById("foto");
