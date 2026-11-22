@@ -5,13 +5,12 @@
 <title>Mercado a la baja · cierre</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;600;800&display=block" rel="stylesheet">
 <style>
-  /* Historia de cierre 1080×1920. Mismo esqueleto que historia.html:
-     logo arriba, titular a la izquierda, escalera roja, frascos de pie con reflejo. */
+  /* Historia de cierre 1080×1920: cartel tipográfico, sin frascos.
+     La escalera cruza la pantalla y termina en el botón para escribir. */
   :root {
     --papel: #120e10;
-    --piso: #1d171a;
     --tinta: #f4eef1;
     --tinta-2: #b9adb3;
     --rojo: #e0303f;
@@ -25,7 +24,7 @@
     width: 1080px;
     height: 1920px;
     overflow: hidden;
-    background: linear-gradient(180deg, var(--papel) 0, var(--papel) 1560px, var(--piso) 1640px, var(--papel) 1920px);
+    background: var(--papel);
     color: var(--tinta);
     font-family: "Urbanist", sans-serif;
   }
@@ -35,82 +34,46 @@
     height: 196px; transform: translateX(-50%);
   }
 
-  .titular { position: absolute; top: 380px; left: 72px; right: 72px; }
-  .titular p { font-weight: 300; font-size: 60px; line-height: 1.1; color: var(--tinta-2); }
-  .titular h1 {
-    margin-top: 14px;
-    font-weight: 800; font-size: 112px; line-height: 0.95; letter-spacing: -0.035em;
+  h1 {
+    position: absolute; top: 410px; left: 68px;
+    font-weight: 800; font-size: 172px; line-height: 0.92; letter-spacing: -0.045em;
   }
-  .titular h1 em { font-style: normal; color: var(--rojo); }
 
   .escalera { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
 
-  /* Los tres frascos juntos sobre el piso: Valentino al frente, YSL y Scandal detrás */
-  .grupo { position: absolute; right: 40px; bottom: 330px; width: 540px; height: 820px; }
-  .grupo::after {
-    content: ""; position: absolute; left: 50%; bottom: -12px;
-    width: 92%; height: 30px; transform: translateX(-50%);
-    border-radius: 50%;
-    background: rgb(0 0 0 / 0.6);
-    filter: blur(16px);
-  }
-  .botella { position: absolute; }
-  .botella img { display: block; height: 100%; width: auto; }
-  .botella img + img {
-    position: absolute; top: 100%; left: 0;
-    transform: scaleY(-1);
-    opacity: 0.14;
-    -webkit-mask-image: linear-gradient(0deg, #000 0%, transparent 30%);
-            mask-image: linear-gradient(0deg, #000 0%, transparent 30%);
-  }
-  .ysl       { left: 0;   bottom: 30px; height: 720px; z-index: 1; }
-  .scandal   { right: 0;  bottom: 22px; height: 640px; z-index: 1; }
-  .valentino { left: 50%; bottom: 0;    height: 470px; z-index: 2; transform: translateX(-56%); }
+  .texto { position: absolute; left: 72px; top: 1356px; width: 540px; }
+  .texto strong { display: block; font-weight: 600; font-size: 54px; line-height: 1.1; }
+  .texto span { display: block; margin-top: 18px; font-weight: 300; font-size: 42px; line-height: 1.2; color: var(--tinta-2); }
 
-  .llamado { position: absolute; left: 72px; width: 410px; top: 1262px; }
-  .llamado p { font-weight: 300; font-size: 44px; line-height: 1.15; color: var(--tinta-2); }
-  .llamado h2 {
-    margin-top: 16px;
-    font-weight: 800; font-size: 88px; line-height: 0.95; letter-spacing: -0.035em;
+  .boton {
+    position: absolute; left: 632px; top: 1590px;
+    width: 384px; height: 112px;
+    display: grid; place-items: center;
+    background: var(--rojo);
+    font-weight: 800; font-size: 40px; letter-spacing: -0.01em;
+    white-space: nowrap;
   }
-  .llamado h2 em { font-style: normal; color: var(--rojo); }
 </style>
 </head>
 <body>
 <div class="anuncio">
   <img class="logo" src="sensorial-logo.svg" alt="Sensorial Boutique">
 
-  <section class="titular">
-    <p>El mercado sigue a la baja.</p>
-    <h1>Tenemos más <em>rebajas.</em></h1>
-  </section>
+  <h1>¿No viste<br>el tuyo?</h1>
 
-  <!-- La escalera baja desde el titular hasta el llamado a escribir -->
+  <!-- Cinco escalones que bajan de izquierda a derecha hasta el botón -->
   <svg class="escalera" viewBox="0 0 1080 1920" aria-hidden="true">
-    <polyline points="72,742 172,742 172,842 272,842 272,942 372,942 372,1052"
+    <polyline points="72,850 222,850 222,970 372,970 372,1090 522,1090 522,1210 672,1210 672,1330 824,1330 824,1470"
       fill="none" stroke="#e0303f" stroke-width="40" stroke-linejoin="miter"/>
-    <path d="M308 1046 H436 L372 1146 Z" fill="#e0303f"/>
+    <path d="M760 1464 H888 L824 1564 Z" fill="#e0303f"/>
   </svg>
 
-  <div class="grupo">
-    <div class="botella ysl">
-      <img src="ysl-libre-berry-crush.png" alt="Yves Saint Laurent Libre Berry Crush">
-      <img src="ysl-libre-berry-crush.png" alt="">
-    </div>
-    <div class="botella scandal">
-      <img src="jpg-scandal-le-parfum.png" alt="Jean Paul Gaultier Scandal Le Parfum">
-      <img src="jpg-scandal-le-parfum.png" alt="">
-    </div>
-    <div class="botella valentino">
-      <img src="valentino-donna-born-in-roma.png" alt="Valentino Donna Born in Roma">
-      <img src="valentino-donna-born-in-roma.png" alt="">
-    </div>
-  </div>
+  <p class="texto">
+    <strong>Tenemos más perfumes en rebaja.</strong>
+    <span>Escríbenos y te decimos precio y disponibilidad.</span>
+  </p>
 
-  <section class="llamado">
-    <p>¿Buscas otro<br>perfume?</p>
-    <h2>Mándanos<br>mensaje.</h2>
-  </section>
+  <div class="boton">Mándanos mensaje</div>
 </div>
 </body>
 </html>
